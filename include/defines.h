@@ -14,12 +14,15 @@
 //---- Program Information ------------------------------------------
 
 //--- ScreenNames ----
-#define SCREEN_NAME_FM "FMScreen"
-#define SCREEN_NAME_AM "AMScreen"
-#define SCREEN_NAME_SCREENSAVER "ScreenSaver"
-#define SCREEN_NAME_SETUP "SetupScreen"
-#define SCREEN_NAME_MEMORY "MemoryScreen"
-#define SCREEN_NAME_SCAN "ScanScreen"
+#define SCREEN_NAME_FM "ScreenFM"
+#define SCREEN_NAME_AM "ScreenAM"
+#define SCREEN_NAME_SCREENSAVER "SaverScreen"
+#define SCREEN_NAME_SETUP "ScreenSetup"
+#define SCREEN_NAME_SETUP_SYSTEM "ScreenSetupSystem"
+#define SCREEN_NAME_SETUP_SI4735 "ScreenSetupSi4735"
+
+#define SCREEN_NAME_MEMORY "ScreenMemory"
+#define SCREEN_NAME_SCAN "ScreenScan"
 
 #define SCREEN_NAME_TEST "TestScreen"
 #define SCREEN_NAME_EMPTY "EmptyScreen"
