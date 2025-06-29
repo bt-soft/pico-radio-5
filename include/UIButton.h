@@ -311,9 +311,8 @@ class UIButton : public UIComponent {
              const ButtonColorScheme &scheme = UIColorPalette::createDefaultButtonScheme(), // scheme
              bool autoSizeToText = false                                                    // Automatikus méretezés flag
              )
-        : UIComponent(
-              Rect(bounds.x, bounds.y, (bounds.width == 0 && !autoSizeToText ? DEFAULT_BUTTON_WIDTH : bounds.width), (bounds.height == 0 ? DEFAULT_BUTTON_HEIGHT : bounds.height)),
-              scheme),                                                               // UIComponent konstruktora az alap ColorScheme résszel inicializálódik
+        : UIComponent(Rect(bounds.x, bounds.y, (bounds.width == 0 && !autoSizeToText ? DEFAULT_BUTTON_WIDTH : bounds.width), (bounds.height == 0 ? DEFAULT_BUTTON_HEIGHT : bounds.height)),
+                      scheme),                                                       // UIComponent konstruktora az alap ColorScheme résszel inicializálódik
           buttonId(id), label(label), buttonType(type), currentButtonScheme(scheme), // Teljes ButtonColorScheme mentése
           eventCallback(callback), autoSizeToText(autoSizeToText) {
         this->currentState = ButtonState::Off; // Alapértelmezett állapot ennél a konstruktornál
@@ -338,11 +337,9 @@ class UIButton : public UIComponent {
              std::function<void(const ButtonEvent &)> callback = nullptr, // callback
              bool autoSizeToText = false                                  // Automatikus méretezés flag
              )
-        : UIComponent(
-              Rect(bounds.x, bounds.y, (bounds.width == 0 && !autoSizeToText ? DEFAULT_BUTTON_WIDTH : bounds.width), (bounds.height == 0 ? DEFAULT_BUTTON_HEIGHT : bounds.height)),
-              UIColorPalette::createDefaultButtonScheme()), // UIComponent konstruktora az alap ColorScheme résszel inicializálódik
-          buttonId(id), label(label), buttonType(UIButton::ButtonType::Pushable),
-          currentButtonScheme(UIColorPalette::createDefaultButtonScheme()), // Teljes ButtonColorScheme mentése
+        : UIComponent(Rect(bounds.x, bounds.y, (bounds.width == 0 && !autoSizeToText ? DEFAULT_BUTTON_WIDTH : bounds.width), (bounds.height == 0 ? DEFAULT_BUTTON_HEIGHT : bounds.height)),
+                      UIColorPalette::createDefaultButtonScheme()),                                                                                 // UIComponent konstruktora az alap ColorScheme résszel inicializálódik
+          buttonId(id), label(label), buttonType(UIButton::ButtonType::Pushable), currentButtonScheme(UIColorPalette::createDefaultButtonScheme()), // Teljes ButtonColorScheme mentése
           currentState(UIButton::ButtonState::Off), eventCallback(callback), autoSizeToText(autoSizeToText) {
         if (autoSizeToText) {
             updateWidthToFitText();

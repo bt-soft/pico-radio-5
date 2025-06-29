@@ -30,7 +30,7 @@ uint16_t SCREEN_H;
 
 //------------------ SI4735
 #include "Si4735Manager.h"
-Si4735Manager *si4735Manager = nullptr; // Si4735Manager: NEM lehet (hardware inicializálás miatt) statikus, mert HW inicializálások is vannak benne
+Si4735Manager *pSi4735Manager = nullptr; // Si4735Manager: NEM lehet (hardware inicializálás miatt) statikus, mert HW inicializálások is vannak benne
 
 //-------------------- Screens
 // Globális képernyőkezelő pointer - inicializálás a setup()-ban történik
@@ -164,20 +164,22 @@ void setup() {
     Wire.setSDA(PIN_SI4735_I2C_SDA); // I2C for SI4735 SDA
     Wire.setSCL(PIN_SI4735_I2C_SCL); // I2C for SI4735 SCL
     Wire.begin();
-    delay(300); // Si4735Manager inicializálása itt
+    delay(300);
+
+    // Si4735Manager inicializálása itt
     splash.updateProgress(2, 6, "Initializing SI4735 Manager...");
-    if (si4735Manager == nullptr) {
-        si4735Manager = new Si4735Manager();
+    if (pSi4735Manager == nullptr) {
+        pSi4735Manager = new Si4735Manager();
         // BandStore beállítása a Si4735Manager-ben
-        si4735Manager->setBandStore(&bandStore);
+        pSi4735Manager->setBandStore(&bandStore);
     }
 
     // KRITIKUS: Band tábla dinamikus adatainak EGYSZERI inicializálása RÖGTÖN a Si4735Manager létrehozása után!
-    si4735Manager->initializeBandTableData(true); // forceReinit = true az első inicializálásnál
+    pSi4735Manager->initializeBandTableData(true); // forceReinit = true az első inicializálásnál
 
     // Si4735 inicializálása
     splash.updateProgress(3, 6, "Detecting SI4735...");
-    int16_t si4735Addr = si4735Manager->getDeviceI2CAddress();
+    int16_t si4735Addr = pSi4735Manager->getDeviceI2CAddress();
     if (si4735Addr == 0) {
         tft.fillScreen(TFT_BLACK);
         tft.setTextColor(TFT_RED, TFT_BLACK);
@@ -190,21 +192,21 @@ void setup() {
             ;
     } // Lépés 4: SI4735 konfigurálás
     splash.updateProgress(4, 6, "Configuring SI4735...");
-    si4735Manager->setDeviceI2CAddress(si4735Addr == 0x11 ? 0 : 1); // Sets the I2C Bus Address, erre is szükség van...    splash.drawSI4735Info(si4735Manager->getSi4735());
+    pSi4735Manager->setDeviceI2CAddress(si4735Addr == 0x11 ? 0 : 1); // Sets the I2C Bus Address, erre is szükség van...    splash.drawSI4735Info(si4735Manager->getSi4735());
 
     delay(300);
     //--------------------------------------------------------------------
 
     // Lépés 5: Frekvencia beállítások
     splash.updateProgress(5, 6, "Setting up radio...");
-    si4735Manager->init(true);
-    si4735Manager->getSi4735().setVolume(config.data.currVolume); // Hangerő visszaállítása
+    pSi4735Manager->init(true);
+    pSi4735Manager->getSi4735().setVolume(config.data.currVolume); // Hangerő visszaállítása
 
     delay(100);
 
     // Kezdő képernyőtípus beállítása
     splash.updateProgress(6, 6, "Preparing display...");
-    // const char *startScreeName = si4735Manager->getCurrentBandType() == FM_BAND_TYPE ? SCREEN_NAME_FM : SCREEN_NAME_AM;
+    // const char *startScreeName = pSi4735Manager->getCurrentBandType() == FM_BAND_TYPE ? SCREEN_NAME_FM : SCREEN_NAME_AM;
     const char *startScreeName = SCREEN_NAME_TEST;
     delay(100);
 
@@ -328,7 +330,7 @@ void loop() {
     }
 
     // SI4735 loop hívása, squelch és hardver némítás kezelése
-    if (si4735Manager) {
-        si4735Manager->loop();
+    if (pSi4735Manager) {
+        pSi4735Manager->loop();
     }
 }

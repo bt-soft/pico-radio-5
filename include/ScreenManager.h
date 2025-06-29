@@ -8,8 +8,7 @@
 
 #include "Config.h"
 #include "IScreenManager.h"
-#include "ScreenEmpty.h"
-#include "ScreenTest.h"
+#include "UIScreen.h"
 
 // Deferred action struktúra - biztonságos képernyőváltáshoz
 struct DeferredAction {

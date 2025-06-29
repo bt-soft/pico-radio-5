@@ -133,9 +133,7 @@ class UIComponent {
      * @details A komponens alapértelmezett színpalettát használ, ha nem adunk meg másikat.
      * @note A bounds szélessége és magassága 0 esetén az alapértelmezett méreteket használja (DEFAULT_COMPONENT_WIDTH és DEFAULT_COMPONENT_HEIGHT).
      */
-    UIComponent(const Rect &bounds, const ColorScheme &colors = ColorScheme::defaultScheme()) : bounds(bounds), colors(colors) {
-        DEBUG("UIComponent: Constructor called\n"); //
-    }
+    UIComponent(const Rect &bounds, const ColorScheme &colors = ColorScheme::defaultScheme()) : bounds(bounds), colors(colors) {}
 
     virtual ~UIComponent() = default;
 

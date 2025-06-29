@@ -26,4 +26,6 @@ class Si4735Manager : public Si4735Rds {
     void loop();
 };
 
+extern Si4735Manager *pSi4735Manager; // Globális pointer a Si4735Manager példányhoz, a main.cpp fájlban lesz inicializálva
+
 #endif // __Si4735_MANAGER_H
