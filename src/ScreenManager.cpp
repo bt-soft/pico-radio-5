@@ -26,11 +26,7 @@ void ScreenManager::registerDefaultScreenFactories() {
     // registerScreenFactory("SETUP_SYSTEM", [](TFT_eSPI &tft_param) { return std::make_shared<SetupSystemScreen>(tft_param); });
     // registerScreenFactory("SETUP_SI4735", [](TFT_eSPI &tft_param) { return std::make_shared<SetupSi4735Screen>(tft_param); });
 
-    // test képernyők regisztrálása
+    // Teszt képernyők regisztrálása
     registerScreenFactory(SCREEN_NAME_TEST, []() { return std::make_shared<ScreenTest>(); });
     registerScreenFactory(SCREEN_NAME_EMPTY, []() { return std::make_shared<ScreenEmpty>(); });
 }
-
-// MemoryScreen paraméter kezelés implementációja
-// void ScreenManager::setMemoryScreenParams(bool autoAdd, const char *rdsName) { memoryScreenParamsBuffer = MemoryScreenParams(autoAdd, rdsName); }
-// void ScreenManager::switchToMemoryScreen() { switchToScreen(SCREEN_NAME_MEMORY, &memoryScreenParamsBuffer); }
