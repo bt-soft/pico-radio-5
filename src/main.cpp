@@ -206,8 +206,7 @@ void setup() {
 
     // Kezdő képernyőtípus beállítása
     splash.updateProgress(6, 6, "Preparing display...");
-    // const char *startScreeName = pSi4735Manager->getCurrentBandType() == FM_BAND_TYPE ? SCREEN_NAME_FM : SCREEN_NAME_AM;
-    const char *startScreeName = SCREEN_NAME_TEST;
+    const char *startScreeName = pSi4735Manager->getCurrentBandType() == FM_BAND_TYPE ? SCREEN_NAME_FM : SCREEN_NAME_AM;
     delay(100);
 
     //--------------------------------------------------------------------

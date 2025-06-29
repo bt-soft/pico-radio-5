@@ -344,8 +344,8 @@ void UIScreen::onDialogClosed(UIDialogBase *closedDialog) {
 
             // Előző dialógus reaktiválása
             topDialog->setTopDialog(true);
-            topDialog->resetVeilDrawnFlag();  // Fátyol újrarajzolásának engedélyezése
-            topDialog->markForRedraw(true); // A `true` paraméter a gyerekeket is megjelöli (gombok, stb.)
+            topDialog->resetVeilDrawnFlag(); // Fátyol újrarajzolásának engedélyezése
+            topDialog->markForRedraw(true);  // A `true` paraméter a gyerekeket is megjelöli (gombok, stb.)
             currentDialog = topDialog;
 
             // Alapképernyő komponenseinek újrarajzolási flag beállítása

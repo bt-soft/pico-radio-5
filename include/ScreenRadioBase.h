@@ -59,6 +59,11 @@ class ScreenRadioBase : public ScreenFrequDisplayBase {
      */
     virtual ~ScreenRadioBase();
 
+    /**
+     * @brief StatusLine komponens lekérése
+     */
+    inline std::shared_ptr<StatusLine> getStatusLineComp() const { return statusLineComp; }
+
   protected:
     // ===================================================================
     // UI komponensek factory metódusok

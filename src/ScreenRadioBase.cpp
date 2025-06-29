@@ -439,6 +439,6 @@ void ScreenRadioBase::onDialogClosed(UIDialogBase *closedDialog) {
     } else {
         // === NORMÁL DIALÓGUS (X gomb, Cancel, stb.) ===
         // Normál UIScreen dialog cleanup
-        UIScreen::onDialogClosed(closedDialog);
+        ScreenFrequDisplayBase::onDialogClosed(closedDialog);
     }
 }
