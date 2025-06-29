@@ -299,7 +299,7 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     // S-Meter komponens létrehozása - RadioScreen közös implementáció
     // ===================================================================
-    Rect smeterBounds(2, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT, SMeterConstants::SMETER_WIDTH, 60);
+    Rect smeterBounds(2, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT + 10, SMeterConstants::SMETER_WIDTH, 70);
     createSMeterComponent(smeterBounds);
 
     createCommonVerticalButtons();   // ButtonsGroupManager használata
