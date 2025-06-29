@@ -17,7 +17,7 @@ static constexpr uint8_t BACK_BUTTON = 33;
 // Konstruktor és inicializálás
 // ===================================================================
 
-ScreenMemory::ScreenMemory() : UIScreen(SCREEN_NAME_MEMORY) {
+ScreenMemory::ScreenMemory() : UIScreen(SCREEN_NAME_MEMORY), rdsStationName("") {
 
     // Aktuális sáv típus meghatározása
     isFmMode = isCurrentBandFm();
@@ -350,7 +350,6 @@ void ScreenMemory::onDialogClosed(UIDialogBase *closedDialog) {
  */
 void ScreenMemory::setParameters(void *params) {
     if (params) {
-
         // Átveszi a tulajdonjogot
         auto stationNamePtr = static_cast<std::shared_ptr<char> *>(params);
         rdsStationName = String(stationNamePtr->get()); // std::shared_ptr<char> -> String konverzió
