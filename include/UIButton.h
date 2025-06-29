@@ -765,7 +765,7 @@ class UIButton : public UIComponent {
             return;
 
         // Ha a lenyomás megszakadt (pl. ujj lecsúszott), töröljük a flag-eket.
-        // Hosszú lenyomás esemény nem aktiválódik.
+        // Hosszú nyomás esemény nem aktiválódik.
         pressStartTime = 0;
         longPressThresholdMet = false;
         longPressEventFired = false;
@@ -773,6 +773,12 @@ class UIButton : public UIComponent {
     }
 
   public:
+    /**
+     * @brief Ellenőrzi, hogy a gomb engedélyezi-e a vizuális lenyomott visszajelzést
+     * @return true, ha a gomb engedélyezi a vizuális lenyomott visszajelzést, false egyébként
+     */
+    virtual bool allowsVisualPressedFeedback() const override { return true; }
+
     /**
      * @brief Gomb komponens loop függvénye
      * Ez a metódus folyamatosan ellenőrzi a gomb állapotát és kezeli a hosszú lenyomás eseményeket.
