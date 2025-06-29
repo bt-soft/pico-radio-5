@@ -393,9 +393,10 @@ void ScreenFM::handleMemoButton(const UIButton::ButtonEvent &event) {
 
     // Paraméter átadása a MemoryScreen-nek
     if (!isInMemory && rdsStationName.length() > 0) {
-        auto stationNamePtr = std::make_shared<std::shared_ptr<char>>(new char[rdsStationName.length() + 1], std::default_delete<char[]>());
+        auto stationNamePtr = new std::shared_ptr<char>(new char[rdsStationName.length() + 1], std::default_delete<char[]>());
         strcpy(stationNamePtr->get(), rdsStationName.c_str());
-        screenManager->switchToScreen(SCREEN_NAME_MEMORY, stationNamePtr.get());
+        DEBUG("ScreenFM::handleMemoButton() - Navigating to MemoryScreen with RDS station name: %s\n", rdsStationName.c_str());
+        screenManager->switchToScreen(SCREEN_NAME_MEMORY, stationNamePtr);
     }
 }
 

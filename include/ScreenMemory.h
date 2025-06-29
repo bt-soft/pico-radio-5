@@ -35,7 +35,7 @@ class ScreenMemory : public UIScreen, public IScrollableListDataSource {
     virtual bool onItemClicked(int index) override;
 
   private:
-    std::shared_ptr<char> rdsStationName;
+    String rdsStationName; // RDS állomásnév, ha van
 
     // Vízszintes gombsor azonosítók
     static constexpr uint8_t ADD_CURRENT_BUTTON = 30;

@@ -318,7 +318,7 @@ void ScreenMemory::activate() {
     UIScreen::activate();
 
     // FMScreen-ből való automatikus station add ellenőrzése
-    if (rdsStationName) {
+    if (rdsStationName.length() > 0) {
         // Automatikus "Add Curr" gomb megnyomás szimulálása
         handleAddCurrentButton(UIButton::ButtonEvent{ADD_CURRENT_BUTTON, "Add Curr", UIButton::EventButtonState::Clicked});
         // Paraméterek törlése, hogy ne ismétlődjön
@@ -350,14 +350,15 @@ void ScreenMemory::onDialogClosed(UIDialogBase *closedDialog) {
  */
 void ScreenMemory::setParameters(void *params) {
     if (params) {
+
         // Átveszi a tulajdonjogot
         auto stationNamePtr = static_cast<std::shared_ptr<char> *>(params);
-        this->rdsStationName = *stationNamePtr; // saját std::shared_ptr<char> tagváltozóba
-        delete stationNamePtr;                  // felszabadítjuk a heap-en lévő shared_ptr-t
-
+        rdsStationName = String(stationNamePtr->get()); // std::shared_ptr<char> -> String konverzió
+        DEBUG("ScreenMemory: Received RDS station name: %s\n", rdsStationName);
+        stationNamePtr->reset(); // Reseteljük a std::shared_ptr-t, hogy felszabaduljon a memória
     } else {
         // Paraméter resetelése
-        rdsStationName.reset();
+        rdsStationName = "";
     }
 }
 
@@ -409,13 +410,7 @@ void ScreenMemory::handleBackButton(const UIButton::ButtonEvent &event) {
 void ScreenMemory::showAddStationDialog() {
     currentDialogState = DialogState::AddingStation;
     pendingStation = getCurrentStationData(); // RDS állomásnév használata kezdeti értékként, ha van
-    String initialStationName = "";
-    if (rdsStationName) {
-        initialStationName = String(rdsStationName.get()); // kimásoljuk a rdsStationName értékét egy String-be
-        rdsStationName.reset();                            // Reseteljük, felszabadítjuk a memóriát
-    }
-
-    auto keyboardDialog = std::make_shared<VirtualKeyboardDialog>(this, "Add Station", initialStationName, MAX_STATION_NAME_LEN, [this](const String &newText) {
+    auto keyboardDialog = std::make_shared<VirtualKeyboardDialog>(this, "Add Station", rdsStationName, MAX_STATION_NAME_LEN, [this](const String &newText) {
         // Szöveg változás callback - itt nem csinálunk semmit
     });
 
