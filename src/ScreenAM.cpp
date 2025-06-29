@@ -1,5 +1,5 @@
+#include "ScreenAM.h"
 #include "MultiButtonDialog.h"
-#include "ScreeenAM.h"
 
 // ===================================================================
 // Vízszintes gombsor azonosítók - Képernyő-specifikus navigáció

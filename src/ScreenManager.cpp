@@ -1,5 +1,6 @@
 #include "ScreenManager.h"
 
+#include "ScreenAM.h"
 #include "ScreenEmpty.h"
 #include "ScreenFM.h"
 #include "ScreenMemory.h"
@@ -16,6 +17,7 @@ void ScreenManager::registerDefaultScreenFactories() {
     // registerScreenFactory(SCREEN_NAME_SCAN, [](TFT_eSPI &tft_param) { return std::make_shared<ScanScreen>(tft_param, si4735Manager); });
 
     registerScreenFactory(SCREEN_NAME_FM, []() { return std::make_shared<ScreenFM>(); });
+    registerScreenFactory(SCREEN_NAME_AM, []() { return std::make_shared<ScreenAM>(); });
     registerScreenFactory(SCREEN_NAME_SCREENSAVER, []() { return std::make_shared<ScreenScreenSaver>(); });
     registerScreenFactory(SCREEN_NAME_MEMORY, []() { return std::make_shared<ScreenMemory>(); });
 
