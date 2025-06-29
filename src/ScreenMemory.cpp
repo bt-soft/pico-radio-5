@@ -354,7 +354,7 @@ void ScreenMemory::setParameters(void *params) {
         // Átveszi a tulajdonjogot
         auto stationNamePtr = static_cast<std::shared_ptr<char> *>(params);
         rdsStationName = String(stationNamePtr->get()); // std::shared_ptr<char> -> String konverzió
-        DEBUG("ScreenMemory: Received RDS station name: %s\n", rdsStationName);
+        DEBUG("ScreenMemory: Received RDS station name: %s\n", rdsStationName.c_str());
         stationNamePtr->reset(); // Reseteljük a std::shared_ptr-t, hogy felszabaduljon a memória
     } else {
         // Paraméter resetelése
