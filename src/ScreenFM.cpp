@@ -391,12 +391,18 @@ void ScreenFM::handleMemoButton(const UIButton::ButtonEvent &event) {
     bool isInMemory = checkCurrentFrequencyInMemory();                // RDS állomásnév lekérése (ha van)
     String rdsStationName = ::pSi4735Manager->getCachedStationName(); // Ha új állomás és van RDS név, akkor automatikus hozzáadás
 
+    DEBUG("ScreenFM::handleMemoButton() - Current frequency in memory: %s, RDS station name: %s\n", isInMemory ? "Yes" : "No", rdsStationName.c_str());
+
     // Paraméter átadása a MemoryScreen-nek
     if (!isInMemory && rdsStationName.length() > 0) {
         auto stationNamePtr = new std::shared_ptr<char>(new char[rdsStationName.length() + 1], std::default_delete<char[]>());
         strcpy(stationNamePtr->get(), rdsStationName.c_str());
         DEBUG("ScreenFM::handleMemoButton() - Navigating to MemoryScreen with RDS station name: %s\n", rdsStationName.c_str());
         screenManager->switchToScreen(SCREEN_NAME_MEMORY, stationNamePtr);
+    } else {
+        // Ha már a memóriában van, akkor csak visszalépünk a Memória képernyőre
+        DEBUG("ScreenFM::handleMemoButton() - Navigating to MemoryScreen without RDS station name\n");
+        screenManager->switchToScreen(SCREEN_NAME_MEMORY);
     }
 }
 
