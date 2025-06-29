@@ -372,7 +372,7 @@ class CommonVerticalButtons {
          */
         void createCommonVerticalButtons() {
             ScreenType *self = static_cast<ScreenType *>(this);
-            auto buttonDefs = CommonVerticalButtons::createUniformButtonDefinitions(self);
+            auto buttonDefs = CommonVerticalButtons::createUniformButtonDefinitions<ScreenRadioBase>(self);
             ButtonsGroupManager<ScreenType>::layoutVerticalButtonGroup(buttonDefs, &createdVerticalButtons, 0, 0, 5, 60, 32, 3, 4);
         }
 
