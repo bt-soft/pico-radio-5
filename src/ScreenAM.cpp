@@ -86,6 +86,7 @@ bool ScreenAM::handleRotary(const RotaryEvent &event) {
         } else {
 
             // Hangolás felfelé
+
             if (event.direction == RotaryEvent::Direction::Up) {
 
                 rtv::freqDec = rtv::freqDec - rtv::freqstep;
@@ -104,7 +105,9 @@ bool ScreenAM::handleRotary(const RotaryEvent &event) {
                     delay(10);
                 }
 
-            } else { // Hangolás lefelé
+            } else {
+
+                // Hangolás lefelé
 
                 rtv::freqDec = rtv::freqDec + rtv::freqstep;
                 uint32_t freqTot = (uint32_t)(currentFrequency * 1000) - rtv::freqDec;
@@ -279,6 +282,7 @@ void ScreenAM::layoutComponents() {
 
     // Állapotsor komponens létrehozása (felső sáv)
     ScreenRadioBase::createStatusLine();
+
     // ===================================================================
     // Frekvencia kijelző pozicionálás (képernyő közép)
     // ===================================================================
@@ -295,7 +299,6 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     // S-Meter komponens létrehozása - RadioScreen közös implementáció
     // ===================================================================
-
     Rect smeterBounds(2, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT, SMeterConstants::SMETER_WIDTH, 60);
     createSMeterComponent(smeterBounds);
 
@@ -430,7 +433,9 @@ void ScreenAM::handleBFOButton(const UIButton::ButtonEvent &event) {
     // Csak SSB/CW módban működik
     if (!::pSi4735Manager->isCurrentDemodSSBorCW()) {
         return;
-    } // BFO állapot váltása
+    }
+
+    // BFO állapot váltása
     rtv::bfoOn = !rtv::bfoOn;
     rtv::bfoTr = true; // BFO animáció trigger beállítása
 
@@ -518,8 +523,8 @@ void ScreenAM::handleAntCapButton(const UIButton::ButtonEvent &event) {
     }
     BandTable &currband = ::pSi4735Manager->getCurrentBand(); // Kikeressük az aktuális Band rekordot
 
-    // Store antCap value in a local int variable for the dialog to work with
-    static int antCapTempValue; // Static to ensure it persists during dialog lifetime
+    // Az antCap értékének eltárolása egy helyi int változóban, hogy a dialógus működjön vele.
+    static int antCapTempValue; // Statikus, hogy a dialógus élettartama alatt megmaradjon.
     antCapTempValue = static_cast<int>(currband.antCap);
 
     auto antCapDialog = std::make_shared<ValueChangeDialog>(
