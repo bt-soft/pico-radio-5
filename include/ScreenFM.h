@@ -116,7 +116,7 @@ class ScreenFM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
      * @brief Egyedi függőleges gombok létrehozása - Memo gomb override-dal
      * @details Felülírja a CommonVerticalButtons alapértelmezett Memo kezelőjét
      */
-    void createCommonVerticalButtonsWithCustomMemo();
+    void createCommonVerticalButtons();
 
     // ===================================================================
     // Event-driven gombállapot szinkronizálás

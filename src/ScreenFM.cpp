@@ -98,8 +98,8 @@ void ScreenFM::layoutComponents() {
     // ===================================================================
     // Gombsorok létrehozása - Event-driven architektúra
     // ===================================================================
-    createCommonVerticalButtonsWithCustomMemo(); // ButtonsGroupManager alapú függőleges gombsor egyedi Memo kezelővel
-    createCommonHorizontalButtons();             // Alsó közös + FM specifikus vízszintes gombsor
+    createCommonVerticalButtons();   // ButtonsGroupManager alapú függőleges gombsor egyedi Memo kezelővel
+    createCommonHorizontalButtons(); // Alsó közös + FM specifikus vízszintes gombsor
 }
 
 // ===================================================================
@@ -410,7 +410,7 @@ void ScreenFM::handleMemoButton(const UIButton::ButtonEvent &event) {
  * @brief Egyedi függőleges gombok létrehozása - Memo gomb override-dal
  * @details Felülírja a CommonVerticalButtons alapértelmezett Memo kezelőjét
  */
-void ScreenFM::createCommonVerticalButtonsWithCustomMemo() {
+void ScreenFM::createCommonVerticalButtons() {
 
     // Alapértelmezett gombdefiníciók lekérése
     const auto &baseDefs = CommonVerticalButtons::getButtonDefinitions();
