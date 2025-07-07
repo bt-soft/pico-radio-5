@@ -297,7 +297,8 @@ void ScreenRadioBase::handleBandButton(const UIButton::ButtonEvent &event) {
  */
 void ScreenRadioBase::processBandButton(bool isHamBand) {
 
-    uint16_t dialogHeight = isHamBand ? 180 : 250; // Alapértelmezett dialógus magasság
+    const char *dialogTitle = isHamBand ? "Select Ham Band" : "Select Radio Band"; // Dialógus címe
+    uint16_t dialogHeight = isHamBand ? 180 : 250;                                 // Alapértelmezett dialógus magasság
     uint8_t _bandCount;
 
     // Először lekérdezzük, hogy max hány elemet kell tudnunk tárolni
@@ -318,9 +319,10 @@ void ScreenRadioBase::processBandButton(bool isHamBand) {
             break;
         }
     }
+
     auto bandDialog = std::make_shared<MultiButtonDialog>(
         this,                                                                         // Képernyő referencia
-        "All Radio Bands", "",                                                        // Dialógus címe és üzenete
+        dialogTitle, "",                                                              // Dialógus címe és üzenete
         _bandNames.get(), _bandCount,                                                 // Gombok feliratai és számuk
         [this](int buttonIndex, const char *buttonLabel, MultiButtonDialog *dialog) { // Gomb kattintás kezelése
             // Átállítjuk a használni kívánt BAND indexét
