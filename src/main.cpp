@@ -32,6 +32,10 @@ uint16_t SCREEN_H;
 #include "Si4735Manager.h"
 Si4735Manager *pSi4735Manager = nullptr; // Si4735Manager: NEM lehet (hardware inicializálás miatt) statikus, mert HW inicializálások is vannak benne
 
+//------------------ Audio Analyzer (Core1)
+#include "AudioAnalyzer.h"
+AudioAnalyzer *pAudioAnalyzer = nullptr; // Core1-en futó audio feldolgozás
+
 //-------------------- Screens
 // Globális képernyőkezelő pointer - inicializálás a setup()-ban történik
 #include "ScreenManager.h"
@@ -155,7 +159,7 @@ void setup() {
     // Splash screen megjelenítése inicializálás közben
     // Most átváltunk a teljes splash screen-re az SI4735 infókkal
     SplashScreen splash(tft);
-    splash.show(true, 6);
+    splash.show(true, 8);
 
     // Splash screen megjelenítése progress bar-ral    // Lépés 1: I2C inicializálás
     splash.updateProgress(1, 6, "Initializing I2C...");
@@ -210,8 +214,22 @@ void setup() {
     delay(100);
 
     //--------------------------------------------------------------------
-    // Lépés 7: Finalizálás
-    splash.updateProgress(7, 7, "Starting up...");
+    // Lépés 7: Audio Analyzer inicializálása (Core1)
+    splash.updateProgress(7, 8, "Starting audio analyzer...");
+
+    if (pAudioAnalyzer == nullptr) {
+        pAudioAnalyzer = new AudioAnalyzer();
+        if (!pAudioAnalyzer->init()) {
+            DEBUG("Failed to initialize AudioAnalyzer\n");
+            delete pAudioAnalyzer;
+            pAudioAnalyzer = nullptr;
+        } else {
+            DEBUG("AudioAnalyzer initialized successfully on Core1\n");
+        }
+    }
+
+    // Lépés 8: Finalizálás
+    splash.updateProgress(8, 8, "Starting up...");
 
     Serial.println("Creating ScreenManager...");
     Serial.flush();
@@ -332,4 +350,14 @@ void loop() {
     if (pSi4735Manager) {
         pSi4735Manager->loop();
     }
+
+// AudioAnalyzer statisztikák logolása (debug célra)
+#ifdef __DEBUG
+    static uint32_t lastAudioStats = 0;
+    if (millis() - lastAudioStats >= 10000 && pAudioAnalyzer) { // 10 másodpercenként
+        AudioAnalyzer::Stats stats = pAudioAnalyzer->getStats();
+        DEBUG("Audio stats - Samples: %u, FFT: %u, Updates: %u, ProcessTime: %uus\n", stats.samplesProcessed, stats.fftCalculations, stats.dataUpdates, stats.processingTimeUs);
+        lastAudioStats = millis();
+    }
+#endif
 }

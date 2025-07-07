@@ -96,6 +96,23 @@ void ScreenFM::layoutComponents() {
     createSMeterComponent(smeterBounds);
 
     // ===================================================================
+    // Audio Display komponens létrehozása (jobb oldalra, kis terület)
+    // ===================================================================
+    extern AudioAnalyzer *pAudioAnalyzer;
+    if (pAudioAnalyzer != nullptr) {
+        // Audio display pozíció: jobb oldal, SMeter mellett
+        int16_t audioX = SMeterConstants::SMETER_WIDTH + 10;
+        int16_t audioY = currentY;
+        int16_t audioW = 160; // Kisebb terület
+        int16_t audioH = 60;
+
+        audioDisplayComp = std::make_shared<AudioDisplayComponent>(audioX, audioY, audioW, audioH, *pAudioAnalyzer);
+        addChild(audioDisplayComp);
+
+        DEBUG("ScreenFM: AudioDisplayComponent added at (%d,%d) size %dx%d\n", audioX, audioY, audioW, audioH);
+    }
+
+    // ===================================================================
     // Gombsorok létrehozása - Event-driven architektúra
     // ===================================================================
     createCommonVerticalButtons();   // ButtonsGroupManager alapú függőleges gombsor egyedi Memo kezelővel

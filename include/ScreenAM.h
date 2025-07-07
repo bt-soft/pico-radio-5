@@ -1,6 +1,7 @@
 #ifndef __SCREEN_AM_H
 #define __SCREEN_AM_H
 
+#include "AudioDisplayComponent.h" // Audio spektrum komponens
 #include "CommonVerticalButtons.h"
 #include "ScreenRadioBase.h"
 
@@ -176,6 +177,17 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
      * @details AM specifikus funkcionalitás
      */
     void handleStepButton(const UIButton::ButtonEvent &event);
+
+  private:
+    // ===================================================================
+    // Audio display komponens
+    // ===================================================================
+
+    /**
+     * @brief Audio spektrum/oszcilloszkóp komponens
+     * @details Kis területen mutatja az audio analízist
+     */
+    std::shared_ptr<AudioDisplayComponent> audioDisplayComp;
 };
 
 #endif // __SCREEN_AM_H

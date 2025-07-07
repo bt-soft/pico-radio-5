@@ -1,6 +1,7 @@
 #ifndef __SCREEN_FM
 #define __SCREEN_FM
 
+#include "AudioDisplayComponent.h" // Audio spektrum komponens
 #include "CommonVerticalButtons.h"
 #include "RDSComponent.h"
 #include "ScreenRadioBase.h"
@@ -197,6 +198,16 @@ class ScreenFM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
             rdsComponent->clearRdsOnFrequencyChange();
         }
     }
+
+    // ===================================================================
+    // Audio display komponens
+    // ===================================================================
+
+    /**
+     * @brief Audio spektrum/oszcilloszkóp komponens
+     * @details Kis területen mutatja az audio analízist
+     */
+    std::shared_ptr<AudioDisplayComponent> audioDisplayComp;
 };
 
 #endif // __SCREEN_FM
