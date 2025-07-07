@@ -1,5 +1,6 @@
 #include "ScreenManager.h"
 
+#include "ScanScreen.h"
 #include "ScreenAM.h"
 #include "ScreenEmpty.h"
 #include "ScreenFM.h"
@@ -23,6 +24,7 @@ void ScreenManager::registerDefaultScreenFactories() {
     registerScreenFactory(SCREEN_NAME_AM, []() { return std::make_shared<ScreenAM>(); });
     registerScreenFactory(SCREEN_NAME_SCREENSAVER, []() { return std::make_shared<ScreenScreenSaver>(); });
     registerScreenFactory(SCREEN_NAME_MEMORY, []() { return std::make_shared<ScreenMemory>(); });
+    registerScreenFactory(SCREEN_NAME_SCAN, []() { return std::make_shared<ScanScreen>(); });
 
     // Setup képernyők regisztrálása
     registerScreenFactory(SCREEN_NAME_SETUP, []() { return std::make_shared<ScreenSetup>(); });
