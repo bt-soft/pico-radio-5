@@ -43,7 +43,6 @@ void ScreenRadioBase::activate() {
         // Ez azért szükséges, mert a FreqDisplay konstruktor 0-ra inicializál
         if (ScreenFrequDisplayBase::freqDisplayComp) {
             uint16_t currentFreq = pSi4735Manager->getSi4735().getCurrentFrequency();
-            DEBUG("ScreenRadioBase::activate - Current frequency: %d\n", currentFreq);
             ScreenFrequDisplayBase::freqDisplayComp->setFrequencyWithFullDraw(currentFreq, !pSi4735Manager->isCurrentDemodSSBorCW());
         }
     }
@@ -351,7 +350,6 @@ void ScreenRadioBase::processBandButton(bool isHamBand) {
  */
 void ScreenRadioBase::handleScanButton(const UIButton::ButtonEvent &event) {
     if (event.state == UIButton::EventButtonState::Clicked) {
-        DEBUG("ScreenRadioBase::handleScanButton - Switching to ScanScreen\n");
         getScreenManager()->switchToScreen(SCREEN_NAME_SCAN);
     }
 }
