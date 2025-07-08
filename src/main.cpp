@@ -336,11 +336,11 @@ void loop() {
     }
 
     //------------------- Audio Processor debug (opcionális)
-#ifdef __DEBUG
-    static uint32_t lastAudioDebugTime = 0;
-    if (millis() - lastAudioDebugTime >= 10000) { // 10 másodpercenként
-        AudioProcessorCore1::printDebugFromCore0();
-        lastAudioDebugTime = millis();
-    }
-#endif
+    // #ifdef __DEBUG
+    //     static uint32_t lastAudioDebugTime = 0;
+    //     if (millis() - lastAudioDebugTime >= 10000) { // 10 másodpercenként
+    //         AudioProcessorCore1::printDebugFromCore0();
+    //         lastAudioDebugTime = millis();
+    //     }
+    // #endif
 }

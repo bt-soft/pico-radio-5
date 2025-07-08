@@ -4,6 +4,7 @@
 #include "CommonVerticalButtons.h"
 #include "RDSComponent.h"
 #include "ScreenRadioBase.h"
+#include "SpectrumAnalyzer.h"
 #include "StereoIndicator.h"
 
 /**
@@ -171,6 +172,12 @@ class ScreenFM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
      * @details Piros háttérrel STEREO, kék háttérrel MONO megjelenítés
      */
     std::shared_ptr<StereoIndicator> stereoIndicator;
+
+    /**
+     * @brief Spektrumanalizátor komponens
+     * @details Alacsony felbontású spektrogram peak hold funkcióval
+     */
+    std::shared_ptr<SpectrumAnalyzer> spectrumAnalyzer;
 
     // ===================================================================
     // RDS komponens kezelés

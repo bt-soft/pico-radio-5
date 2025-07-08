@@ -96,8 +96,11 @@ void ScreenFM::layoutComponents() {
     createSMeterComponent(smeterBounds);
 
     // ===================================================================
-    // Audio Display komponens létrehozása (jobb oldalra, kis terület)
+    // Spektrumanalizátor komponens létrehozása
     // ===================================================================
+    Rect spectrumBounds(260, 80, 150, 100);
+    spectrumAnalyzer = std::make_shared<SpectrumAnalyzer>(spectrumBounds);
+    addChild(spectrumAnalyzer);
 
     // ===================================================================
     // Gombsorok létrehozása - Event-driven architektúra
@@ -185,6 +188,18 @@ void ScreenFM::handleOwnLoop() {
             rdsComponent->updateRDS();
             lastRdsCall = currentTime;
         }
+    } // ===================================================================
+    // Spektrumanalizátor frissítése
+    // ===================================================================
+    if (spectrumAnalyzer) {
+        static uint32_t lastSpectrumUpdate = 0;
+        uint32_t currentTime = millis();
+
+        // 50ms frissítési időköz (20 FPS) a spektrumanalizátorhoz
+        if (currentTime - lastSpectrumUpdate >= 50) {
+            spectrumAnalyzer->update();
+            lastSpectrumUpdate = currentTime;
+        }
     }
 
     // Néhány adatot csak ritkábban frissítünk
@@ -215,7 +230,7 @@ void ScreenFM::handleOwnLoop() {
  * @details Csak a statikus elemeket rajzolja ki (nem változó tartalom):
  * - S-Meter skála (vonalak, számok)
  *
- * A dinamikus tartalom (pl. S-Meter érték) a loop()-ban frissül.
+ * A dinamikus tartalom (pl. S-Meter érték, spektrum oszlopok) a loop()-ban frissül.
  */
 void ScreenFM::drawContent() {
     // S-Meter statikus skála kirajzolása (egyszer, a kezdetekkor)
