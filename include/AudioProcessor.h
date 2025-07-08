@@ -11,11 +11,6 @@
 #include <pico/multicore.h>
 #include <pico/mutex.h>
 
-// Matematikai konstansok
-#ifndef PI
-#define PI 3.14159265358979323846
-#endif
-
 // Audio vizualizáció típusok
 enum class AudioVisualizationType : uint8_t {
     SPECTRUM_LOW_RES = 0,  // Alacsony felbontású spektrum (sáv alapú)
