@@ -1,6 +1,5 @@
 #include "AudioProcessor.h"
 #include "Config.h"
-#include "Si4735Manager.h"
 
 // Globális közös adat
 SharedAudioData g_sharedAudioData;
@@ -14,12 +13,6 @@ static bool g_core1Running = false;
  */
 AudioProcessor::AudioProcessor(SharedAudioData *shared)
     : fft(fftReal, fftImag, AudioProcessorConstants::FFT_SIZE, AudioProcessorConstants::SAMPLE_RATE), writeIndex(0), readIndex(0), availableSamples(0), lastSampleTime(0), processingStartTime(0), sharedData(shared) {
-
-    // Sávszűrő frekvenciák beállítása
-    amBandLowFreq = 300.0f;    // AM: 300 Hz
-    amBandHighFreq = 6000.0f;  // AM: 6 kHz
-    fmBandLowFreq = 300.0f;    // FM: 300 Hz
-    fmBandHighFreq = 15000.0f; // FM: 15 kHz
 
     // Mintavételi intervallum számítása
     sampleInterval = 1000000 / AudioProcessorConstants::SAMPLE_RATE; // mikroszekundum
@@ -54,6 +47,10 @@ void AudioProcessor::initialize() {
     sharedData->enabled = true;
     sharedData->dataReady = false;
     sharedData->mode = AudioVisualizationType::SPECTRUM_LOW_RES;
+
+    // Alapértelmezett sávszűrő beállítások (FM)
+    sharedData->currentBandLowFreq = 300.0f;    // 300 Hz
+    sharedData->currentBandHighFreq = 15000.0f; // 15 kHz
 
     // Statisztikák nullázása
     memset(&sharedData->statistics, 0, sizeof(AudioStatistics));
@@ -441,14 +438,9 @@ float AudioProcessor::indexToFrequency(uint16_t index) { return (float)index * A
  * @brief Sávszűrő alkalmazása
  */
 void AudioProcessor::applyBandFilter() {
-    // Aktuális sáv típusának megállapítása
-    bool isAmBand = true; // Default AM
-    if (pSi4735Manager != nullptr) {
-        isAmBand = !pSi4735Manager->isCurrentBandFM();
-    }
-
-    float lowFreq = isAmBand ? amBandLowFreq : fmBandLowFreq;
-    float highFreq = isAmBand ? amBandHighFreq : fmBandHighFreq;
+    // A sávszűrő beállításokat a SharedAudioData-ból olvassuk
+    float lowFreq = sharedData->currentBandLowFreq;
+    float highFreq = sharedData->currentBandHighFreq;
 
     uint16_t lowIndex = frequencyToIndex(lowFreq);
     uint16_t highIndex = frequencyToIndex(highFreq);
@@ -617,6 +609,16 @@ void setAudioEnabled(bool enabled) {
 void setVisualizationMode(AudioVisualizationType mode) {
     mutex_enter_blocking(&g_sharedAudioData.dataMutex);
     g_sharedAudioData.mode = mode;
+    mutex_exit(&g_sharedAudioData.dataMutex);
+}
+
+/**
+ * @brief Sávszűrő frekvenciák beállítása
+ */
+void setBandFilterFrequencies(float lowFreq, float highFreq) {
+    mutex_enter_blocking(&g_sharedAudioData.dataMutex);
+    g_sharedAudioData.currentBandLowFreq = lowFreq;
+    g_sharedAudioData.currentBandHighFreq = highFreq;
     mutex_exit(&g_sharedAudioData.dataMutex);
 }
 

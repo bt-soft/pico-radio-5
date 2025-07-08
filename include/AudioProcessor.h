@@ -16,10 +16,6 @@
 #define PI 3.14159265358979323846
 #endif
 
-// Forward deklarációk
-class Si4735Manager;
-extern Si4735Manager *pSi4735Manager;
-
 // Audio vizualizáció típusok
 enum class AudioVisualizationType : uint8_t {
     SPECTRUM_LOW_RES = 0,  // Alacsony felbontású spektrum (sáv alapú)
@@ -37,7 +33,7 @@ static constexpr uint16_t SAMPLE_RATE = 20000;          // 20 kHz mintavételez�
 static constexpr uint16_t FFT_SIZE = 1024;              // FFT méret
 static constexpr uint16_t BUFFER_SIZE = FFT_SIZE * 2;   // Cirkuláris buffer méret
 static constexpr uint16_t SPECTRUM_BINS = FFT_SIZE / 2; // Spektrum vonalak száma
-static constexpr uint16_t LOW_RES_BINS = 16;            // Alacsony felbontású spektrum vonalak
+static constexpr uint16_t LOW_RES_BINS = 12;            // Alacsony felbontású spektrum vonalak
 static constexpr uint16_t WATERFALL_HEIGHT = 100;       // Waterfall magasság
 static constexpr uint16_t OSCILLOSCOPE_SAMPLES = 256;   // Oszcilloszkóp minták száma
 static constexpr uint16_t ENVELOPE_SAMPLES = 128;       // Burkológörbe minták száma
@@ -94,6 +90,10 @@ struct SharedAudioData {
     volatile bool dataReady;              // Új adat elérhető
     volatile AudioVisualizationType mode; // Aktuális vizualizációs mód
 
+    // Sávszűrő beállítások (képernyők állítják be)
+    volatile float currentBandLowFreq;  // Aktuális sáv alsó frekvenciája (Hz)
+    volatile float currentBandHighFreq; // Aktuális sáv felső frekvenciája (Hz)
+
     SpectrumData spectrum;         // Spektrum adatok
     OscilloscopeData oscilloscope; // Oszcilloszkóp adatok
     EnvelopeData envelope;         // Burkológörbe adatok
@@ -126,12 +126,6 @@ class AudioProcessor {
     uint32_t lastSampleTime;      // Utolsó mintavétel ideje
     uint32_t processingStartTime; // Feldolgozás kezdési ideje
     uint32_t sampleInterval;      // Mintavételi intervallum mikroszek.
-
-    // Sávszűrők
-    float amBandLowFreq;  // AM alsó frekvencia (Hz)
-    float amBandHighFreq; // AM felső frekvencia (Hz)
-    float fmBandLowFreq;  // FM alsó frekvencia (Hz)
-    float fmBandHighFreq; // FM felső frekvencia (Hz)
 
     // Referencia a közös adatokra
     SharedAudioData *sharedData;
@@ -271,6 +265,11 @@ void setAudioEnabled(bool enabled);
  * @brief Vizualizációs mód beállítása
  */
 void setVisualizationMode(AudioVisualizationType mode);
+
+/**
+ * @brief Sávszűrő frekvenciák beállítása
+ */
+void setBandFilterFrequencies(float lowFreq, float highFreq);
 
 /**
  * @brief Statisztikák lekérdezése (Core0-ról hívható)

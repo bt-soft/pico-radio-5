@@ -96,13 +96,6 @@ void ScreenFM::layoutComponents() {
     createSMeterComponent(smeterBounds);
 
     // ===================================================================
-    // Spektrumanalizátor komponens létrehozása
-    // ===================================================================
-    Rect spectrumBounds(260, 80, 150, 100);
-    spectrumAnalyzer = std::make_shared<SpectrumAnalyzer>(spectrumBounds);
-    addChild(spectrumAnalyzer);
-
-    // ===================================================================
     // Gombsorok létrehozása - Event-driven architektúra
     // ===================================================================
     createCommonVerticalButtons();   // ButtonsGroupManager alapú függőleges gombsor egyedi Memo kezelővel
@@ -187,18 +180,6 @@ void ScreenFM::handleOwnLoop() {
         if (currentTime - lastRdsCall >= 500) {
             rdsComponent->updateRDS();
             lastRdsCall = currentTime;
-        }
-    } // ===================================================================
-    // Spektrumanalizátor frissítése
-    // ===================================================================
-    if (spectrumAnalyzer) {
-        static uint32_t lastSpectrumUpdate = 0;
-        uint32_t currentTime = millis();
-
-        // 50ms frissítési időköz (20 FPS) a spektrumanalizátorhoz
-        if (currentTime - lastSpectrumUpdate >= 50) {
-            spectrumAnalyzer->update();
-            lastSpectrumUpdate = currentTime;
         }
     }
 
