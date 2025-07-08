@@ -305,19 +305,6 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     // Audio Display komponens létrehozása (jobb oldalra, kis terület)
     // ===================================================================
-    extern AudioAnalyzer *pAudioAnalyzer;
-    if (pAudioAnalyzer != nullptr) {
-        // Audio display pozíció: jobb oldal, SMeter alatt
-        int16_t audioX = SMeterConstants::SMETER_WIDTH + 10;
-        int16_t audioY = FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT + 10;
-        int16_t audioW = 160; // Kisebb terület
-        int16_t audioH = 70;
-
-        audioDisplayComp = std::make_shared<AudioDisplayComponent>(audioX, audioY, audioW, audioH, *pAudioAnalyzer);
-        addChild(audioDisplayComp);
-
-        DEBUG("ScreenAM: AudioDisplayComponent added at (%d,%d) size %dx%d\n", audioX, audioY, audioW, audioH);
-    }
 
     createCommonVerticalButtons();   // ButtonsGroupManager használata
     createCommonHorizontalButtons(); // Alsó közös + AM specifikus vízszintes gombsor

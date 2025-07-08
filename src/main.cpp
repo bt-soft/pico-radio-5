@@ -32,10 +32,6 @@ uint16_t SCREEN_H;
 #include "Si4735Manager.h"
 Si4735Manager *pSi4735Manager = nullptr; // Si4735Manager: NEM lehet (hardware inicializálás miatt) statikus, mert HW inicializálások is vannak benne
 
-//------------------ Audio Analyzer (Core1)
-#include "AudioAnalyzer.h"
-AudioAnalyzer *pAudioAnalyzer = nullptr; // Core1-en futó audio feldolgozás
-
 //-------------------- Screens
 // Globális képernyőkezelő pointer - inicializálás a setup()-ban történik
 #include "ScreenManager.h"
@@ -217,34 +213,15 @@ void setup() {
     // Lépés 7: Audio Analyzer inicializálása (Core1)
     splash.updateProgress(7, 8, "Starting audio analyzer...");
 
-    if (pAudioAnalyzer == nullptr) {
-        pAudioAnalyzer = new AudioAnalyzer();
-        if (!pAudioAnalyzer->init()) {
-            DEBUG("Failed to initialize AudioAnalyzer\n");
-            delete pAudioAnalyzer;
-            pAudioAnalyzer = nullptr;
-        } else {
-            DEBUG("AudioAnalyzer initialized successfully on Core1\n");
-        }
-    }
-
     // Lépés 8: Finalizálás
     splash.updateProgress(8, 8, "Starting up...");
 
-    Serial.println("Creating ScreenManager...");
-    Serial.flush();
     // ScreenManager inicializálása itt, amikor minden más már kész
     if (screenManager == nullptr) {
         screenManager = new ScreenManager();
     }
-    Serial.println("ScreenManager created successfully");
-    Serial.flush();
 
-    Serial.println("Switching to start screen...");
-    Serial.flush();
     screenManager->switchToScreen(startScreeName); // A kezdő képernyő
-    Serial.println("Screen switch completed");
-    Serial.flush();
 
     delay(100); // Rövidebb delay
 
@@ -350,14 +327,4 @@ void loop() {
     if (pSi4735Manager) {
         pSi4735Manager->loop();
     }
-
-// AudioAnalyzer statisztikák logolása (debug célra)
-#ifdef __DEBUG
-    static uint32_t lastAudioStats = 0;
-    if (millis() - lastAudioStats >= 10000 && pAudioAnalyzer) { // 10 másodpercenként
-        AudioAnalyzer::Stats stats = pAudioAnalyzer->getStats();
-        DEBUG("Audio stats - Samples: %u, FFT: %u, Updates: %u, ProcessTime: %uus\n", stats.samplesProcessed, stats.fftCalculations, stats.dataUpdates, stats.processingTimeUs);
-        lastAudioStats = millis();
-    }
-#endif
 }
