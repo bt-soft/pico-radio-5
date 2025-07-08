@@ -57,10 +57,7 @@ void AudioProcessor::initialize() {
     sharedData->statistics.lastUpdateTime = millis();
 
     // Spektrum adatok inicializálása
-    memset(&sharedData->spectrum, 0, sizeof(SpectrumData));
-    memset(&sharedData->oscilloscope, 0, sizeof(OscilloscopeData));
-    memset(&sharedData->envelope, 0, sizeof(EnvelopeData));
-    memset(&sharedData->waterfall, 0, sizeof(WaterfallData));
+    memset(&sharedData->data, 0, sizeof(AudioVisualizationData));
 
     DEBUG("AudioProcessor: Inicializálás befejezve. Sample rate: %d Hz, FFT size: %d\n", AudioProcessorConstants::SAMPLE_RATE, AudioProcessorConstants::FFT_SIZE);
 }
@@ -212,27 +209,25 @@ void AudioProcessor::processSpectrum() {
         float avgMagnitude = sum / binsPerLowRes;
         float dbValue = magnitudeToDb(avgMagnitude);
 
-        sharedData->spectrum.lowResBins[i] = dbValue;
+        sharedData->data.spectrum.lowResBins[i] = dbValue;
     }
 
     // Magas felbontású spektrum másolása
     float maxMag = 0.0f;
     for (uint16_t i = 0; i < AudioProcessorConstants::SPECTRUM_BINS; i++) {
         float dbValue = magnitudeToDb(magnitudes[i]);
-        sharedData->spectrum.highResBins[i] = dbValue;
+        sharedData->data.spectrum.highResBins[i] = dbValue;
 
         if (magnitudes[i] > maxMag) {
             maxMag = magnitudes[i];
         }
     }
 
-    sharedData->spectrum.maxMagnitude = magnitudeToDb(maxMag);
+    sharedData->data.spectrum.maxMagnitude = magnitudeToDb(maxMag);
 
     // Peak csökkenés alkalmazása
-    applyPeakDecay(sharedData->spectrum.lowResPeaks, sharedData->spectrum.lowResBins, AudioProcessorConstants::LOW_RES_BINS);
-    applyPeakDecay(sharedData->spectrum.highResPeaks, sharedData->spectrum.highResBins, AudioProcessorConstants::SPECTRUM_BINS);
-
-    sharedData->spectrum.timestamp = millis();
+    applyPeakDecay(sharedData->data.spectrum.lowResPeaks, sharedData->data.spectrum.lowResBins, AudioProcessorConstants::LOW_RES_BINS);
+    applyPeakDecay(sharedData->data.spectrum.highResPeaks, sharedData->data.spectrum.highResBins, AudioProcessorConstants::SPECTRUM_BINS);
 
     mutex_exit(&sharedData->dataMutex);
 }
@@ -252,7 +247,7 @@ void AudioProcessor::processOscilloscope() {
 
         // 12 bites ADC értékké konvertálás vizualizációhoz
         int16_t displayValue = (int16_t)(sample * 2048.0f);
-        sharedData->oscilloscope.samples[i] = displayValue;
+        sharedData->data.oscilloscope.samples[i] = displayValue;
 
         // RMS és peak számítás
         rmsSum += sample * sample;
@@ -262,9 +257,8 @@ void AudioProcessor::processOscilloscope() {
         }
     }
 
-    sharedData->oscilloscope.rms = sqrt(rmsSum / AudioProcessorConstants::OSCILLOSCOPE_SAMPLES);
-    sharedData->oscilloscope.peak = peakValue;
-    sharedData->oscilloscope.timestamp = millis();
+    sharedData->data.oscilloscope.rms = sqrt(rmsSum / AudioProcessorConstants::OSCILLOSCOPE_SAMPLES);
+    sharedData->data.oscilloscope.peak = peakValue;
 
     mutex_exit(&sharedData->dataMutex);
 }
@@ -288,17 +282,15 @@ void AudioProcessor::processEnvelope() {
             }
         }
 
-        sharedData->envelope.samples[i] = maxValue;
+        sharedData->data.envelope.samples[i] = maxValue;
     }
 
     // Simított jelszint számítása
     float sum = 0.0f;
     for (uint16_t i = 0; i < AudioProcessorConstants::ENVELOPE_SAMPLES; i++) {
-        sum += sharedData->envelope.samples[i];
+        sum += sharedData->data.envelope.samples[i];
     }
-    sharedData->envelope.smoothedLevel = sum / AudioProcessorConstants::ENVELOPE_SAMPLES;
-
-    sharedData->envelope.timestamp = millis();
+    sharedData->data.envelope.smoothedLevel = sum / AudioProcessorConstants::ENVELOPE_SAMPLES;
 
     mutex_exit(&sharedData->dataMutex);
 }
@@ -322,14 +314,12 @@ void AudioProcessor::processWaterfall() {
         if (normalizedValue > 255.0f)
             normalizedValue = 255.0f;
 
-        sharedData->waterfall.bins[i] = dbValue;
-        sharedData->waterfall.waterfallBuffer[sharedData->waterfall.currentRow][i] = (uint8_t)normalizedValue;
+        sharedData->data.waterfall.bins[i] = dbValue;
+        sharedData->data.waterfall.waterfallBuffer[sharedData->data.waterfall.currentRow][i] = (uint8_t)normalizedValue;
     }
 
     // Következő sorra lépés
-    sharedData->waterfall.currentRow = (sharedData->waterfall.currentRow + 1) % AudioProcessorConstants::WATERFALL_HEIGHT;
-
-    sharedData->waterfall.timestamp = millis();
+    sharedData->data.waterfall.currentRow = (sharedData->data.waterfall.currentRow + 1) % AudioProcessorConstants::WATERFALL_HEIGHT;
 
     mutex_exit(&sharedData->dataMutex);
 }
@@ -397,8 +387,8 @@ void AudioProcessor::printDebugInfo() {
     uint16_t peakFreqIndex = 0;
 
     for (uint16_t i = 1; i < AudioProcessorConstants::SPECTRUM_BINS / 2; i++) { // DC komponens kihagyása
-        if (sharedData->spectrum.highResBins[i] > maxSpectrumValue) {
-            maxSpectrumValue = sharedData->spectrum.highResBins[i];
+        if (sharedData->data.spectrum.highResBins[i] > maxSpectrumValue) {
+            maxSpectrumValue = sharedData->data.spectrum.highResBins[i];
             peakFreqIndex = i;
         }
     }
@@ -419,7 +409,7 @@ void AudioProcessor::printDebugInfo() {
     DEBUG("Peak amplitude: %d.%d (%d dB)\n", (int)(peakSample * 10000), (int)((peakSample * 10000 - (int)(peakSample * 10000)) * 10), (int)(20.0f * log10f(peakSample + 1e-10f)));
     DEBUG("RMS level: %d.%d (%d dB)\n", (int)(rmsValue * 10000), (int)((rmsValue * 10000 - (int)(rmsValue * 10000)) * 10), (int)(20.0f * log10f(rmsValue + 1e-10f)));
     DEBUG("Spectrum peak: %d Hz @ %d dB\n", (int)peakFrequency, (int)maxSpectrumValue);
-    DEBUG("Max magnitude: %d dB\n", (int)sharedData->spectrum.maxMagnitude);
+    DEBUG("Max magnitude: %d dB\n", (int)sharedData->data.spectrum.maxMagnitude);
     DEBUG("Mode: %d, Enabled: %s, Muted: %s\n", (int)sharedData->mode, sharedData->enabled ? "Yes" : "No", rtv::mute ? "Yes" : "No");
     DEBUG("=============================\n");
 }
@@ -647,12 +637,12 @@ void printDebugFromCore0() {
     mutex_enter_blocking(&g_sharedAudioData.dataMutex);
 
     for (uint16_t i = 1; i < AudioProcessorConstants::SPECTRUM_BINS / 2; i++) { // DC komponens kihagyása
-        if (g_sharedAudioData.spectrum.highResBins[i] > maxSpectrumValue) {
-            maxSpectrumValue = g_sharedAudioData.spectrum.highResBins[i];
+        if (g_sharedAudioData.data.spectrum.highResBins[i] > maxSpectrumValue) {
+            maxSpectrumValue = g_sharedAudioData.data.spectrum.highResBins[i];
             peakFreqIndex = i;
         }
     }
-    maxMagnitude = g_sharedAudioData.spectrum.maxMagnitude;
+    maxMagnitude = g_sharedAudioData.data.spectrum.maxMagnitude;
 
     mutex_exit(&g_sharedAudioData.dataMutex);
 

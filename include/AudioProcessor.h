@@ -41,37 +41,32 @@ static constexpr float PEAK_DECAY_RATE = 0.95f;         // Peak csökkenés sebe
 static constexpr float NOISE_FLOOR = -80.0f;            // Zajszint dB-ben
 } // namespace AudioProcessorConstants
 
-// Spektrum adatok struktúra
-struct SpectrumData {
-    float lowResBins[AudioProcessorConstants::LOW_RES_BINS];    // Alacsony felbontású spektrum
-    float lowResPeaks[AudioProcessorConstants::LOW_RES_BINS];   // Peak értékek
-    float highResBins[AudioProcessorConstants::SPECTRUM_BINS];  // Magas felbontású spektrum
-    float highResPeaks[AudioProcessorConstants::SPECTRUM_BINS]; // Peak értékek
-    float maxMagnitude;                                         // Maximális jelszint
-    uint32_t timestamp;                                         // Időbélyeg
-};
+// Audio vizualizációs adatok union - csak egy aktív egyszerre
+union AudioVisualizationData {
+    struct {
+        float lowResBins[AudioProcessorConstants::LOW_RES_BINS];    // Alacsony felbontású spektrum
+        float lowResPeaks[AudioProcessorConstants::LOW_RES_BINS];   // Peak értékek
+        float highResBins[AudioProcessorConstants::SPECTRUM_BINS];  // Magas felbontású spektrum
+        float highResPeaks[AudioProcessorConstants::SPECTRUM_BINS]; // Peak értékek
+        float maxMagnitude;                                         // Maximális jelszint
+    } spectrum;
 
-// Oszcilloszkóp adatok struktúra
-struct OscilloscopeData {
-    int16_t samples[AudioProcessorConstants::OSCILLOSCOPE_SAMPLES]; // Nyers minták
-    float rms;                                                      // RMS érték
-    float peak;                                                     // Peak érték
-    uint32_t timestamp;                                             // Időbélyeg
-};
+    struct {
+        int16_t samples[AudioProcessorConstants::OSCILLOSCOPE_SAMPLES]; // Nyers minták
+        float rms;                                                      // RMS érték
+        float peak;                                                     // Peak érték
+    } oscilloscope;
 
-// Burkológörbe adatok struktúra
-struct EnvelopeData {
-    float samples[AudioProcessorConstants::ENVELOPE_SAMPLES]; // Burkológörbe értékek
-    float smoothedLevel;                                      // Simított jelszint
-    uint32_t timestamp;                                       // Időbélyeg
-};
+    struct {
+        float samples[AudioProcessorConstants::ENVELOPE_SAMPLES]; // Burkológörbe értékek
+        float smoothedLevel;                                      // Simított jelszint
+    } envelope;
 
-// Waterfall adatok struktúra
-struct WaterfallData {
-    float bins[AudioProcessorConstants::SPECTRUM_BINS];                                                         // Spektrum vonalak
-    uint8_t waterfallBuffer[AudioProcessorConstants::WATERFALL_HEIGHT][AudioProcessorConstants::SPECTRUM_BINS]; // Waterfall buffer
-    uint16_t currentRow;                                                                                        // Aktuális sor
-    uint32_t timestamp;                                                                                         // Időbélyeg
+    struct {
+        float bins[AudioProcessorConstants::SPECTRUM_BINS];                                                         // Spektrum vonalak
+        uint8_t waterfallBuffer[AudioProcessorConstants::WATERFALL_HEIGHT][AudioProcessorConstants::SPECTRUM_BINS]; // Waterfall buffer
+        uint16_t currentRow;                                                                                        // Aktuális sor
+    } waterfall;
 };
 
 // Audio statisztikák struktúra
@@ -94,11 +89,8 @@ struct SharedAudioData {
     volatile float currentBandLowFreq;  // Aktuális sáv alsó frekvenciája (Hz)
     volatile float currentBandHighFreq; // Aktuális sáv felső frekvenciája (Hz)
 
-    SpectrumData spectrum;         // Spektrum adatok
-    OscilloscopeData oscilloscope; // Oszcilloszkóp adatok
-    EnvelopeData envelope;         // Burkológörbe adatok
-    WaterfallData waterfall;       // Waterfall adatok
-    AudioStatistics statistics;    // Statisztikák
+    AudioVisualizationData data; // Union - csak egy aktív vizualizációs mód
+    AudioStatistics statistics;  // Statisztikák
 
     mutex_t dataMutex; // Mutex az adatok védelmére
 };
