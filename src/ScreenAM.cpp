@@ -234,8 +234,9 @@ void ScreenAM::activate() {
     ScreenRadioBase::activate();
 
     // Audio processor beállítása AM módhoz
-    AudioProcessorCore1::setBandFilterFrequencies(300.0f, 6000.0f); // AM: 300Hz - 6kHz
-    AudioProcessorCore1::setAudioEnabled(true);                     // Audio feldolgozás engedélyezése
+    AudioProcessorCore1::setBandFilterFrequencies(300.0f, 6000.0f);                      // AM: 300Hz - 6kHz
+    AudioProcessorCore1::setVisualizationMode(AudioVisualizationType::SPECTRUM_LOW_RES); // Alapértelmezett spektrum mód
+    AudioProcessorCore1::setAudioEnabled(true);                                          // Audio feldolgozás engedélyezése
 
     // ===================================================================
     // *** EGYETLEN GOMBÁLLAPOT SZINKRONIZÁLÁSI PONT - Event-driven ***

@@ -248,8 +248,9 @@ void ScreenFM::activate() {
     ScreenRadioBase::activate();
 
     // Audio processor beállítása FM módhoz
-    AudioProcessorCore1::setBandFilterFrequencies(300.0f, 15000.0f); // FM: 300Hz - 15kHz
-    AudioProcessorCore1::setAudioEnabled(true);                      // Audio feldolgozás engedélyezése
+    AudioProcessorCore1::setBandFilterFrequencies(300.0f, 15000.0f);                     // FM: 300Hz - 15kHz
+    AudioProcessorCore1::setVisualizationMode(AudioVisualizationType::SPECTRUM_LOW_RES); // Alapértelmezett spektrum mód
+    AudioProcessorCore1::setAudioEnabled(true);                                          // Audio feldolgozás engedélyezése
 
     // StatusLine frissítése
     checkAndUpdateMemoryStatus();

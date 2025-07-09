@@ -234,20 +234,19 @@ bool Si4735Rds::updateRdsDataWithCache() {
         }
     }
 
-    // Ha volt valid adat, frissítsük az időzítőt
-    if (hasValidData) {
-        lastValidRdsData = currentTime;
-
-        if (dataChanged) {
-            DEBUG("--- RDS data dataChanged --- \n");
-            DEBUG("cachedStationName: '%s'\n", cachedStationName.c_str());
-            DEBUG("cachedProgramType: '%s'\n", cachedProgramType.c_str());
-            DEBUG("cachedRadioText: '%s'\n", cachedRadioText.c_str());
-            DEBUG("cachedDate: '%s'\n", cachedDate.c_str());
-            DEBUG("cachedTime: '%s'\n", cachedTime.c_str());
-            DEBUG("---------------------------- \n");
-        }
-    }
+    // // Ha volt valid adat, frissítsük az időzítőt
+    // if (hasValidData) {
+    //     lastValidRdsData = currentTime;
+    //     if (dataChanged) {
+    //         DEBUG("--- RDS data dataChanged --- \n");
+    //         DEBUG("cachedStationName: '%s'\n", cachedStationName.c_str());
+    //         DEBUG("cachedProgramType: '%s'\n", cachedProgramType.c_str());
+    //         DEBUG("cachedRadioText: '%s'\n", cachedRadioText.c_str());
+    //         DEBUG("cachedDate: '%s'\n", cachedDate.c_str());
+    //         DEBUG("cachedTime: '%s'\n", cachedTime.c_str());
+    //         DEBUG("---------------------------- \n");
+    //     }
+    // }
 
     // Timeout ellenőrzés - különböző időzítés a különböző RDS adatokhoz
     if (currentTime - lastValidRdsData > RDS_DATA_TIMEOUT) { // Hosszú timeout után ha nincs érvényes állomásnév, akkor töröljük a cache-t

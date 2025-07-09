@@ -35,7 +35,7 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
     ::tft.setTextSize(1);
     indicatorFontHeight = ::tft.fontHeight();
 
-    DEBUG("SpectrumVisualization: Komponens létrehozva %dx%d, max freq: %.0f Hz\n", w, h, maxDisplayFreq);
+    DEBUG("SpectrumVisualization: Komponens létrehozva %dx%d, max freq: %d kHz\n", w, h, ((int)maxDisplayFreq) / 1000);
 }
 
 /**
@@ -66,21 +66,69 @@ void SpectrumVisualizationComponent::draw() {
         return;
     }
 
-    // Mutex védelem alatt adatok olvasása
+    // Limit data access frequency to significantly reduce mutex contention
+    static uint32_t lastDataAccessTime = 0;
+    static SharedAudioData cachedData;
+    static bool hasCachedData = false;
+    uint32_t currentTime = millis();
+    bool shouldAccessData = (currentTime - lastDataAccessTime >= 100); // Max 10 FPS data access
+
     SharedAudioData data;
     bool success = false;
 
-    // Mutex lock és adat másolás
-    if (mutex_try_enter(&g_sharedAudioData.dataMutex, nullptr)) {
-        data = g_sharedAudioData;
+    if (shouldAccessData) {
+        // Only try to access data if we really need to
+        if (mutex_try_enter(&g_sharedAudioData.dataMutex, nullptr)) {
+            data = g_sharedAudioData;
+            cachedData = data; // Cache for next frames
+            hasCachedData = true;
+            success = true;
+            mutex_exit(&g_sharedAudioData.dataMutex);
+            lastDataAccessTime = currentTime;
+        } else {
+            // Mutex is busy - use cached data if available
+            static int mutexConflictCount = 0;
+            mutexConflictCount++;
+            if (mutexConflictCount % 50 == 0) {
+                DEBUG("SpectrumVisualization: Mutex busy, using cached data (conflicts: %d)\n", mutexConflictCount);
+            }
+
+            if (hasCachedData) {
+                data = cachedData;
+                success = true;
+            }
+        }
+    } else if (hasCachedData) {
+        // Use cached data for smooth rendering
+        data = cachedData;
         success = true;
-        mutex_exit(&g_sharedAudioData.dataMutex);
     }
 
     if (!success) {
-        // Nincs adat vagy mutex hiba - muted állapot megjelenítése
+        // No data available - show muted state
         renderMutedState();
         return;
+    }
+
+    // DEBUG: Adatok ellenőrzése
+    static uint32_t lastDebugTime = 0;
+    static uint32_t lastSamplesProcessed = 0;
+    if (millis() - lastDebugTime > 5000) { // 5 másodpercenként
+        uint32_t currentSamplesProcessed = data.statistics.samplesProcessed;
+        uint32_t sampleDelta = currentSamplesProcessed - lastSamplesProcessed;
+
+        // Debug output with dtostrf for safe float formatting
+        char maxMagBuf[10];
+        char lowBin0Buf[10];
+        char cpuUsageBuf[10];
+        dtostrf(data.data.spectrum.maxMagnitude, 4, 2, maxMagBuf);
+        dtostrf(data.data.spectrum.lowResBins[0], 4, 3, lowBin0Buf);
+        dtostrf(data.statistics.cpuUsagePercent, 4, 1, cpuUsageBuf);
+
+        DEBUG("SpectrumVisualization: mode=%d, enabled=%s, dataReady=%s, maxMag=%s, lowBin0=%s, sampleDelta=%d, lastUpdate=%d, CPU=%s%%\n", (int)data.mode, data.enabled ? "true" : "false",
+              data.dataReady ? "true" : "false", maxMagBuf, lowBin0Buf, (int)sampleDelta, (int)(millis() - data.statistics.lastUpdateTime), cpuUsageBuf);
+        lastDebugTime = millis();
+        lastSamplesProcessed = currentSamplesProcessed;
     }
 
     switch (currentMode) {
@@ -123,7 +171,6 @@ void SpectrumVisualizationComponent::draw() {
  * @brief Touch esemény kezelése
  */
 bool SpectrumVisualizationComponent::handleTouch(const TouchEvent &touch) {
-
     // Csak akkor kezeljük le, ha ténylegesen a spektrum komponens területén van az érintés
     if (!bounds.contains(touch.x, touch.y)) {
         return false;
