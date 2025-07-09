@@ -70,6 +70,11 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     void setModeIndicatorVisible(bool visible);
 
+    /**
+     * @brief Kényszerített újrarajzolás
+     */
+    void forceRedrawOnNextFrame();
+
   private:
     // Vízesés színpaletta - MiniAudioFft-ből
     static const uint16_t WATERFALL_COLORS[16];
@@ -78,9 +83,11 @@ class SpectrumVisualizationComponent : public UIComponent {
 
     // Aktuális állapot
     DisplayMode currentMode;
+    DisplayMode lastRenderedMode; // Utolsó renderelt mód flicker elkerüléshez
     bool modeIndicatorVisible;
     uint32_t modeIndicatorHideTime; // Mikor tűnjön el a kijelző
     uint32_t lastTouchTime;         // Utolsó érintés időbélyege
+    bool needsForceRedraw;          // Kényszerített újrarajzolás
 
     // Envelope előző érték simításhoz
     float envelopeLastSmoothedValue;
@@ -176,6 +183,11 @@ class SpectrumVisualizationComponent : public UIComponent {
     void drawGradientBar(int x, int y, int w, int h, float intensity);
 
     /**
+     * @brief Gradient sáv rajzolása sprite-ba
+     */
+    void drawGradientBarToSprite(int x, int y, int w, int h, float intensity);
+
+    /**
      * @brief Színek interpolálása
      */
     uint16_t interpolateColor(uint16_t color1, uint16_t color2, float ratio);
@@ -197,6 +209,11 @@ class SpectrumVisualizationComponent : public UIComponent {
      * @return Teljes magasság (módkijelzővel vagy anélkül)
      */
     int getEffectiveHeight() const;
+
+    /**
+     * @brief Sprite létrehozásának biztosítása
+     */
+    void ensureSpriteCreated();
 
     /**
      * @brief X pozíció getter
