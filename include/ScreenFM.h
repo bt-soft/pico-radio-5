@@ -197,10 +197,6 @@ class ScreenFM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
             rdsComponent->clearRdsOnFrequencyChange();
         }
     }
-
-    // ===================================================================
-    // Audio display komponens
-    // ===================================================================
 };
 
 #endif // __SCREEN_FM

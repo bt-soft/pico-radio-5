@@ -117,6 +117,10 @@ class AudioProcessor {
     // Referencia a közös adatokra
     SharedAudioData *sharedData;
 
+    // DC offset kalibráció a feszültségosztó miatt
+    float dcOffset;          // Mért DC offset ADC egységekben
+    bool dcOffsetCalibrated; // Kalibráció állapota
+
   public:
     /**
      * @brief Konstruktor
@@ -224,6 +228,12 @@ class AudioProcessor {
      * @brief Buffer olvasása
      */
     float readFromBuffer();
+
+    /**
+     * @brief DC offset kalibráció - feszültségosztó kompenzálás
+     * @details 10k-10k feszültségosztó + 10nF kondenzátor miatt szükséges
+     */
+    void calibrateDCOffset();
 };
 
 // Globális függvények

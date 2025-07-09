@@ -12,7 +12,8 @@ static bool g_core1Running = false;
  * @brief AudioProcessor konstruktor
  */
 AudioProcessor::AudioProcessor(SharedAudioData *shared)
-    : fft(fftReal, fftImag, AudioProcessorConstants::FFT_SIZE, AudioProcessorConstants::SAMPLE_RATE), writeIndex(0), readIndex(0), availableSamples(0), lastSampleTime(0), processingStartTime(0), sharedData(shared) {
+    : fft(fftReal, fftImag, AudioProcessorConstants::FFT_SIZE, AudioProcessorConstants::SAMPLE_RATE), writeIndex(0), readIndex(0), availableSamples(0), lastSampleTime(0), processingStartTime(0), sharedData(shared),
+      dcOffset(0.0f), dcOffsetCalibrated(false) {
 
     // Mintavételi intervallum számítása
     sampleInterval = 1000000 / AudioProcessorConstants::SAMPLE_RATE; // mikroszekundum
@@ -40,6 +41,9 @@ void AudioProcessor::initialize() {
     // ADC inicializálás
     analogReadResolution(12); // 12 bites ADC felbontás
 
+    // DC offset kalibráció - a feszültségosztó miatt a nyugalmi szint nem 2048
+    calibrateDCOffset();
+
     // FFT már inicializálva van a konstruktorban
 
     // Shared data inicializálás
@@ -59,7 +63,8 @@ void AudioProcessor::initialize() {
     // Spektrum adatok inicializálása
     memset(&sharedData->data, 0, sizeof(AudioVisualizationData));
 
-    DEBUG("AudioProcessor: Inicializálás befejezve. Sample rate: %d Hz, FFT size: %d\n", AudioProcessorConstants::SAMPLE_RATE, AudioProcessorConstants::FFT_SIZE);
+    DEBUG("AudioProcessor: Inicializálás befejezve. Sample rate: %d Hz, FFT size: %d, DC offset: %d.%d\n", AudioProcessorConstants::SAMPLE_RATE, AudioProcessorConstants::FFT_SIZE, (int)(dcOffset * 1000),
+          (int)((dcOffset * 1000 - (int)(dcOffset * 1000)) * 1000));
 }
 
 /**
@@ -151,8 +156,15 @@ void AudioProcessor::sampleAudio() {
         // ADC olvasás PIN_AUDIO_INPUT-ról
         int adcValue = analogRead(PIN_AUDIO_INPUT);
 
-        // ADC érték konvertálása -1.0 és 1.0 közé
-        float sample = ((float)adcValue - 2048.0f) / 2048.0f; // 12 bit ADC: 0-4095 -> -1.0 to 1.0
+        // DC offset eltávolítása és normalizálás
+        // A feszültségosztó miatt a nyugalmi szint nem a középpont
+        float sample = ((float)adcValue - dcOffset) / 2048.0f; // Normalizálás -1.0 és 1.0 közé
+
+        // Határértékek ellenőrzése
+        if (sample > 1.0f)
+            sample = 1.0f;
+        if (sample < -1.0f)
+            sample = -1.0f;
 
         // Buffer-be írás
         writeToBuffer(sample);
@@ -524,6 +536,38 @@ float AudioProcessor::readFromBuffer() {
     return sample;
 }
 
+/**
+ * @brief DC offset kalibráció - a feszültségosztó miatt szükséges
+ * @details 10k-10k feszültségosztó + 10nF kondenzátor miatt a nyugalmi szint
+ * nem a 12 bites ADC középpontja (2048), hanem körülbelül a fél tápfeszültség
+ */
+void AudioProcessor::calibrateDCOffset() {
+    DEBUG("AudioProcessor: DC offset kalibráció...\n");
+
+    // ADC inicializálás biztosítása
+    analogReadResolution(12);
+
+    // Több minta átlagolása a pontos offset meghatározásához
+    const uint16_t calibrationSamples = 1000;
+    uint32_t sum = 0;
+
+    // Várakozás a kondenzátor feltöltődésére
+    delay(100);
+
+    // Minták gyűjtése
+    for (uint16_t i = 0; i < calibrationSamples; i++) {
+        sum += analogRead(PIN_AUDIO_INPUT);
+        delayMicroseconds(100); // Rövid várakozás a minták között
+    }
+
+    // Átlag számítása
+    dcOffset = (float)sum / calibrationSamples;
+    dcOffsetCalibrated = true;
+
+    DEBUG("AudioProcessor: DC offset kalibráció befejezve. Offset: %d ADC egység (%d.%d V)\n", (int)dcOffset, (int)(dcOffset * 3.3f / 4096.0f),
+          (int)((dcOffset * 3.3f / 4096.0f - (int)(dcOffset * 3.3f / 4096.0f)) * 1000));
+}
+
 // ===================================================================
 // Core1 globális függvények
 // ===================================================================
@@ -661,4 +705,5 @@ void printDebugFromCore0() {
     DEBUG("Data ready: %s\n", g_sharedAudioData.dataReady ? "Yes" : "No");
     DEBUG("==========================================\n");
 }
+
 } // namespace AudioProcessorCore1

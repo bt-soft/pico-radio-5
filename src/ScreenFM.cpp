@@ -27,9 +27,7 @@ ScreenFM::ScreenFM() : ScreenRadioBase(SCREEN_NAME_FM) {
 }
 
 /**
- * @brief ScreenFM destruktor - MiniAudioDisplay parent pointer törlése
- * @details Biztosítja, hogy az MiniAudioDisplay ne próbáljon hozzáférni
- * a törölt screen objektumhoz képernyőváltáskor
+ * @brief ScreenFM destruktor - Automatikus cleanup
  */
 ScreenFM::~ScreenFM() { DEBUG("ScreenFM::~ScreenFM() - Destruktor hívása\n"); }
 
