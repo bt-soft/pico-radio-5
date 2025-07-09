@@ -1,4 +1,5 @@
 #include "ScreenFM.h"
+#include "AudioProcessor.h"
 
 // ===================================================================
 // FM képernyő specifikus vízszintes gomb azonosítók
@@ -92,6 +93,18 @@ void ScreenFM::layoutComponents() {
     currentY += 24 + 5;
     Rect smeterBounds(2, currentY, SMeterConstants::SMETER_WIDTH, 60);
     createSMeterComponent(smeterBounds);
+
+    // ===================================================================
+    // Spektrum vizualizáció komponens létrehozása
+    // ===================================================================
+
+    Rect spectrumBounds(250, 50, 160, 100);
+    createSpectrumComponent(spectrumBounds);
+
+    // Spektrum inicializálása Off módban (config-ból később állítható)
+    if (spectrumComponent) {
+        spectrumComponent->setInitialMode(SpectrumVisualizationComponent::DisplayMode::Off);
+    }
 
     // ===================================================================
     // Gombsorok létrehozása - Event-driven architektúra
@@ -233,6 +246,10 @@ void ScreenFM::activate() {
 
     // Szülő osztály aktiválása (ScreenRadioBase -> ScreenFrequDisplayBase -> UIScreen)
     ScreenRadioBase::activate();
+
+    // Audio processor beállítása FM módhoz
+    AudioProcessorCore1::setBandFilterFrequencies(300.0f, 15000.0f); // FM: 300Hz - 15kHz
+    AudioProcessorCore1::setAudioEnabled(true);                      // Audio feldolgozás engedélyezése
 
     // StatusLine frissítése
     checkAndUpdateMemoryStatus();

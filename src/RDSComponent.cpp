@@ -200,9 +200,6 @@ String RDSComponent::processRadioText(const String &radioText) {
     if (cutPosition >= 0) {
         result = result.substring(0, cutPosition);
         result.trim(); // Eltávolítjuk a felesleges szóközöket a végéről
-
-        // Debug kimenet - előtte-utána string megjelenítése
-        DEBUG("RDSComponent::processRadioText() -> space cutter -  Előtte: '%s' Utána: '%s'\n", radioText.c_str(), result.c_str());
     }
 
     return result;

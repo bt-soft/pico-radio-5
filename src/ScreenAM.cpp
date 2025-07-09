@@ -1,4 +1,5 @@
 #include "ScreenAM.h"
+#include "AudioProcessor.h"
 #include "MultiButtonDialog.h"
 
 // ===================================================================
@@ -232,6 +233,10 @@ void ScreenAM::activate() {
     // Szülő osztály aktiválása (ScreenRadioBase -> ScreenFrequDisplayBase -> UIScreen)
     ScreenRadioBase::activate();
 
+    // Audio processor beállítása AM módhoz
+    AudioProcessorCore1::setBandFilterFrequencies(300.0f, 6000.0f); // AM: 300Hz - 6kHz
+    AudioProcessorCore1::setAudioEnabled(true);                     // Audio feldolgozás engedélyezése
+
     // ===================================================================
     // *** EGYETLEN GOMBÁLLAPOT SZINKRONIZÁLÁSI PONT - Event-driven ***
     // ===================================================================
@@ -301,6 +306,22 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     Rect smeterBounds(2, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT + 10, SMeterConstants::SMETER_WIDTH, 70);
     createSMeterComponent(smeterBounds);
+
+    // ===================================================================
+    // Spektrum vizualizáció komponens létrehozása
+    // ===================================================================
+    uint16_t currentY = smeterBounds.y + smeterBounds.height + 5;
+    uint16_t spectrumHeight = ::SCREEN_H - currentY - UIButton::DEFAULT_BUTTON_HEIGHT - 15; // Maradék hely a gombsorig
+    if (spectrumHeight > 50) {                                                              // Csak ha van elég hely
+        Rect spectrumBounds(2, currentY, SMeterConstants::SMETER_WIDTH, spectrumHeight);
+        // Rect spectrumBounds(250, 50, 160, 100);
+        createSpectrumComponent(spectrumBounds);
+
+        // Spektrum inicializálása Off módban (config-ból később állítható)
+        if (spectrumComponent) {
+            spectrumComponent->setInitialMode(SpectrumVisualizationComponent::DisplayMode::Off);
+        }
+    }
 
     // ===================================================================
     // Audio Display komponens létrehozása (jobb oldalra, kis terület)
