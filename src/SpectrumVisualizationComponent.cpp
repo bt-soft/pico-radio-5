@@ -8,20 +8,80 @@
 
 // Waterfall színpaletta - MiniAudioFft-ből átvéve
 const uint16_t SpectrumVisualizationComponent::WATERFALL_COLORS[16] = {
-    0x0000,                        // TFT_BLACK (index 0)
-    0x0000,                        // TFT_BLACK (index 1)
-    0x0000,                        // TFT_BLACK (index 2)
-    0x001F,                        // Nagyon sötét kék
-    0x081F,                        // Sötét kék
-    0x0810,                        // Sötét zöldeskék
-    0x0800,                        // Sötétzöld
-    0x0C00,                        // Közepes zöld
-    0x1C00,                        // Világosabb zöld
-    0xFC00,                        // Narancs
-    0xFDE0,                        // Világos sárga
-    0xFFE0,                        // Sárga
-    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF // Fehér a csúcsokhoz
+    0x0000, // TFT_BLACK (index 0)
+    0x0000, // TFT_BLACK (index 1)
+    0x0000, // TFT_BLACK (index 2)
+    0x001F, // Nagyon sötét kék
+    0x081F, // Sötét kék
+    0x0810, // Sötét zöldeskék
+    0x0800, // Sötétzöld
+    0x0C00, // Közepes zöld
+    0x1C00, // Világosabb zöld
+    0xFC00, // Narancs
+    0xFDE0, // Világos sárga
+    0xFFE0, // Sárga
+    0xFFFF, // Fehér a csúcsokhoz
+    0xFFFF, // Fehér a csúcsokhoz
+    0xFFFF, // Fehér a csúcsokhoz
+    0xFFFF  // Fehér a csúcsokhoz
 };
+
+/**
+ * @brief CW Waterfall megjelenítése
+ */
+void SpectrumVisualizationComponent::renderCWWaterfall(const SharedAudioData &data) {
+    int x = bounds.x;
+    int y = bounds.y;
+    int width = bounds.width;
+    int height = bounds.height;
+    int effectiveH = height - indicatorFontHeight - 4;
+
+    // Sprite használata a villogás elkerülésére
+    if (sprite && spriteCreated) {
+        // Waterfall alaprész (ugyanaz mint a normál waterfall)
+        sprite->scroll(0, 1);
+
+        // Felül egy új sávot rajzolunk
+        for (int pixelX = 0; pixelX < width; pixelX++) {
+            int binIndex = (pixelX * AudioProcessorConstants::LOW_RES_BINS) / width;
+            if (binIndex < AudioProcessorConstants::LOW_RES_BINS) {
+                float value = data.spectrum.lowResBins[binIndex];
+                float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
+
+                uint8_t intensity = (uint8_t)(normalizedValue * 15.0f);
+                if (intensity > 15)
+                    intensity = 15;
+
+                uint16_t color = WATERFALL_COLORS[intensity];
+                sprite->drawPixel(pixelX, 0, color);
+            }
+        }
+
+        // CW hangolás segítő vonalak - 600 Hz körül
+        int cwFreqPixel = (600 * width) / (maxDisplayFrequencyHz);
+        if (cwFreqPixel >= 0 && cwFreqPixel < width) {
+            // Középső vonal (600 Hz)
+            sprite->drawFastVLine(cwFreqPixel, 0, effectiveH, TFT_RED);
+            // Sávszélesség jelzők (±50 Hz)
+            int cwBandwidthPixels = (100 * width) / (maxDisplayFrequencyHz);
+            if (cwBandwidthPixels < 2)
+                cwBandwidthPixels = 2;
+
+            int leftEdge = cwFreqPixel - cwBandwidthPixels / 2;
+            int rightEdge = cwFreqPixel + cwBandwidthPixels / 2;
+
+            if (leftEdge >= 0)
+                sprite->drawFastVLine(leftEdge, 0, effectiveH, TFT_YELLOW);
+            if (rightEdge < width)
+                sprite->drawFastVLine(rightEdge, 0, effectiveH, TFT_YELLOW);
+        }
+
+        // Sprite megjelenítése
+        sprite->pushSprite(x, y);
+    } else {
+        renderMutedState();
+    }
+}
 
 /**
  * @brief Konstruktor
@@ -112,23 +172,15 @@ void SpectrumVisualizationComponent::draw() {
 
     // DEBUG: Adatok ellenőrzése
     static uint32_t lastDebugTime = 0;
-    static uint32_t lastSamplesProcessed = 0;
     if (millis() - lastDebugTime > 5000) { // 5 másodpercenként
-        uint32_t currentSamplesProcessed = data.statistics.samplesProcessed;
-        uint32_t sampleDelta = currentSamplesProcessed - lastSamplesProcessed;
-
         // Debug output with dtostrf for safe float formatting
         char maxMagBuf[10];
         char lowBin0Buf[10];
-        char cpuUsageBuf[10];
-        dtostrf(data.data.spectrum.maxMagnitude, 4, 2, maxMagBuf);
-        dtostrf(data.data.spectrum.lowResBins[0], 4, 3, lowBin0Buf);
-        dtostrf(data.statistics.cpuUsagePercent, 4, 1, cpuUsageBuf);
+        dtostrf(data.spectrum.maxMagnitude, 4, 2, maxMagBuf);
+        dtostrf(data.spectrum.lowResBins[0], 4, 3, lowBin0Buf);
 
-        DEBUG("SpectrumVisualization: mode=%d, enabled=%s, dataReady=%s, maxMag=%s, lowBin0=%s, sampleDelta=%d, lastUpdate=%d, CPU=%s%%\n", (int)data.mode, data.enabled ? "true" : "false",
-              data.dataReady ? "true" : "false", maxMagBuf, lowBin0Buf, (int)sampleDelta, (int)(millis() - data.statistics.lastUpdateTime), cpuUsageBuf);
+        DEBUG("SpectrumVisualization: mode=%d, enabled=%s, dataReady=%s, maxMag=%s, lowBin0=%s\n", (int)data.mode, data.enabled ? "true" : "false", data.spectrum.dataReady ? "true" : "false", maxMagBuf, lowBin0Buf);
         lastDebugTime = millis();
-        lastSamplesProcessed = currentSamplesProcessed;
     }
 
     switch (currentMode) {
@@ -229,6 +281,27 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
             break;
     } // Keret újrarajzolása mód váltáskor
     drawFrame();
+
+    // AudioProcessor mód beállítása a megjelenítési mód alapján
+    AudioVisualizationType audioMode = AudioVisualizationType::OFF;
+    switch (currentMode) {
+        case DisplayMode::SpectrumLowRes:
+        case DisplayMode::Waterfall:
+        case DisplayMode::CWWaterfall:
+        case DisplayMode::RTTYWaterfall:
+            audioMode = AudioVisualizationType::SPECTRUM_LOW_RES;
+            break;
+        case DisplayMode::SpectrumHighRes:
+            audioMode = AudioVisualizationType::SPECTRUM_HIGH_RES;
+            break;
+        case DisplayMode::Oscilloscope:
+            audioMode = AudioVisualizationType::OSCILLOSCOPE;
+            break;
+        default:
+            audioMode = AudioVisualizationType::SPECTRUM_LOW_RES;
+            break;
+    }
+    AudioProcessorCore1::setVisualizationMode(audioMode);
 
     // Kényszerített újrarajzolás jelzése
     needsForceRedraw = true;
@@ -381,12 +454,17 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes(const SharedAudioData 
         int actualBarWidth = barWidth - barSpacing;
 
         for (int i = 0; i < AudioProcessorConstants::LOW_RES_BINS; i++) {
-            float value = data.data.spectrum.lowResBins[i];
-            float peakValue = data.data.spectrum.lowResPeaks[i];
+            float value = data.spectrum.lowResBins[i];
+            // Peak értékeket jelenleg nem tartjuk számon az új struktúrában
+            float peakValue = value; // Egyszerűsítés: peak = aktuális érték
+
+            // Normalizálás a maximális magnitúdóval
+            float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
+            float normalizedPeak = data.spectrum.maxMagnitude > 0 ? peakValue / data.spectrum.maxMagnitude : 0.0f;
 
             // Sáv magasságának kiszámítása
-            int barHeight = (int)(value * effectiveH);
-            int peakHeight = (int)(peakValue * effectiveH);
+            int barHeight = (int)(normalizedValue * effectiveH);
+            int peakHeight = (int)(normalizedPeak * effectiveH);
 
             // Sáv pozíciója (sprite koordinátákban)
             int barX = i * barWidth;
@@ -428,16 +506,19 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes(const SharedAudioData
 
         // Pixel szélességű vonalak
         for (int pixelX = 0; pixelX < width; pixelX++) {
-            // FFT bin index kiszámítása
+            // FFT bin index kiszámítása a megjelenítendő frekvenciatartomány alapján
             float freq = (float)pixelX * maxDisplayFrequencyHz / width;
-            int binIndex = (int)(freq * AudioProcessorConstants::FFT_SIZE / AudioProcessorConstants::SAMPLE_RATE);
+            int binIndex = (int)(freq * AudioProcessorConstants::SPECTRUM_BINS / (AudioProcessorConstants::SAMPLE_RATE / 2));
 
-            if (binIndex >= 0 && binIndex < AudioProcessorConstants::FFT_SIZE / 2) {
-                float value = data.data.spectrum.highResBins[binIndex];
-                int lineHeight = (int)(value * effectiveH);
+            if (binIndex >= 0 && binIndex < AudioProcessorConstants::SPECTRUM_BINS) {
+                float value = data.spectrum.highResBins[binIndex];
+
+                // Normalizálás a maximális magnitúdóval
+                float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
+                int lineHeight = (int)(normalizedValue * effectiveH);
 
                 if (lineHeight > 0) {
-                    uint16_t color = getSpectrumColor(value);
+                    uint16_t color = getSpectrumColor(normalizedValue);
                     sprite->drawFastVLine(pixelX, effectiveH - lineHeight, lineHeight, color);
                 }
             }
@@ -468,21 +549,43 @@ void SpectrumVisualizationComponent::renderOscilloscope(const SharedAudioData &d
         int centerY = effectiveH / 2;
 
         // Középvonal rajzolása sprite-ba
-        sprite->drawFastHLine(0, centerY, width, TFT_COLOR(40, 40, 40));
+        sprite->drawFastHLine(0, centerY, width, TFT_COLOR(40, 40, 40)); // Valós oszcilloszkóp adatok rajzolása
+        if (data.oscilloscope.dataReady) {
+            int sampleCount = AudioProcessorConstants::OSCILLOSCOPE_SAMPLES;
 
-        // Test grafikon - egy sinus hullám rajzolása (nagyobb amplitúdóval)
-        for (int pixelX = 0; pixelX < width; pixelX++) {
-            float angle = (float)pixelX / width * 4.0f * 3.14159f;   // 4 PI = 2 teljes ciklus
-            float sineValue = sin(angle) * 0.8f;                     // -0.8 .. +0.8 (nagyobb amplitúdó)
-            int testY = centerY - (int)(sineValue * effectiveH / 2); // /2 helyett /4 (még nagyobb kitérés)
+            // Automatikus skálázás a peak érték alapján
+            float scaleFactor = 1.0f;
+            if (data.oscilloscope.peak > 0.1f) {
+                scaleFactor = 1.0f / data.oscilloscope.peak * 0.8f; // 80%-os kihasználás
+            } else {
+                scaleFactor = 5.0f; // Ha nincs jel, 5x erősítés
+            }
 
-            // Korlátok között tartás
-            if (testY < 0)
-                testY = 0;
-            if (testY >= effectiveH)
-                testY = effectiveH - 1;
+            for (int pixelX = 0; pixelX < width - 1; pixelX++) {
+                // Minta index kiszámítása
+                int sampleIndex = (pixelX * sampleCount) / width;
+                int nextSampleIndex = ((pixelX + 1) * sampleCount) / width;
 
-            sprite->drawPixel(pixelX, testY, TFT_GREEN);
+                if (sampleIndex < sampleCount && nextSampleIndex < sampleCount) {
+                    // Minták normalizálása -1..+1 tartományra és skálázás
+                    float sample1 = (data.oscilloscope.samples[sampleIndex] - 2048.0f) / 2048.0f * scaleFactor;
+                    float sample2 = (data.oscilloscope.samples[nextSampleIndex] - 2048.0f) / 2048.0f * scaleFactor;
+
+                    // Y pozíciók kiszámítása
+                    int y1 = centerY - (int)(sample1 * effectiveH / 2);
+                    int y2 = centerY - (int)(sample2 * effectiveH / 2);
+
+                    // Korlátok között tartás
+                    y1 = constrain(y1, 0, effectiveH - 1);
+                    y2 = constrain(y2, 0, effectiveH - 1);
+
+                    // Vonal rajzolása
+                    sprite->drawLine(pixelX, y1, pixelX + 1, y2, TFT_GREEN);
+                }
+            }
+        } else {
+            // Ha nincs adat, mutassuk a középvonalat
+            sprite->drawFastHLine(0, centerY, width, TFT_YELLOW);
         }
 
         // Sprite megjelenítése
@@ -505,18 +608,24 @@ void SpectrumVisualizationComponent::renderWaterfall(const SharedAudioData &data
 
     // Sprite használata a villogás elkerülésére
     if (sprite && spriteCreated) {
-        sprite->fillSprite(TFT_BLACK);
+        // Minden frame-ben elcsúsztatjuk a tartalmat egy sorral le
+        sprite->scroll(0, 1);
 
-        // Waterfall megjelenítése sprite-ba
-        for (int row = 0; row < effectiveH && row < AudioProcessorConstants::WATERFALL_HEIGHT; row++) {
-            for (int col = 0; col < width; col++) {
-                // Frekvencia bin kiszámítása
-                int binIndex = (col * AudioProcessorConstants::SPECTRUM_BINS) / width;
-                if (binIndex < AudioProcessorConstants::SPECTRUM_BINS) {
-                    uint8_t intensity = data.data.waterfall.waterfallBuffer[row][binIndex];
-                    uint16_t color = WATERFALL_COLORS[intensity >> 4]; // 4 bit shift a 16 színhez
-                    sprite->drawPixel(col, row, color);
-                }
+        // Felül egy új sávot rajzolunk a jelenlegi spektrum alapján
+        for (int pixelX = 0; pixelX < width; pixelX++) {
+            // Spektrum bin index kiszámítása
+            int binIndex = (pixelX * AudioProcessorConstants::LOW_RES_BINS) / width;
+            if (binIndex < AudioProcessorConstants::LOW_RES_BINS) {
+                float value = data.spectrum.lowResBins[binIndex];
+                float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
+
+                // Szín kiszámítása intenzitás alapján
+                uint8_t intensity = (uint8_t)(normalizedValue * 15.0f); // 0-15 tartomány
+                if (intensity > 15)
+                    intensity = 15;
+
+                uint16_t color = WATERFALL_COLORS[intensity];
+                sprite->drawPixel(pixelX, 0, color);
             }
         }
 
@@ -538,10 +647,8 @@ void SpectrumVisualizationComponent::renderEnvelope(const SharedAudioData &data)
     int height = bounds.height;
     int effectiveH = height - indicatorFontHeight - 4;
 
-    // Envelope simítás - use envelope data or oscilloscope peak as fallback
-    float targetValue = (data.mode == AudioVisualizationType::ENVELOPE)       ? data.data.envelope.smoothedLevel
-                        : (data.mode == AudioVisualizationType::OSCILLOSCOPE) ? abs(data.data.oscilloscope.peak)
-                                                                              : data.data.spectrum.maxMagnitude;
+    // Envelope simítás - use spectrum or oscilloscope peak as fallback
+    float targetValue = (data.mode == AudioVisualizationType::OSCILLOSCOPE) ? abs(data.oscilloscope.peak) : data.spectrum.maxMagnitude;
     envelopeLastSmoothedValue = envelopeLastSmoothedValue * 0.8f + targetValue * 0.2f;
 
     // Sprite használata a villogás elkerülésére
@@ -566,7 +673,7 @@ void SpectrumVisualizationComponent::renderEnvelope(const SharedAudioData &data)
         sprite->setTextSize(1);
 
         char statText[64];
-        snprintf(statText, sizeof(statText), "CPU:%.1f%% Samples:%lu", data.statistics.cpuUsagePercent, data.statistics.samplesProcessed);
+        snprintf(statText, sizeof(statText), "Mode: %d | Enabled: %s", (int)data.mode, data.enabled ? "Yes" : "No");
         sprite->drawString(statText, 2, 2);
 
         // Sprite megjelenítése
@@ -706,54 +813,6 @@ void SpectrumVisualizationComponent::setModeIndicatorVisible(bool visible) { mod
  * @brief Kényszerített újrarajzolás
  */
 void SpectrumVisualizationComponent::forceRedrawOnNextFrame() { needsForceRedraw = true; }
-/**
- * @brief CW hangolássegéd rajzolása
- */
-void SpectrumVisualizationComponent::renderCWWaterfall(const SharedAudioData &data) {
-    int x = bounds.x;
-    int y = bounds.y;
-    int width = bounds.width;
-    int height = bounds.height;
-    int effectiveH = height - indicatorFontHeight - 4;
-
-    // Sprite használata a villogás elkerülésére
-    if (sprite && spriteCreated) {
-        sprite->fillSprite(TFT_BLACK);
-
-        // CW waterfall megjelenítése sprite-ba - keskenyebb frekvencia tartomány
-        for (int row = 0; row < effectiveH && row < AudioProcessorConstants::WATERFALL_HEIGHT; row++) {
-            for (int col = 0; col < width; col++) {
-                // CW-hez keskenyebb frekvencia sáv (pl. ±500Hz)
-                float centerFreq = 600.0f; // CW center frekvencia
-                float bandwidth = 1000.0f; // ±500Hz
-                float freq = centerFreq - bandwidth / 2 + (col * bandwidth / width);
-
-                int binIndex = (int)(freq * AudioProcessorConstants::SPECTRUM_BINS / AudioProcessorConstants::SAMPLE_RATE);
-                if (binIndex >= 0 && binIndex < AudioProcessorConstants::SPECTRUM_BINS) {
-                    uint8_t intensity = data.data.waterfall.waterfallBuffer[row][binIndex];
-                    uint16_t color = WATERFALL_COLORS[intensity >> 4];
-                    sprite->drawPixel(col, row, color);
-                }
-            }
-        }
-
-        // CW frekvencia jelzővonal (600Hz) sprite-ba
-        int centerLine = width / 2;
-        sprite->drawFastVLine(centerLine, 0, effectiveH, TFT_RED);
-
-        // Sprite megjelenítése
-        sprite->pushSprite(x, y);
-
-        // Frekvencia címkék közvetlenül a TFT-re (mivel a sprite alatt van)
-        ::tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-        ::tft.setTextDatum(TC_DATUM);
-        ::tft.setTextSize(1);
-        ::tft.drawString("600Hz", x + centerLine, y + effectiveH + 2);
-    } else {
-        // Fallback ha sprite nem elérhető
-        renderMutedState();
-    }
-}
 
 /**
  * @brief RTTY hangolássegéd rajzolása
@@ -767,56 +826,45 @@ void SpectrumVisualizationComponent::renderRTTYWaterfall(const SharedAudioData &
 
     // Sprite használata a villogás elkerülésére
     if (sprite && spriteCreated) {
-        sprite->fillSprite(TFT_BLACK);
+        // Waterfall alaprész
+        sprite->scroll(0, 1);
 
-        // RTTY waterfall megjelenítése sprite-ba - 170Hz shift
-        for (int row = 0; row < effectiveH && row < AudioProcessorConstants::WATERFALL_HEIGHT; row++) {
-            for (int col = 0; col < width; col++) {
-                // RTTY-hez 170Hz shift (2125Hz és 2295Hz)
-                float centerFreq = 2210.0f; // RTTY center
-                float bandwidth = 500.0f;   // Szélesebb tartomány
-                float freq = centerFreq - bandwidth / 2 + (col * bandwidth / width);
+        // Felül egy új sávot rajzolunk
+        for (int pixelX = 0; pixelX < width; pixelX++) {
+            int binIndex = (pixelX * AudioProcessorConstants::LOW_RES_BINS) / width;
+            if (binIndex < AudioProcessorConstants::LOW_RES_BINS) {
+                float value = data.spectrum.lowResBins[binIndex];
+                float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
 
-                int binIndex = (int)(freq * AudioProcessorConstants::SPECTRUM_BINS / AudioProcessorConstants::SAMPLE_RATE);
-                if (binIndex >= 0 && binIndex < AudioProcessorConstants::SPECTRUM_BINS) {
-                    uint8_t intensity = data.data.waterfall.waterfallBuffer[row][binIndex];
-                    uint16_t color = WATERFALL_COLORS[intensity >> 4];
-                    sprite->drawPixel(col, row, color);
-                }
+                uint8_t intensity = (uint8_t)(normalizedValue * 15.0f);
+                if (intensity > 15)
+                    intensity = 15;
+
+                uint16_t color = WATERFALL_COLORS[intensity];
+                sprite->drawPixel(pixelX, 0, color);
             }
         }
 
-        // RTTY mark és space frekvencia vonalak sprite-ba
-        float markFreq = 2295.0f;
-        float spaceFreq = 2125.0f;
-        float centerFreq = 2210.0f;
-        float bandwidth = 500.0f;
+        // RTTY hangolás segítő vonalak - 2125 Hz (mark) és 2295 Hz (space)
+        int markFreqPixel = (2125 * width) / (maxDisplayFrequencyHz);
+        int spaceFreqPixel = (2295 * width) / (maxDisplayFrequencyHz);
 
-        int markLine = (int)((markFreq - (centerFreq - bandwidth / 2)) * width / bandwidth);
-        int spaceLine = (int)((spaceFreq - (centerFreq - bandwidth / 2)) * width / bandwidth);
-
-        if (markLine >= 0 && markLine < width) {
-            sprite->drawFastVLine(markLine, 0, effectiveH, TFT_GREEN);
+        if (markFreqPixel >= 0 && markFreqPixel < width) {
+            sprite->drawFastVLine(markFreqPixel, 0, effectiveH, TFT_GREEN); // Mark freq
         }
-        if (spaceLine >= 0 && spaceLine < width) {
-            sprite->drawFastVLine(spaceLine, 0, effectiveH, TFT_BLUE);
+        if (spaceFreqPixel >= 0 && spaceFreqPixel < width) {
+            sprite->drawFastVLine(spaceFreqPixel, 0, effectiveH, TFT_RED); // Space freq
+        }
+
+        // Középső frekvencia (2210 Hz)
+        int centerFreqPixel = (2210 * width) / (maxDisplayFrequencyHz);
+        if (centerFreqPixel >= 0 && centerFreqPixel < width) {
+            sprite->drawFastVLine(centerFreqPixel, 0, effectiveH, TFT_YELLOW); // Center freq
         }
 
         // Sprite megjelenítése
         sprite->pushSprite(x, y);
-
-        // Frekvencia címkék közvetlenül a TFT-re (mivel a sprite alatt van)
-        ::tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-        ::tft.setTextDatum(TC_DATUM);
-        ::tft.setTextSize(1);
-        if (markLine >= 0 && markLine < width) {
-            ::tft.drawString("M", x + markLine, y + effectiveH + 2);
-        }
-        if (spaceLine >= 0 && spaceLine < width) {
-            ::tft.drawString("S", x + spaceLine, y + effectiveH + 2);
-        }
     } else {
-        // Fallback ha sprite nem elérhető
         renderMutedState();
     }
 }
