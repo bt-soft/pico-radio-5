@@ -179,6 +179,12 @@ class AudioProcessor {
     void updateStatistics();
 
     /**
+     * @brief Statisztikák frissítése megadott processing time-mal
+     * @param processingTime Feldolgozási idő mikroszekendumban
+     */
+    void updateStatisticsWithTime(uint32_t processingTime);
+
+    /**
      * @brief Debug információk kiírása
      */
     void printDebugInfo();

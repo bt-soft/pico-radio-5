@@ -2,9 +2,6 @@
 
 namespace rtv {
 
-// Némítás
-bool mute = false;
-
 // Frekvencia kijelzés pozíciója
 uint16_t freqDispX = 0;
 uint16_t freqDispY = 0;

@@ -106,7 +106,6 @@ class CommonVerticalButtons {
             [](const std::variant<int, float, bool> &newValue) {                       // Callback a változásra
                 if (std::holds_alternative<int>(newValue)) {
                     int volume = std::get<int>(newValue);
-                    DEBUG("Volume changed to: %d\n", volume);
                     ::pSi4735Manager->getSi4735().setVolume(static_cast<uint8_t>(volume));
                 }
             },

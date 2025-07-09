@@ -77,20 +77,27 @@ void AudioProcessor::processLoop() {
     DEBUG("AudioProcessor: Core1 feldolgozási ciklus indult\n");
 
     while (g_core1Running) {
+
+        // Debug információ időszakosan
+        uint32_t currentTime = millis();
+        if (currentTime - lastDebugTime >= debugInterval) {
+            printDebugInfo();
+            lastDebugTime = currentTime;
+        }
+
+        // Ha nincs engedélyezve az audio feldolgozás vagy némítás aktív, akkor nem dolgozunk
+        if (!sharedData->enabled || rtv::muteStat) {
+            // Statisztikák frissítése inaktív állapotban is (0 ms processing time-mal)
+            processingStartTime = micros();
+            uint32_t processingTime = micros() - processingStartTime; // ~0 mikroszekundum
+            updateStatisticsWithTime(processingTime);
+
+            delay(10);
+            continue;
+        }
+
+        // Audio feldolgozás kezdete - pontos időmérés
         processingStartTime = micros();
-
-        // Ellenőrizzük a mute állapotot
-        if (rtv::mute) {
-            // Mute állapotban nem dolgozunk
-            delay(10);
-            continue;
-        }
-
-        // Ellenőrizzük, hogy engedélyezve van-e az audio feldolgozás
-        if (!sharedData->enabled) {
-            delay(10);
-            continue;
-        }
 
         // Mintavétel
         sampleAudio();
@@ -122,21 +129,15 @@ void AudioProcessor::processLoop() {
                     break;
             }
 
-            // Statisztikák frissítése
-            updateStatistics();
-
             // Jelezzük, hogy új adat elérhető
             mutex_enter_blocking(&sharedData->dataMutex);
             sharedData->dataReady = true;
             mutex_exit(&sharedData->dataMutex);
         }
 
-        // Debug információ időszakosan
-        uint32_t currentTime = millis();
-        if (currentTime - lastDebugTime >= debugInterval) {
-            printDebugInfo();
-            lastDebugTime = currentTime;
-        }
+        // Audio feldolgozás vége - pontos időmérés
+        uint32_t processingTime = micros() - processingStartTime;
+        updateStatisticsWithTime(processingTime);
 
         // Rövid szünet a CPU terhelés csökkentésére
         delayMicroseconds(100);
@@ -341,6 +342,14 @@ void AudioProcessor::processWaterfall() {
  */
 void AudioProcessor::updateStatistics() {
     uint32_t processingTime = micros() - processingStartTime;
+    updateStatisticsWithTime(processingTime);
+}
+
+/**
+ * @brief Statisztikák frissítése megadott processing time-mal
+ * @param processingTime Feldolgozási idő mikroszekendumban
+ */
+void AudioProcessor::updateStatisticsWithTime(uint32_t processingTime) {
     sharedData->statistics.processingTimeUs = processingTime;
 
     // CPU használat becslése - korlátozzuk 100%-ra
@@ -422,7 +431,7 @@ void AudioProcessor::printDebugInfo() {
     DEBUG("RMS level: %d.%d (%d dB)\n", (int)(rmsValue * 10000), (int)((rmsValue * 10000 - (int)(rmsValue * 10000)) * 10), (int)(20.0f * log10f(rmsValue + 1e-10f)));
     DEBUG("Spectrum peak: %d Hz @ %d dB\n", (int)peakFrequency, (int)maxSpectrumValue);
     DEBUG("Max magnitude: %d dB\n", (int)sharedData->data.spectrum.maxMagnitude);
-    DEBUG("Mode: %d, Enabled: %s, Muted: %s\n", (int)sharedData->mode, sharedData->enabled ? "Yes" : "No", rtv::mute ? "Yes" : "No");
+    DEBUG("Mode: %d, Enabled: %s, Muted: %s\n", (int)sharedData->mode, sharedData->enabled ? "Yes" : "No", rtv::muteStat ? "Yes" : "No");
     DEBUG("=============================\n");
 }
 
