@@ -8,6 +8,10 @@
 #include <algorithm>
 #include <cmath>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 // Waterfall színpaletta - MiniAudioFft-ből átvéve
 const uint16_t SpectrumVisualizationComponent::WATERFALL_COLORS[16] = {
     0x0000, // TFT_BLACK (index 0)
@@ -48,6 +52,19 @@ void SpectrumVisualizationComponent::renderCWWaterfall(const SharedAudioData &da
             int binIndex = (pixelX * AudioProcessorConstants::LOW_RES_BINS) / width;
             if (binIndex < AudioProcessorConstants::LOW_RES_BINS) {
                 float value = data.spectrum.lowResBins[binIndex];
+
+                // Dinamikus zaj elnyomás - hangerő függvénye
+                float noiseFloor = 0.01f; // Alapértelmezett zaj küszöb
+                if (::config.data.currVolume <= 10) {
+                    // Alacsony hangerő esetén erősebb zaj elnyomás
+                    noiseFloor = 0.05f + (10 - ::config.data.currVolume) * 0.01f; // 0.05-0.15 tartomány
+                }
+
+                // Zajszint alatti jelek elnyomása
+                if (value < noiseFloor) {
+                    value = 0.0f;
+                }
+
                 float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
 
                 uint8_t intensity = (uint8_t)(normalizedValue * 15.0f);
@@ -92,14 +109,22 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
     : UIComponent(Rect(x, y, w, h)), radioMode(radioMode), currentMode(DisplayMode::Off), lastRenderedMode(DisplayMode::SpectrumLowRes), modeIndicatorVisible(true), modeIndicatorHideTime(0), lastTouchTime(0),
       needsForceRedraw(true), envelopeLastSmoothedValue(0.0f), sprite(nullptr), spriteCreated(false), indicatorFontHeight(0) {
 
-    maxDisplayFrequencyHz = (radioMode == RadioMode::AM) ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM; // AM: 6kHz, FM: 15kHz
+    // Nyquist frekvencia kiszámítása (mintavételi frekvencia fele)
+    float nyquistFrequency = AudioProcessorConstants::SAMPLE_RATE / 2.0f; // 10000 Hz
+
+    // Maximális megjelenítési frekvencia beállítása a Nyquist frekvencia és a kívánt frekvencia közül a kisebb
+    if (radioMode == RadioMode::AM) {
+        maxDisplayFrequencyHz = std::min(MAX_DISPLAY_FREQUENCY_AM, nyquistFrequency); // AM: min(6000, 10000) = 6000 Hz
+    } else {
+        maxDisplayFrequencyHz = std::min(MAX_DISPLAY_FREQUENCY_FM, nyquistFrequency); // FM: min(15000, 10000) = 10000 Hz
+    }
 
     // Font magasság meghatározása
     ::tft.setFreeFont();
     ::tft.setTextSize(1);
     indicatorFontHeight = ::tft.fontHeight();
 
-    DEBUG("SpectrumVisualization: Komponens létrehozva %dx%d, max freq: %d kHz\n", w, h, ((int)maxDisplayFrequencyHz) / 1000);
+    DEBUG("SpectrumVisualization: Komponens létrehozva %dx%d, radioMode=%s, maxFreq=%.0f Hz (Nyquist=%.0f Hz)\n", w, h, radioMode == RadioMode::AM ? "AM" : "FM", maxDisplayFrequencyHz, nyquistFrequency);
 }
 
 /**
@@ -130,12 +155,17 @@ void SpectrumVisualizationComponent::draw() {
         return;
     }
 
-    // Limit data access frequency to significantly reduce mutex contention
+    // Limit data access frequency to reduce mutex contention but allow smooth animation
     static uint32_t lastDataAccessTime = 0;
     static SharedAudioData cachedData;
     static bool hasCachedData = false;
     uint32_t currentTime = millis();
-    bool shouldAccessData = (currentTime - lastDataAccessTime >= 100); // Max 10 FPS data access
+
+    // 45 FPS: >= 22 (kissé lassabb, de energiatakarékosabb)
+    // 30 FPS: >= 33 (kompromisszum a sebesség és energiafogyasztás között)
+    // 60FPS: >= 17 (optimális sebesség, de nagyobb CPU terhelés)
+    // 120 FPS: >= 8 (ultra-sima, de nagyobb CPU terhelés)
+    bool shouldAccessData = (currentTime - lastDataAccessTime >= 33); // Max 60 FPS data access (smooth animation)
 
     SharedAudioData data;
     bool success = false;
@@ -168,10 +198,28 @@ void SpectrumVisualizationComponent::draw() {
         success = true;
     }
 
-    if (!success) {
-        // No data available - show muted state
-        renderMutedState();
-        return;
+    // Hangerő küszöb ellenőrzés - ha túl alacsony, akkor valószínűleg csak zajt látunk
+    // Oszcilloszkóp esetén lazább küszöb, mert ott a jel közvetlenül látható
+    bool volumeTooLow = false;
+    if (currentMode == DisplayMode::Oscilloscope) {
+        volumeTooLow = ::config.data.currVolume <= 2; // Oszcilloszkóp esetén csak 2 vagy kevesebb esetén muted
+    } else {
+        volumeTooLow = ::config.data.currVolume <= 5; // Spektrum esetén 5 vagy kevesebb esetén muted
+    }
+
+    // Dialog ellenőrzés - ha aktív dialógus van, ne rajzoljunk spektrumot
+    bool dialogActive = UIComponent::iscurrentScreenDialogActive();
+
+    if (!success || !data.enabled || rtv::muteStat || volumeTooLow || dialogActive) {
+        // No data available, audio is muted, volume too low, or dialog is active - show muted state
+        if (dialogActive) {
+            // Ha dialog aktív, ne rajzoljunk semmit (hagyjuk ahogy van)
+            return;
+        } else {
+            // Egyébként muted state-et mutatunk
+            renderMutedState();
+            return;
+        }
     }
 
     // DEBUG: Adatok ellenőrzése
@@ -183,7 +231,15 @@ void SpectrumVisualizationComponent::draw() {
         dtostrf(data.spectrum.maxMagnitude, 4, 2, maxMagBuf);
         dtostrf(data.spectrum.lowResBins[0], 4, 3, lowBin0Buf);
 
-        DEBUG("SpectrumVisualization: mode=%d, enabled=%s, dataReady=%s, maxMag=%s, lowBin0=%s\n", (int)data.mode, data.enabled ? "true" : "false", data.spectrum.dataReady ? "true" : "false", maxMagBuf, lowBin0Buf);
+        DEBUG("SpectrumVisualization: mode=%d, enabled=%s, muteStat=%s, volume=%d, dialogActive=%s, dataReady=%s, maxMag=%s, lowBin0=%s\n", (int)data.mode, data.enabled ? "true" : "false",
+              rtv::muteStat ? "true" : "false", ::config.data.currVolume, dialogActive ? "true" : "false", data.spectrum.dataReady ? "true" : "false", maxMagBuf, lowBin0Buf);
+
+        // Oszcilloszkóp specifikus debug
+        if (data.mode == AudioVisualizationType::OSCILLOSCOPE) {
+            DEBUG("Oscilloscope: dataReady=%s, peak=%.1f, rms=%.1f, sample0=%d, sample1=%d, currentMode=%d\n", data.oscilloscope.dataReady ? "true" : "false", data.oscilloscope.peak, data.oscilloscope.rms,
+                  data.oscilloscope.samples[0], data.oscilloscope.samples[1], static_cast<int>(currentMode));
+        }
+
         lastDebugTime = millis();
     }
 
@@ -235,7 +291,7 @@ bool SpectrumVisualizationComponent::handleTouch(const TouchEvent &touch) {
     // További ellenőrzés: csak akkor kezeljük le az érintést, ha nem debounce időben vagyunk
     unsigned long currentTime = millis();
     if (currentTime - lastTouchTime < 200) {
-        return false; // Ne nyeljük el az eseményt, hadd menjen tovább más komponensekhez
+        return false; // Ne nyeljuk el az eseményt, hadd menjen tovább más komponensekhez
     }
 
     // Debug info a touch pozícióról
@@ -396,18 +452,44 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
  * @brief Muted állapot megjelenítése
  */
 void SpectrumVisualizationComponent::renderMutedState() {
+    // Sprite létrehozása ha még nincs
+    ensureSpriteCreated();
+
+    if (!sprite || !spriteCreated) {
+        // Fallback: direct TFT rendering
+        int x = bounds.x;
+        int y = bounds.y;
+        int width = bounds.width;
+        int height = bounds.height;
+        int effectiveH = height - indicatorFontHeight - 4;
+
+        ::tft.fillRect(x, y, width, effectiveH, TFT_BLACK);
+        ::tft.setTextDatum(MC_DATUM);
+        ::tft.setTextColor(TFT_YELLOW);
+        ::tft.setFreeFont();
+        ::tft.setTextSize(1);
+        ::tft.drawString("-- Muted --", x + width / 2, y + effectiveH / 2);
+        return;
+    }
+
     int x = bounds.x;
     int y = bounds.y;
     int width = bounds.width;
     int height = bounds.height;
     int effectiveH = height - indicatorFontHeight - 4;
 
-    ::tft.setTextDatum(MC_DATUM);
-    ::tft.setTextColor(TFT_YELLOW);
-    ::tft.setFreeFont();
-    ::tft.setTextSize(1);
+    // Sprite törlése (fekete háttér)
+    sprite->fillSprite(TFT_BLACK);
 
-    ::tft.drawString("-- Muted --", x + width / 2, y + effectiveH / 2);
+    // Muted szöveg megjelenítése a sprite-ban
+    sprite->setTextDatum(MC_DATUM);
+    sprite->setTextColor(TFT_YELLOW);
+    sprite->setFreeFont();
+    sprite->setTextSize(1);
+    sprite->drawString("-- Muted --", width / 2, effectiveH / 2);
+
+    // Sprite megjelenítése
+    sprite->pushSprite(x, y);
 }
 
 /**
@@ -467,11 +549,36 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes(const SharedAudioData 
         for (int i = 0; i < AudioProcessorConstants::LOW_RES_BINS; i++) {
             float value = data.spectrum.lowResBins[i];
 
-            // Normalizálás a maximális magnitúdóval
-            float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
+            // Dinamikus zaj elnyomás - hangerő függvénye
+            float noiseFloor = 0.01f; // Alapértelmezett zaj küszöb
+            if (::config.data.currVolume <= 10) {
+                // Alacsony hangerő esetén erősebb zaj elnyomás
+                noiseFloor = 0.05f + (10 - ::config.data.currVolume) * 0.01f; // 0.05-0.15 tartomány
+            }
 
-            // Sáv magasságának kiszámítása
+            // Zajszint alatti jelek elnyomása
+            if (value < noiseFloor) {
+                value = 0.0f;
+            }
+
+            // Dinamikusabb normalizálás: magasabb erősítés és minimális küszöb
+            float normalizedValue = 0.0f;
+            if (data.spectrum.maxMagnitude > 0.01f) {
+                // Erősítés faktor alkalmazása a jobb dinamizmusért
+                normalizedValue = (value / data.spectrum.maxMagnitude) * 4.0f; // 4.0x erősítés (még dinamikusabb)
+                normalizedValue = std::min(normalizedValue, 1.0f);             // Maximum 1.0-ra korlátozás
+            }
+
+            // Logaritmikus skálázás a kisebb jelek jobb láthatóságáért
+            if (normalizedValue > 0.0f) {
+                normalizedValue = sqrt(normalizedValue); // Gyökös skálázás a jobb dinamizmusért
+            }
+
+            // Sáv magasságának kiszámítása (minimum 2 pixel ha van jel)
             int barHeight = (int)(normalizedValue * effectiveH);
+            if (barHeight == 0 && value > 0.001f) {
+                barHeight = 2; // Minimum látható magasság
+            }
 
             // Sáv pozíciója (sprite koordinátákban)
             int barX = i * barWidth;
@@ -505,18 +612,56 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes(const SharedAudioData
     if (sprite && spriteCreated) {
         sprite->fillSprite(TFT_BLACK);
 
-        // Pixel szélességű vonalak
+        // Pixel szélességű vonalak - javított kiszámítás a teljes spektrum kihasználásáért
         for (int pixelX = 0; pixelX < width; pixelX++) {
             // FFT bin index kiszámítása a megjelenítendő frekvenciatartomány alapján
             float freq = (float)pixelX * maxDisplayFrequencyHz / width;
-            int binIndex = (int)(freq * AudioProcessorConstants::SPECTRUM_BINS / (AudioProcessorConstants::SAMPLE_RATE / 2));
 
+            // Nyquist frekvencia alapján számítjuk a bin indexet
+            float nyquistFreq = AudioProcessorConstants::SAMPLE_RATE / 2.0f;
+            float exactBinIndex = freq * AudioProcessorConstants::SPECTRUM_BINS / nyquistFreq;
+            int binIndex = (int)exactBinIndex;
+
+            // Biztosítjuk, hogy a bin index a tartományon belül van
             if (binIndex >= 0 && binIndex < AudioProcessorConstants::SPECTRUM_BINS) {
                 float value = data.spectrum.highResBins[binIndex];
 
-                // Normalizálás a maximális magnitúdóval
-                float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
+                // Interpoláció a szomszédos bin-ekkel a simább megjelenítésért
+                if (binIndex + 1 < AudioProcessorConstants::SPECTRUM_BINS) {
+                    float fraction = exactBinIndex - binIndex;
+                    float nextValue = data.spectrum.highResBins[binIndex + 1];
+                    value = value * (1.0f - fraction) + nextValue * fraction;
+                }
+
+                // Dinamikus zaj elnyomás - hangerő függvénye
+                float noiseFloor = 0.01f; // Alapértelmezett zaj küszöb
+                if (::config.data.currVolume <= 10) {
+                    // Alacsony hangerő esetén erősebb zaj elnyomás
+                    noiseFloor = 0.05f + (10 - ::config.data.currVolume) * 0.01f; // 0.05-0.15 tartomány
+                }
+
+                // Zajszint alatti jelek elnyomása
+                if (value < noiseFloor) {
+                    value = 0.0f;
+                }
+
+                // Dinamikusabb normalizálás: magasabb erősítés és minimális küszöb
+                float normalizedValue = 0.0f;
+                if (data.spectrum.maxMagnitude > 0.01f) {
+                    // Erősítés faktor alkalmazása a jobb dinamizmusért
+                    normalizedValue = (value / data.spectrum.maxMagnitude) * 4.0f; // 4.0x erősítés (még dinamikusabb)
+                    normalizedValue = std::min(normalizedValue, 1.0f);             // Maximum 1.0-ra korlátozás
+                }
+
+                // Logaritmikus skálázás a kisebb jelek jobb láthatóságáért
+                if (normalizedValue > 0.0f) {
+                    normalizedValue = sqrt(normalizedValue); // Gyökös skálázás a jobb dinamizmusért
+                }
+
                 int lineHeight = (int)(normalizedValue * effectiveH);
+                if (lineHeight == 0 && value > 0.001f) {
+                    lineHeight = 1; // Minimum látható magasság
+                }
 
                 if (lineHeight > 0) {
                     uint16_t color = getSpectrumColor(normalizedValue);
@@ -550,43 +695,93 @@ void SpectrumVisualizationComponent::renderOscilloscope(const SharedAudioData &d
         int centerY = effectiveH / 2;
 
         // Középvonal rajzolása sprite-ba
-        sprite->drawFastHLine(0, centerY, width, TFT_COLOR(40, 40, 40)); // Valós oszcilloszkóp adatok rajzolása
+        sprite->drawFastHLine(0, centerY, width, TFT_COLOR(40, 40, 40));
+
+        // Debug info minden 2 másodpercben
+        static uint32_t lastOscDebugTime = 0;
+        if (millis() - lastOscDebugTime > 2000) {
+            DEBUG("Oscilloscope render: dataReady=%s, peak=%.1f, rms=%.1f, samples[0]=%d, samples[10]=%d\n", data.oscilloscope.dataReady ? "true" : "false", data.oscilloscope.peak, data.oscilloscope.rms,
+                  data.oscilloscope.samples[0], data.oscilloscope.samples[10]);
+            lastOscDebugTime = millis();
+        }
+
+        // Valós oszcilloszkóp adatok rajzolása
         if (data.oscilloscope.dataReady) {
             int sampleCount = AudioProcessorConstants::OSCILLOSCOPE_SAMPLES;
 
             // Automatikus skálázás a peak érték alapján
             float scaleFactor = 1.0f;
             if (data.oscilloscope.peak > 0.1f) {
-                scaleFactor = 1.0f / data.oscilloscope.peak * 0.8f; // 80%-os kihasználás
+                // Nagyobb erősítés kis jelek esetén
+                if (data.oscilloscope.peak < 200.0f) {
+                    scaleFactor = 200.0f / data.oscilloscope.peak; // Nagy erősítés kis jelekhez
+                } else {
+                    scaleFactor = 1.0f / data.oscilloscope.peak * 0.8f; // 80%-os kihasználás nagy jeleknél
+                }
             } else {
-                scaleFactor = 5.0f; // Ha nincs jel, 5x erősítés
+                scaleFactor = 50.0f; // Ha szinte nincs jel, 50x erősítés
             }
 
+            bool hasVisibleSignal = false;
+
+            // Próbáljunk egy teszt jelet is rajzolni, ha nincs valós jel
+            bool drawTestSignal = (data.oscilloscope.peak < 50.0f); // 50 alatti peak esetén teszt jel
+
             for (int pixelX = 0; pixelX < width - 1; pixelX++) {
-                // Minta index kiszámítása
-                int sampleIndex = (pixelX * sampleCount) / width;
-                int nextSampleIndex = ((pixelX + 1) * sampleCount) / width;
+                if (drawTestSignal) {
+                    // Teszt szinusz jel
+                    float testSample1 = sin(2.0f * M_PI * pixelX / 50.0f) * 0.3f;
+                    float testSample2 = sin(2.0f * M_PI * (pixelX + 1) / 50.0f) * 0.3f;
 
-                if (sampleIndex < sampleCount && nextSampleIndex < sampleCount) {
-                    // Minták normalizálása -1..+1 tartományra és skálázás
-                    float sample1 = (data.oscilloscope.samples[sampleIndex] - 2048.0f) / 2048.0f * scaleFactor;
-                    float sample2 = (data.oscilloscope.samples[nextSampleIndex] - 2048.0f) / 2048.0f * scaleFactor;
+                    int y1 = centerY - (int)(testSample1 * effectiveH / 2);
+                    int y2 = centerY - (int)(testSample2 * effectiveH / 2);
 
-                    // Y pozíciók kiszámítása
-                    int y1 = centerY - (int)(sample1 * effectiveH / 2);
-                    int y2 = centerY - (int)(sample2 * effectiveH / 2);
-
-                    // Korlátok között tartás
                     y1 = constrain(y1, 0, effectiveH - 1);
                     y2 = constrain(y2, 0, effectiveH - 1);
 
-                    // Vonal rajzolása
-                    sprite->drawLine(pixelX, y1, pixelX + 1, y2, TFT_GREEN);
+                    sprite->drawLine(pixelX, y1, pixelX + 1, y2, TFT_CYAN);
+                    hasVisibleSignal = true;
+                } else {
+                    // Minta index kiszámítása
+                    int sampleIndex = (pixelX * sampleCount) / width;
+                    int nextSampleIndex = ((pixelX + 1) * sampleCount) / width;
+
+                    if (sampleIndex < sampleCount && nextSampleIndex < sampleCount) {
+                        // Minták normalizálása -1..+1 tartományra és skálázás
+                        float sample1 = (data.oscilloscope.samples[sampleIndex] - 2048.0f) / 2048.0f * scaleFactor;
+                        float sample2 = (data.oscilloscope.samples[nextSampleIndex] - 2048.0f) / 2048.0f * scaleFactor;
+
+                        // Y pozíciók kiszámítása
+                        int y1 = centerY - (int)(sample1 * effectiveH / 2);
+                        int y2 = centerY - (int)(sample2 * effectiveH / 2);
+
+                        // Korlátok között tartás
+                        y1 = constrain(y1, 0, effectiveH - 1);
+                        y2 = constrain(y2, 0, effectiveH - 1);
+
+                        // Jel ellenőrzése
+                        if (abs(y1 - centerY) > 2 || abs(y2 - centerY) > 2) {
+                            hasVisibleSignal = true;
+                        }
+
+                        // Vonal rajzolása
+                        sprite->drawLine(pixelX, y1, pixelX + 1, y2, TFT_GREEN);
+                    }
                 }
             }
+
+            // Ha nincs látható jel, mutassunk egy figyelmeztetést
+            if (!hasVisibleSignal && !drawTestSignal) {
+                sprite->setCursor(10, effectiveH / 2 - 10);
+                sprite->setTextColor(TFT_YELLOW);
+                sprite->print("No Signal");
+            }
         } else {
-            // Ha nincs adat, mutassuk a középvonalat
+            // Ha nincs adat, mutassuk a középvonalat és figyelmeztetést
             sprite->drawFastHLine(0, centerY, width, TFT_YELLOW);
+            sprite->setCursor(10, effectiveH / 2 - 10);
+            sprite->setTextColor(TFT_RED);
+            sprite->print("No Data");
         }
 
         // Sprite megjelenítése
@@ -616,6 +811,19 @@ void SpectrumVisualizationComponent::renderWaterfall(const SharedAudioData &data
             int binIndex = (pixelX * AudioProcessorConstants::LOW_RES_BINS) / width;
             if (binIndex < AudioProcessorConstants::LOW_RES_BINS) {
                 float value = data.spectrum.lowResBins[binIndex];
+
+                // Dinamikus zaj elnyomás - hangerő függvénye
+                float noiseFloor = 0.01f; // Alapértelmezett zaj küszöb
+                if (::config.data.currVolume <= 10) {
+                    // Alacsony hangerő esetén erősebb zaj elnyomás
+                    noiseFloor = 0.05f + (10 - ::config.data.currVolume) * 0.01f; // 0.05-0.15 tartomány
+                }
+
+                // Zajszint alatti jelek elnyomása
+                if (value < noiseFloor) {
+                    value = 0.0f;
+                }
+
                 float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
 
                 // Szín kiszámítása intenzitás alapján
@@ -833,6 +1041,19 @@ void SpectrumVisualizationComponent::renderRTTYWaterfall(const SharedAudioData &
             int binIndex = (pixelX * AudioProcessorConstants::LOW_RES_BINS) / width;
             if (binIndex < AudioProcessorConstants::LOW_RES_BINS) {
                 float value = data.spectrum.lowResBins[binIndex];
+
+                // Dinamikus zaj elnyomás - hangerő függvénye
+                float noiseFloor = 0.01f; // Alapértelmezett zaj küszöb
+                if (::config.data.currVolume <= 10) {
+                    // Alacsony hangerő esetén erősebb zaj elnyomás
+                    noiseFloor = 0.05f + (10 - ::config.data.currVolume) * 0.01f; // 0.05-0.15 tartomány
+                }
+
+                // Zajszint alatti jelek elnyomása
+                if (value < noiseFloor) {
+                    value = 0.0f;
+                }
+
                 float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
 
                 uint8_t intensity = (uint8_t)(normalizedValue * 15.0f);

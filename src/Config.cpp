@@ -56,9 +56,9 @@ const Config_t DEFAULT_CONFIG = {
     .miniAudioFftConfigRtty = 0.0f,     // RTTY-hez alapértelmezetten Auto Gain
 
     // CW és RTTY beállítások
-    .cwReceiverOffsetHz = 600,      // 600 Hz CW offset
-    .rttyMarkFrequencyHz = 2125.0f, // RTTY Mark frequency
-    .rttyShiftHz = 170.0f,          // RTTY Shift
+    .cwReceiverOffsetHz = 600,   // 600 Hz CW offset
+    .rttyMarkFrequencyHz = 2125, // RTTY Mark frequency
+    .rttyShiftHz = 170,          // RTTY Shift
 
     // Audio processing alapértelmezett beállítások
     .audioModeAM = 1,     // AudioComponentType::SPECTRUM_LOW_RES

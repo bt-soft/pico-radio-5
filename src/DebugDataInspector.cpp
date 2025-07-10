@@ -55,8 +55,7 @@ void DebugDataInspector::printConfigData(const Config_t &configData) {
     DEBUG("  currVolume: %u\n", configData.currVolume);
     DEBUG("  agcGain: %u\n", configData.agcGain);
     DEBUG("  currentAGCgain: %u\n", configData.currentAGCgain);
-    DEBUG("  tftCalibrateData: [%u, %u, %u, %u, %u]\n", configData.tftCalibrateData[0], configData.tftCalibrateData[1], configData.tftCalibrateData[2],
-          configData.tftCalibrateData[3], configData.tftCalibrateData[4]);
+    DEBUG("  tftCalibrateData: [%u, %u, %u, %u, %u]\n", configData.tftCalibrateData[0], configData.tftCalibrateData[1], configData.tftCalibrateData[2], configData.tftCalibrateData[3], configData.tftCalibrateData[4]);
     DEBUG("  tftBackgroundBrightness: %u\n", configData.tftBackgroundBrightness);
     DEBUG("  tftDigitLigth: %s\n", configData.tftDigitLigth ? "true" : "false");
     DEBUG("  screenSaverTimeoutMinutes: %u\n", configData.screenSaverTimeoutMinutes);
@@ -93,8 +92,8 @@ void DebugDataInspector::printConfigData(const Config_t &configData) {
         DEBUG("  miniAudioFftConfigRtty: Manual Gain %.1fx\n", configData.miniAudioFftConfigRtty);
     }
     DEBUG("  cwReceiverOffsetHz: %u\n", configData.cwReceiverOffsetHz);
-    DEBUG("  rttyMarkFrequencyHz: %.1f\n", configData.rttyMarkFrequencyHz);
-    DEBUG("  rttyShiftHz: %.1f\n", configData.rttyShiftHz);
+    DEBUG("  rttyMarkFrequencyHz: %u\n", configData.rttyMarkFrequencyHz);
+    DEBUG("  rttyShiftHz: %u\n", configData.rttyShiftHz);
     DEBUG("====================\n");
 #endif
 }

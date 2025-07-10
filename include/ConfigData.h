@@ -68,8 +68,8 @@ struct Config_t {
     // CW és RTTY beállítások
     uint16_t cwReceiverOffsetHz; // CW vételi eltolás Hz-ben
     // RTTY frekvenciák
-    float rttyMarkFrequencyHz; // RTTY Mark frekvencia Hz-ben
-    float rttyShiftHz;         // RTTY Shift Hz-ben
+    uint16_t rttyMarkFrequencyHz; // RTTY Mark frekvencia Hz-ben
+    uint16_t rttyShiftHz;         // RTTY Shift Hz-ben
 
     // Audio processing beállítások
     uint8_t audioModeAM;   // Utolsó audio mód AM képernyőn (AudioComponentType)

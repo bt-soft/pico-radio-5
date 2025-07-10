@@ -178,6 +178,15 @@ void AudioProcessor::processSpectrum(bool collectOsciSamples) {
     uint32_t loopStartTimeMicros;
     double max_abs_sample_for_auto_gain = 0.0;
 
+    // Debug info oszcilloszkóp mód esetén
+    if (collectOsciSamples) {
+        static uint32_t lastOscStartDebugTime = 0;
+        if (millis() - lastOscStartDebugTime > 5000) {
+            DEBUG("AudioProcessor: Starting oscilloscope sample collection\n");
+            lastOscStartDebugTime = millis();
+        }
+    }
+
     // Ha a gain -1.0f, akkor töröljük a puffereket és visszatérünk
     if (sharedData->gain == -1.0f) {
         mutex_enter_blocking(&sharedData->dataMutex);
@@ -303,6 +312,14 @@ void AudioProcessor::processSpectrum(bool collectOsciSamples) {
         sharedData->oscilloscope.rms = sqrt(rms / AudioProcessorConstants::OSCILLOSCOPE_SAMPLES);
         sharedData->oscilloscope.peak = peak;
         sharedData->oscilloscope.dataReady = true;
+
+        // Debug info minden 3 másodpercben
+        static uint32_t lastOscProcessDebugTime = 0;
+        if (millis() - lastOscProcessDebugTime > 3000) {
+            DEBUG("AudioProcessor OSC: collected_samples=%d, peak=%.1f, rms=%.1f, sample0=%d, sample10=%d\n", osci_sample_idx, peak, sharedData->oscilloscope.rms, sharedData->oscilloscope.samples[0],
+                  sharedData->oscilloscope.samples[10]);
+            lastOscProcessDebugTime = millis();
+        }
     }
 
     sharedData->spectrum.dataReady = true;
@@ -424,6 +441,23 @@ void setBandFilterFrequencies(float lowFreq, float highFreq) {
 void setGain(float gain) {
     g_sharedAudioData.gain = gain;
     DEBUG("AudioProcessorCore1: Erősítés: %.2f\n", gain);
+}
+
+/**
+ * @brief Core1 feldolgozás szüneteltetése (EEPROM műveletek előtt)
+ */
+void pauseCore1() {
+    DEBUG("AudioProcessorCore1: Core1 szüneteltetése EEPROM művelethez\n");
+    g_core1Running = false;
+    delay(50); // Várunk, hogy a Core1 ciklus befejeződjön
+}
+
+/**
+ * @brief Core1 feldolgozás folytatása (EEPROM műveletek után)
+ */
+void resumeCore1() {
+    DEBUG("AudioProcessorCore1: Core1 folytatása EEPROM művelet után\n");
+    g_core1Running = true;
 }
 
 } // namespace AudioProcessorCore1

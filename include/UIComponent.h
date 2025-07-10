@@ -3,10 +3,12 @@
 
 #include <TFT_eSPI.h>
 
+#include "IScreenManager.h"
 #include "UIColorPalette.h"
 #include "defines.h"
 
 // A main.cpp-ben definiálva
+extern IScreenManager *iScreenManager;
 extern TFT_eSPI tft;
 extern uint16_t SCREEN_W;
 extern uint16_t SCREEN_H;
@@ -120,6 +122,18 @@ class UIComponent {
      */
     TFT_eSPI getTft() {
         return ::tft; // Visszaadja a TFT_eSPI példányt, amelyet a UIComponent használ
+    }
+
+    /**
+     * @brief Segédfüggvény a képernyőkezelő ellenőrzésére, hogy van-e aktív dialog
+     * @return true, ha van aktív dialog a jelenlegi képernyőn
+     */
+    bool iscurrentScreenDialogActive() {
+        // Segédfüggvény a dialog állapot ellenőrzéséhez
+        if (::iScreenManager == nullptr) {
+            return false; // Ha nincs képernyőkezelő, akkor nincs aktív dialog
+        }
+        return ::iScreenManager->isCurrentScreenDialogActive();
     }
 
   public:

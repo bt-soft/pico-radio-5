@@ -189,6 +189,16 @@ void setBandFilterFrequencies(float lowFreq, float highFreq);
  * @brief Erősítés beállítása
  */
 void setGain(float gain);
+
+/**
+ * @brief Core1 feldolgozás szüneteltetése (EEPROM műveletek előtt)
+ */
+void pauseCore1();
+
+/**
+ * @brief Core1 feldolgozás folytatása (EEPROM műveletek után)
+ */
+void resumeCore1();
 } // namespace AudioProcessorCore1
 
 // Globális közös adat

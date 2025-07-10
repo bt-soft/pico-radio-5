@@ -41,16 +41,18 @@ class ScreenManager : public IScreenManager {
 
     // Deferred action queue - biztonságos képernyőváltáshoz
     std::queue<DeferredAction> deferredActions;
-    bool processingEvents = false; // Aktuális képernyő lekérdezése
-    std::shared_ptr<UIScreen> getCurrentScreen() const { return currentScreen; }
-
-    // Előző képernyő neve
-    String getPreviousScreenName() const { return previousScreenName; }
+    bool processingEvents = false;
 
     void registerDefaultScreenFactories();
 
   public:
     ScreenManager() : previousScreenName(nullptr), lastActivityTime(millis()) { registerDefaultScreenFactories(); }
+
+    // Aktuális képernyő lekérdezése
+    std::shared_ptr<UIScreen> getCurrentScreen() const { return currentScreen; }
+
+    // Előző képernyő neve
+    String getPreviousScreenName() const { return previousScreenName; }
 
     // Képernyő factory regisztrálása
     void registerScreenFactory(const char *screenName, ScreenFactory factory) { screenFactories[screenName] = factory; }
@@ -183,7 +185,9 @@ class ScreenManager : public IScreenManager {
             // Biztonságos - azonnali váltás
             return immediateGoBack();
         }
-    } // Azonnali visszaváltás - csak biztonságos kontextusban hívható
+    }
+
+    // Azonnali visszaváltás - csak biztonságos kontextusban hívható
     bool immediateGoBack() {
         // Speciális kezelés: ha screensaver-ből jövünk vissza
         if (currentScreen && STREQ(currentScreen->getName(), SCREEN_NAME_SCREENSAVER)) {
@@ -269,6 +273,19 @@ class ScreenManager : public IScreenManager {
 
             currentScreen->loop();
         }
+    }
+
+    /**
+     * segédfüggvény a dialog állapot ellenőrzéséhez
+     */
+    bool isCurrentScreenDialogActive() override {
+
+        auto currentScreen = this->getCurrentScreen();
+        if (currentScreen == nullptr) {
+            return false;
+        }
+
+        return currentScreen->isDialogActive();
     }
 };
 
