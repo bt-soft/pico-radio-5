@@ -38,7 +38,12 @@ AudioProcessor::AudioProcessor(float &gainConfigRef, int audioPin, double target
         binWidthHz_ = (1000000.0f / sampleIntervalMicros_) / currentFftSize_;
         DEBUG("AudioProcessor: Figyelmeztetés - targetSamplingFrequency nulla, tartalék használata.");
     }
-    DEBUG("AudioProcessor: FFT Méret: %d, Cél Fs: %.1f Hz, Minta Intervallum: %lu us, Bin Szélesség: %.2f Hz\n", currentFftSize_, targetSamplingFrequency_, sampleIntervalMicros_, binWidthHz_);
+
+    // Arduino-kompatibilis float-to-string konverzió
+    char fsStr[16], binStr[16];
+    dtostrf(targetSamplingFrequency_, 8, 1, fsStr);
+    dtostrf(binWidthHz_, 8, 2, binStr);
+    DEBUG("AudioProcessor: FFT Méret: %d, Cél Fs: %s Hz, Minta Intervallum: %lu us, Bin Szélesség: %s Hz\n", currentFftSize_, fsStr, sampleIntervalMicros_, binStr);
 
     // Oszcilloszkóp minták inicializálása középpontra (ADC nyers érték)
     for (int i = 0; i < AudioProcessorConstants::MAX_INTERNAL_WIDTH; ++i) {
@@ -148,7 +153,10 @@ bool AudioProcessor::setFftSize(uint16_t newSize) {
         binWidthHz_ = (1000000.0f / sampleIntervalMicros_) / currentFftSize_;
     }
 
-    DEBUG("AudioProcessor: FFT méret módosítva %d-re, új bin szélesség: %.2f Hz\n", currentFftSize_, binWidthHz_);
+    // Arduino-kompatibilis float-to-string konverzió
+    char binWidthStr[16];
+    dtostrf(binWidthHz_, 8, 2, binWidthStr);
+    DEBUG("AudioProcessor: FFT méret módosítva %d-re, új bin szélesség: %s Hz\n", currentFftSize_, binWidthStr);
 
     return true;
 }

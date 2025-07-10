@@ -53,21 +53,32 @@ void debugMemoryInfo() {
 
     // Program memória (flash)
     DEBUG("Flash\t\t\t\t\t\tHeap\n");
-    DEBUG("Total: %d B (%.2f kB)\t\t\t%d B (%.2f kB)\n", FULL_FLASH_SIZE, FULL_FLASH_SIZE / 1024.0, // Flash
-          status.heapSize, status.heapSize / 1024.0                                                 // Heap
-    );
-    DEBUG("Used: %d B (%.2f kB) - %.2f%%\t\t%d B (%.2f kB) - %.2f%%\n", status.programSize, status.programSize / 1024.0, status.programPercent, // Flash
-          status.usedHeap, status.usedHeap / 1024.0, status.usedHeapPercent                                                                     // Heap
-    );
-    DEBUG("Free: %d B (%.2f kB) - %.2f%%\t\t%d B (%.2f kB) - %.2f%%\n", status.freeFlash, status.freeFlash / 1024.0, status.freeFlashPercent, // Flash
-          status.freeHeap, status.freeHeap / 1024.0, status.freeHeapPercent                                                                   // Heap
-    );
 
-    DEBUG("Heap usage:\n changed(from prev): %.2f kB, ave: %.2f kB - (%d/%d)\n",
-          usedHeapMemoryMonitor.getChangeFromPreviousMeasurement() / 1024.0, // Az előző méréshez képesti változás
-          usedHeapMemoryMonitor.getAverageUsedHeap() / 1024.0,               // average
-          usedHeapMemoryMonitor.index, MEASUREMENTS_COUNT                    // max grow
-    );
+    // Arduino-kompatibilis float-to-string konverzió
+    char flashTotalKb[16], heapTotalKb[16];
+    char flashUsedKb[16], flashUsedPct[16], heapUsedKb[16], heapUsedPct[16];
+    char flashFreeKb[16], flashFreePct[16], heapFreeKb[16], heapFreePct[16];
+    char heapChangeKb[16], heapAveKb[16];
+
+    dtostrf(FULL_FLASH_SIZE / 1024.0, 8, 2, flashTotalKb);
+    dtostrf(status.heapSize / 1024.0, 8, 2, heapTotalKb);
+    DEBUG("Total: %d B (%s kB)\t\t\t%d B (%s kB)\n", FULL_FLASH_SIZE, flashTotalKb, status.heapSize, heapTotalKb);
+
+    dtostrf(status.programSize / 1024.0, 8, 2, flashUsedKb);
+    dtostrf(status.programPercent, 6, 2, flashUsedPct);
+    dtostrf(status.usedHeap / 1024.0, 8, 2, heapUsedKb);
+    dtostrf(status.usedHeapPercent, 6, 2, heapUsedPct);
+    DEBUG("Used: %d B (%s kB) - %s%%\t\t%d B (%s kB) - %s%%\n", status.programSize, flashUsedKb, flashUsedPct, status.usedHeap, heapUsedKb, heapUsedPct);
+
+    dtostrf(status.freeFlash / 1024.0, 8, 2, flashFreeKb);
+    dtostrf(status.freeFlashPercent, 6, 2, flashFreePct);
+    dtostrf(status.freeHeap / 1024.0, 8, 2, heapFreeKb);
+    dtostrf(status.freeHeapPercent, 6, 2, heapFreePct);
+    DEBUG("Free: %d B (%s kB) - %s%%\t\t%d B (%s kB) - %s%%\n", status.freeFlash, flashFreeKb, flashFreePct, status.freeHeap, heapFreeKb, heapFreePct);
+
+    dtostrf(usedHeapMemoryMonitor.getChangeFromPreviousMeasurement() / 1024.0, 8, 2, heapChangeKb);
+    dtostrf(usedHeapMemoryMonitor.getAverageUsedHeap() / 1024.0, 8, 2, heapAveKb);
+    DEBUG("Heap usage:\n changed(from prev): %s kB, ave: %s kB - (%d/%d)\n", heapChangeKb, heapAveKb, usedHeapMemoryMonitor.index, MEASUREMENTS_COUNT);
 
     DEBUG("---\n");
     DEBUG("\n");

@@ -14,7 +14,7 @@ const uint16_t colors1[16] = {0x0000, 0x1000, 0x2000, 0x4000, 0x8000, 0xC000, 0x
 namespace AnalyzerConstants {
 constexpr float ANALYZER_MIN_FREQ_HZ = 300.0f;
 constexpr float ANALYZER_MAX_FREQ_HZ = 15000.0f;
-constexpr float AMPLITUDE_SCALE = 1500.0f;      // Skálázási faktor a vizuális megjelenítéshez
+constexpr float AMPLITUDE_SCALE = 40.0f;        // Eredeti radio-2 érték (1500.0f -> 40.0f)
 constexpr uint16_t WATERFALL_TOP_Y = 20;        // A vízesés diagram tetejének Y koordinátája
 constexpr uint16_t ANALYZER_BOTTOM_MARGIN = 20; // Alsó margó a skálának és a vízesésnek
 }; // namespace AnalyzerConstants
@@ -119,6 +119,42 @@ void SpectrumVisualizationComponent::draw() {
     // Mode indicator megjelenítése ha szükséges
     if (modeIndicatorVisible_ && millis() > modeIndicatorHideTime_) {
         modeIndicatorVisible_ = false;
+        // Töröljük a területet ahol az indicator volt
+        String modeText = "";
+        switch (currentMode_) {
+            case DisplayMode::Off:
+                modeText = "Off";
+                break;
+            case DisplayMode::SpectrumLowRes:
+                modeText = "FFT LowRes";
+                break;
+            case DisplayMode::SpectrumHighRes:
+                modeText = "FFT HighRes";
+                break;
+            case DisplayMode::Oscilloscope:
+                modeText = "Scope";
+                break;
+            case DisplayMode::Waterfall:
+                modeText = "WaterFall";
+                break;
+            case DisplayMode::Envelope:
+                modeText = "Envelope";
+                break;
+            case DisplayMode::CWWaterfall:
+                modeText = "CW WaterFall";
+                break;
+            case DisplayMode::RTTYWaterfall:
+                modeText = "RTTY WaterFall";
+                break;
+            default:
+                modeText = "Unknown";
+                break;
+        }
+        int textWidth = modeText.length() * 6;
+        int textHeight = 8;
+        int indicatorX = bounds.x + (bounds.width - textWidth) / 2;
+        int indicatorY = bounds.y + bounds.height - textHeight - 4;
+        tft.fillRect(indicatorX - 2, indicatorY - 2, textWidth + 4, textHeight + 4, TFT_BLACK);
         needsForceRedraw_ = true;
     }
 
@@ -146,8 +182,9 @@ bool SpectrumVisualizationComponent::handleTouch(const TouchEvent &touch) {
  * @brief Keret rajzolása
  */
 void SpectrumVisualizationComponent::drawFrame() {
-    // Egyszerű keret rajzolás
-    tft.drawRect(bounds.x, bounds.y, bounds.width, bounds.height, TFT_WHITE);
+    // Szép keret rajzolás
+    tft.drawRect(bounds.x - 1, bounds.y - 1, bounds.width + 2, bounds.height + 2, TFT_WHITE);
+    tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, TFT_BLACK);
 }
 
 /**
@@ -177,6 +214,10 @@ void SpectrumVisualizationComponent::manageSpriteForMode(DisplayMode modeToPrepa
     // Teljes terület törlése mód váltáskor az előző grafikon eltávolításához
     if (modeToPrepareFor != lastRenderedMode_) {
         tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, TFT_BLACK);
+        // Sprite is törlése ha létezett
+        if (spriteCreated_) {
+            sprite_->fillSprite(TFT_BLACK);
+        }
     }
 }
 
@@ -229,29 +270,6 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
 /**
  * @brief Aktuális mód szöveges neve
  */
-const char *SpectrumVisualizationComponent::getModeText() const {
-    switch (currentMode_) {
-        case DisplayMode::Off:
-            return "Off";
-        case DisplayMode::SpectrumLowRes:
-            return "Spectrum Low";
-        case DisplayMode::SpectrumHighRes:
-            return "Spectrum High";
-        case DisplayMode::Oscilloscope:
-            return "Oscilloscope";
-        case DisplayMode::Envelope:
-            return "Envelope";
-        case DisplayMode::Waterfall:
-            return "Waterfall";
-        case DisplayMode::CWWaterfall:
-            return "CW Waterfall";
-        case DisplayMode::RTTYWaterfall:
-            return "RTTY Waterfall";
-        default:
-            return "Unknown";
-    }
-}
-
 /**
  * @brief Kezdeti mód beállítása
  */
@@ -346,8 +364,8 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
         fft_bin_index = constrain(fft_bin_index, 0, static_cast<int>(actualFftSize / 2 - 1));
 
         double magnitude = magnitudeData[fft_bin_index];
-        // Javított magnitúdó skálázás (5x erősítés a jobb láthatóságért)
-        int scaled_magnitude = static_cast<int>((magnitude * 5.0) / (AnalyzerConstants::AMPLITUDE_SCALE * 0.2));
+        // Original radio-2 skálázás
+        int scaled_magnitude = static_cast<int>(magnitude / AnalyzerConstants::AMPLITUDE_SCALE);
         scaled_magnitude = constrain(scaled_magnitude, 0, graphH - 1);
 
         if (scaled_magnitude > 0) {
@@ -449,9 +467,9 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
     for (int band_idx = 0; band_idx < bands_to_display_on_screen; band_idx++) {
         int x_pos_for_bar = x_offset + bar_total_width_pixels_dynamic * band_idx;
 
-        // Javított magnitúdó skálázás (5x erősítés a jobb láthatóságért)
-        double magnitude = band_magnitudes[band_idx] * 5.0;
-        int dsize = static_cast<int>(magnitude / (AnalyzerConstants::AMPLITUDE_SCALE * 0.2)); // Kisebb osztó = nagyobb oszlop
+        // Javított magnitúdó skálázás (original radio-2 alapján)
+        double magnitude = band_magnitudes[band_idx];
+        int dsize = static_cast<int>(magnitude / AnalyzerConstants::AMPLITUDE_SCALE);
         dsize = constrain(dsize, 0, actual_low_res_peak_max_height);
 
         if (dsize > Rpeak_[band_idx] && band_idx < MAX_SPECTRUM_BANDS) {
@@ -484,7 +502,7 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
 }
 
 /**
- * @brief Oszcilloszkóp renderelése (sprite-tal, javított stabilitással)
+ * @brief Oszcilloszkóp renderelése (eredeti radio-2 alapján, sprite-tal adaptálva)
  */
 void SpectrumVisualizationComponent::renderOscilloscope() {
     if (!pAudioProcessor_)
@@ -498,7 +516,7 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
         return;
     }
 
-    // Sprite törlése (anti-flicker)
+    // Sprite törlése
     sprite_->fillSprite(TFT_BLACK);
 
     const int *osciData = pAudioProcessor_->getOscilloscopeData();
@@ -507,44 +525,43 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
         return;
     }
 
-    // Kiszámoljuk az aktuális oszcilloszkóp minták átlagát (DC komponens)
+    // DC komponens számítása - pontosan az eredeti radio-2 algoritmus alapján
     double sum_samples = 0.0;
-    for (int k = 0; k < AudioProcessorConstants::MAX_INTERNAL_WIDTH; ++k) {
+    const int MAX_INTERNAL_WIDTH = AudioProcessorConstants::MAX_INTERNAL_WIDTH; // 320
+    for (int k = 0; k < MAX_INTERNAL_WIDTH; ++k) {
         sum_samples += osciData[k];
     }
-    double dc_offset_correction = sum_samples / AudioProcessorConstants::MAX_INTERNAL_WIDTH;
+    double dc_offset_correction = (MAX_INTERNAL_WIDTH > 0 && osciData) ? sum_samples / MAX_INTERNAL_WIDTH : 2048.0;
 
     int actual_osci_samples_to_draw = bounds.width;
-    // Csökkentett érzékenységi faktor a stabilitásért
-    constexpr float OSCI_SENSITIVITY_FACTOR = 15.0f;
+    // --- Érzékenységi faktor meghatározása ---
+    // Az oszcilloszkóp mindig a manuális érzékenységi faktort használja,
+    // mivel az osciSamples nyers ADC értékeket tartalmaz, függetlenül az FFT erősítési módjától.
+    const float OSCI_SENSITIVITY_FACTOR = 25.0f;
     float current_sensitivity_factor = OSCI_SENSITIVITY_FACTOR;
 
     int prev_x = -1, prev_y = -1;
 
     for (int i = 0; i < actual_osci_samples_to_draw; i++) {
-        int num_available_samples = AudioProcessorConstants::MAX_INTERNAL_WIDTH;
+        int num_available_samples = MAX_INTERNAL_WIDTH;
         if (num_available_samples == 0)
             continue; // Ha nincs minta, ne csináljunk semmit
 
-        // Minták leképezése javított módon
+        // Minták leképezése a rendelkezésre álló MAX_INTERNAL_WIDTH-ből a tényleges 'width'-re
         int sample_idx = (i * (num_available_samples - 1)) / std::max(1, (actual_osci_samples_to_draw - 1));
         sample_idx = constrain(sample_idx, 0, num_available_samples - 1);
 
         int raw_sample = osciData[sample_idx];
-
-        // ADC érték (0-4095) átalakítása a KISZÁMÍTOTT DC KÖZÉPPONTHOZ képest
+        // ADC érték (0-4095) átalakítása a KISZÁMÍTOTT DC KÖZÉPPONTHOZ képest,
+        // majd skálázás az OSCI_SENSITIVITY_FACTOR-ral és a grafikon magasságára
         double sample_deviation = (static_cast<double>(raw_sample) - dc_offset_correction);
-
-        // Korlátozás a túlvezérelt jelekre
-        sample_deviation = constrain(sample_deviation, -1024.0, 1024.0);
-
         double gain_adjusted_deviation = sample_deviation * current_sensitivity_factor;
 
         // Skálázás a grafikon felére (mivel a jel a középvonal körül ingadozik)
-        double scaled_y_deflection = gain_adjusted_deviation * (static_cast<double>(graphH) / 2.0 - 1.0) / 1024.0;
+        double scaled_y_deflection = gain_adjusted_deviation * (static_cast<double>(graphH) / 2.0 - 1.0) / 2048.0; // A 2048.0 itt a maximális elméleti ADC eltérésre skáláz
 
         int y_pos = graphH / 2 - static_cast<int>(round(scaled_y_deflection));
-        y_pos = constrain(y_pos, 0, graphH - 1); // Korlátozás a sprite területére
+        y_pos = constrain(y_pos, 0, graphH - 1); // Korlátozás a grafikon területére
         int x_pos = i;
 
         if (prev_x != -1) {
@@ -730,22 +747,53 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
     if (!modeIndicatorVisible_)
         return;
 
-    const char *modeText = getModeText();
+    int indicatorH = getIndicatorHeight();
+    if (bounds.width < 20 || indicatorH < 8)
+        return;
 
-    // Mód felirat pozicionálása - ALUL középen
-    int textWidth = strlen(modeText) * 6; // Hozzávetőleges
-    int textHeight = 8;
-    int indicatorX = bounds.x + (bounds.width - textWidth) / 2; // Középre igazítás
-    int indicatorY = bounds.y + bounds.height - textHeight - 4; // Alsó szélhez közel
-
-    // Háttér rajzolása
-    tft.fillRect(indicatorX - 2, indicatorY - 2, textWidth + 4, textHeight + 4, TFT_BLACK);
-    tft.drawRect(indicatorX - 2, indicatorY - 2, textWidth + 4, textHeight + 4, TFT_WHITE);
-
-    // Szöveg
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.setFreeFont();
     tft.setTextSize(1);
-    tft.drawString(modeText, indicatorX, indicatorY);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK); // Background black, this clears the previous
+    tft.setTextDatum(BC_DATUM);              // Bottom-center alignment
+
+    String modeText = "";
+    switch (currentMode_) {
+        case DisplayMode::Off:
+            modeText = "Off";
+            break;
+        case DisplayMode::SpectrumLowRes:
+            modeText = "FFT LowRes";
+            break;
+        case DisplayMode::SpectrumHighRes:
+            modeText = "FFT HighRes";
+            break;
+        case DisplayMode::Oscilloscope:
+            modeText = "Scope";
+            break;
+        case DisplayMode::Waterfall:
+            modeText = "WaterFall";
+            break;
+        case DisplayMode::Envelope:
+            modeText = "Envelope";
+            break;
+        case DisplayMode::CWWaterfall:
+            modeText = "CW WaterFall";
+            break;
+        case DisplayMode::RTTYWaterfall:
+            modeText = "RTTY WaterFall";
+            break;
+        default:
+            modeText = "Unknown";
+            break;
+    }
+
+    // Clear mode indicator area explicitly before text drawing - matching radio-2
+    int indicatorY = bounds.y + bounds.height - indicatorH;
+    tft.fillRect(bounds.x, indicatorY, bounds.width, indicatorH, TFT_BLACK);
+
+    // Draw text at component bottom, center - matching radio-2 coordinates
+    // Y coordinate will be the text baseline
+    tft.drawString(modeText, bounds.x + bounds.width / 2, bounds.y + bounds.height);
 }
 
 /**
