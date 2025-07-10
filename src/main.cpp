@@ -32,9 +32,6 @@ uint16_t SCREEN_H;
 #include "Si4735Manager.h"
 Si4735Manager *pSi4735Manager = nullptr; // Si4735Manager: NEM lehet (hardware inicializálás miatt) statikus, mert HW inicializálások is vannak benne
 
-//------------------ Audio Processor (Core1)
-#include "AudioProcessor.h"
-
 //-------------------- Screens
 // Globális képernyőkezelő pointer - inicializálás a setup()-ban történik
 #include "ScreenManager.h"
@@ -217,11 +214,7 @@ void setup() {
     // Lépés 7: Audio Analyzer inicializálása (Core1)
     splash.updateProgress(7, 8, "Starting audio analyzer...");
 
-    // Core1 audio feldolgozó indítása
-    AudioProcessorCore1::initializeCore1(&g_sharedAudioData);
-    delay(100); // Várunk a core1 inicializálására
-
-    // Lépés 8: Finalizálás
+        // Lépés 8: Finalizálás
     splash.updateProgress(8, 8, "Starting up...");
 
     // ScreenManager inicializálása itt, amikor minden más már kész

@@ -3,7 +3,6 @@
 
 #include "CommonVerticalButtons.h"
 #include "ScreenRadioBase.h"
-#include "SpectrumVisualizationComponent.h"
 
 class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<ScreenAM> {
 
@@ -179,22 +178,6 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
     void handleStepButton(const UIButton::ButtonEvent &event);
 
   private:
-    // ===================================================================
-    // Audio spektrum vizualizáció komponens
-    // ===================================================================
-
-    /// Audio spektrum vizualizációs komponens - AM audio feldolgozás megjelenítése
-    std::shared_ptr<SpectrumVisualizationComponent> spectrumComponent;
-
-    /**
-     * @brief Létrehozza a spektrum vizualizációs komponenst AM módhoz
-     * @param spectrumBounds A spektrum komponens határai
-     */
-    inline void createSpectrumComponent(const Rect &spectrumBounds) {
-        // AM módhoz 6kHz maximális frekvencia
-        spectrumComponent = std::make_shared<SpectrumVisualizationComponent>(spectrumBounds.x, spectrumBounds.y, spectrumBounds.width, spectrumBounds.height, SpectrumVisualizationComponent::RadioMode::AM);
-        addChild(spectrumComponent);
-    }
 };
 
 #endif // __SCREEN_AM_H

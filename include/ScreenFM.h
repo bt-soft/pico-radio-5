@@ -4,7 +4,6 @@
 #include "CommonVerticalButtons.h"
 #include "RDSComponent.h"
 #include "ScreenRadioBase.h"
-#include "SpectrumVisualizationComponent.h"
 #include "StereoIndicator.h"
 
 /**
@@ -189,22 +188,6 @@ class ScreenFM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
         addChild(rdsComponent);
     }
 
-    // ===================================================================
-    // Audio spektrum vizualizáció komponens
-    // ===================================================================
-
-    /// Audio spektrum vizualizációs komponens - FM audio feldolgozás megjelenítése
-    std::shared_ptr<SpectrumVisualizationComponent> spectrumComponent;
-
-    /**
-     * @brief Létrehozza a spektrum vizualizációs komponenst
-     * @param spectrumBounds A spektrum komponens határai
-     */
-    inline void createSpectrumComponent(const Rect &spectrumBounds) {
-        // FM módhoz 15kHz maximális frekvencia
-        spectrumComponent = std::make_shared<SpectrumVisualizationComponent>(spectrumBounds.x, spectrumBounds.y, spectrumBounds.width, spectrumBounds.height, SpectrumVisualizationComponent::RadioMode::FM);
-        addChild(spectrumComponent);
-    }
 
     /**
      * @brief RDS cache törlése frekvencia változáskor

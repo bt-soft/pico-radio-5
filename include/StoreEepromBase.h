@@ -6,12 +6,6 @@
 #include "defines.h"
 #include "utils.h"
 
-// Forward deklaráció az AudioProcessorCore1 namespace-hez
-namespace AudioProcessorCore1 {
-void pauseCore1();
-void resumeCore1();
-} // namespace AudioProcessorCore1
-
 #ifndef EEPROM_SIZE
 #define EEPROM_SIZE 2048 // Alapértelmezett 2K méret (512-4096 között módosítható)
 #endif
@@ -72,16 +66,10 @@ template <typename T> class StoreEepromBase {
 
         DEBUG("[%s] Adatok mentése EEPROM %d címre (%d bájt)...", className, address, sizeof(T));
 
-        // Core1 szüneteltetése az EEPROM mentés előtt
-        AudioProcessorCore1::pauseCore1();
-
         EEPROM.put(address, data);
         EEPROM.put(address + sizeof(T), crc);
 
         bool commitSuccess = EEPROM.commit();
-
-        // Core1 folytatása az EEPROM mentés után
-        AudioProcessorCore1::resumeCore1();
 
         if (commitSuccess) {
             DEBUG("Sikeres (CRC: %d)\n", crc);
