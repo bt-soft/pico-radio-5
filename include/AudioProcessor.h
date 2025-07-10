@@ -23,7 +23,7 @@ const float AUTO_GAIN_RELEASE_COEFF = 0.01f; // Lassú release
 
 // Oszcilloszkóp konstansok
 const int MAX_INTERNAL_WIDTH = 320;
-const int OSCI_SAMPLE_DECIMATION_FACTOR = 2;
+const int OSCI_SAMPLE_DECIMATION_FACTOR = 1; // Csökkentve 2-ről 1-re több minta gyűjtéséhez
 
 // Spektrum konstansok
 const float LOW_FREQ_ATTENUATION_THRESHOLD_HZ = 500.0f;

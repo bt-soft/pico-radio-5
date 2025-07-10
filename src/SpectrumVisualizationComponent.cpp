@@ -14,7 +14,7 @@ const uint16_t colors1[16] = {0x0000, 0x1000, 0x2000, 0x4000, 0x8000, 0xC000, 0x
 namespace AnalyzerConstants {
 constexpr float ANALYZER_MIN_FREQ_HZ = 300.0f;
 constexpr float ANALYZER_MAX_FREQ_HZ = 15000.0f;
-constexpr float AMPLITUDE_SCALE = 25.0f;        // Csökkentett érték a bar-ok amplitúdójának növeléséhez (40.0f -> 25.0f)
+constexpr float AMPLITUDE_SCALE = 60.0f;        // Tovább növelt érték a bar-ok túlvezérlésének elkerüléséhez
 constexpr uint16_t WATERFALL_TOP_Y = 20;        // A vízesés diagram tetejének Y koordinátája
 constexpr uint16_t ANALYZER_BOTTOM_MARGIN = 20; // Alsó margó a skálának és a vízesésnek
 }; // namespace AnalyzerConstants
@@ -29,8 +29,9 @@ const uint16_t SpectrumVisualizationComponent::WATERFALL_COLORS[16] = {0x0000, 0
  */
 SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode)
     : UIComponent(Rect(x, y, w, h)), radioMode_(radioMode), currentMode_(DisplayMode::Off), lastRenderedMode_(DisplayMode::Off), needsForceRedraw_(true), modeIndicatorVisible_(false), modeIndicatorDrawn_(false),
-      modeIndicatorHideTime_(0), lastTouchTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM), envelopeLastSmoothedValue_(0.0f), sprite_(nullptr),
-      spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0), pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f) {
+      frequencyLabelsDrawn_(false), modeIndicatorHideTime_(0), lastTouchTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM),
+      envelopeLastSmoothedValue_(0.0f), sprite_(nullptr), spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0), pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING),
+      currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f) {
 
     // AudioProcessor inicializálása a megfelelő config referenciával
     float &gainConfigRef = (radioMode == RadioMode::AM) ? config.data.miniAudioFftConfigAm : config.data.miniAudioFftConfigFm;
@@ -184,11 +185,14 @@ void SpectrumVisualizationComponent::manageSpriteForMode(DisplayMode modeToPrepa
 
     // Teljes terület törlése mód váltáskor az előző grafikon eltávolításához
     if (modeToPrepareFor != lastRenderedMode_) {
-        tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, TFT_BLACK);
+        // Kiterjesztett terület törlése a frekvencia feliratok számára is
+        tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height + 20, TFT_BLACK);
         // Sprite is törlése ha létezett
         if (spriteCreated_) {
             sprite_->fillSprite(TFT_BLACK);
         }
+        // Flag resetelése mód váltáskor
+        frequencyLabelsDrawn_ = false;
     }
 }
 
@@ -196,7 +200,7 @@ void SpectrumVisualizationComponent::manageSpriteForMode(DisplayMode modeToPrepa
  * @brief Grafikon magasságának számítása (teljes keret magasság)
  */
 int SpectrumVisualizationComponent::getGraphHeight() const {
-    return bounds.height; // Teljes magasság használata, a módkijelző a kereten kívül lesz
+    return bounds.height - 1; // 1 pixel eltávolítása az alsó border megőrzéséhez
 }
 
 /**
@@ -358,7 +362,7 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
     }
 
     // Sprite kirakása a képernyőre
-    sprite_->pushSprite(bounds.x, bounds.y - 1);
+    sprite_->pushSprite(bounds.x, bounds.y);
 }
 
 /**
@@ -516,7 +520,7 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
     const float OSCI_SENSITIVITY_FACTOR = 25.0f;
     float current_sensitivity_factor = OSCI_SENSITIVITY_FACTOR;
 
-    int prev_x = -1, prev_y = -1;
+    int prev_x = -1, prev_y = -1, prev_sample_idx = -1;
 
     for (int i = 0; i < actual_osci_samples_to_draw; i++) {
         int num_available_samples = MAX_INTERNAL_WIDTH;
@@ -524,7 +528,12 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
             continue; // Ha nincs minta, ne csináljunk semmit
 
         // Minták leképezése a rendelkezésre álló MAX_INTERNAL_WIDTH-ből a tényleges 'width'-re
-        int sample_idx = (i * (num_available_samples - 1)) / std::max(1, (actual_osci_samples_to_draw - 1));
+        int sample_idx;
+        if (actual_osci_samples_to_draw == 1) {
+            sample_idx = 0;
+        } else {
+            sample_idx = (i * (num_available_samples - 1)) / (actual_osci_samples_to_draw - 1);
+        }
         sample_idx = constrain(sample_idx, 0, num_available_samples - 1);
 
         int raw_sample = osciData[sample_idx];
@@ -540,13 +549,15 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
         y_pos = constrain(y_pos, 0, graphH - 1); // Korlátozás a grafikon területére
         int x_pos = i;
 
-        if (prev_x != -1) {
+        if (prev_x != -1 && i > 0 && sample_idx != prev_sample_idx) {
+            // Csak akkor rajzolunk vonalat, ha ténylegesen másik mintához jutottunk
             sprite_->drawLine(prev_x, prev_y, x_pos, y_pos, TFT_GREEN);
-        } else {
+        } else if (prev_x == -1) {
             sprite_->drawPixel(x_pos, y_pos, TFT_GREEN); // Első pont kirajzolása
         }
         prev_x = x_pos;
         prev_y = y_pos;
+        prev_sample_idx = sample_idx;
     }
 
     // Sprite kirakása a képernyőre
@@ -585,9 +596,9 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     const int max_bin_for_env = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_env_range = std::max(1, max_bin_for_env - min_bin_for_env + 1);
 
-    // 2. Új adatok betöltése (radio-2 alapján, eredeti erősítéssel)
-    // Az Envelope módhoz az magnitudeData értékeit használjuk az eredeti erősítéssel.
-    constexpr float ENVELOPE_INPUT_GAIN = 0.05f; // Eredeti érték a radio-2-ből
+    // 2. Új adatok betöltése (radio-2 alapján, csökkentett erősítéssel)
+    // Az Envelope módhoz az magnitudeData értékeit használjuk csökkentett erősítéssel.
+    constexpr float ENVELOPE_INPUT_GAIN = 0.01f; // Csökkentett érték a túlvezérlés elkerüléséhez
     for (int r = 0; r < bounds.height; ++r) {    // Teljes bounds.height
         // 'r' (0 to bounds.height-1) leképezése FFT bin indexre a szűkített tartományon belül
         int fft_bin_index = min_bin_for_env + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_env_range - 1)));
@@ -604,9 +615,9 @@ void SpectrumVisualizationComponent::renderEnvelope() {
 
     constexpr float ENVELOPE_SMOOTH_FACTOR = 0.25f;
 
-    // Először rajzoljunk egy vékony központi vízszintes vonalat (alapvonal)
+    // Először rajzoljunk egy vékony központi vízszintes vonalat (alapvonal) - mindig látható
     int yCenter_on_sprite = graphH / 2;
-    sprite_->drawFastHLine(0, yCenter_on_sprite, bounds.width, TFT_DARKGREY);
+    sprite_->drawFastHLine(0, yCenter_on_sprite, bounds.width, TFT_GREEN);
 
     for (int c = 0; c < bounds.width; ++c) {
         int max_val_in_col = 0;
@@ -649,8 +660,8 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         }
     }
 
-    // Sprite kirakása a képernyőre (1px-el feljebb tolva, ugyanúgy mint a többi mód)
-    sprite_->pushSprite(bounds.x, bounds.y - 1);
+    // Sprite kirakása a képernyőre
+    sprite_->pushSprite(bounds.x, bounds.y);
 }
 
 /**
@@ -691,8 +702,8 @@ void SpectrumVisualizationComponent::renderWaterfall() {
         int fft_bin_index = min_bin_for_wf + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_wf_range - 1)));
         fft_bin_index = constrain(fft_bin_index, min_bin_for_wf, max_bin_for_wf);
 
-        // Waterfall input scale (radio-2 alapján)
-        constexpr float WATERFALL_INPUT_SCALE = 0.1f; // Csökkentve, hogy ne legyen túl fehér auto gain mellett
+        // Waterfall input scale (radio-2 alapján, csökkentett érték)
+        constexpr float WATERFALL_INPUT_SCALE = 0.03f; // További csökkentés a túlvezérlés elkerüléséhez
         wabuf[r][bounds.width - 1] = static_cast<uint8_t>(constrain(magnitudeData[fft_bin_index] * WATERFALL_INPUT_SCALE, 0.0, 255.0));
     }
 
@@ -1026,7 +1037,10 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     // Sprite kirakása a képernyőre (radio-2 mintájára)
     sprite_->pushSprite(bounds.x, bounds.y);
 
-    // Frekvencia címkék kirajzolása közvetlenül a TFT-re (sprite kívül)
+    // Explicit alsó border kirajzolása
+    tft.drawFastHLine(bounds.x, bounds.y + bounds.height - 1, bounds.width, TFT_WHITE);
+
+    // Frekvencia címkék kirajzolása közvetlenül a TFT-re (sprite kívül) - minden rendereléskor
     if (currentTuningAidType_ != TuningAidType::OFF_DECODER) {
         float min_freq_displayed = currentTuningAidMinFreqHz_;
         float max_freq_displayed = currentTuningAidMaxFreqHz_;
@@ -1034,12 +1048,17 @@ void SpectrumVisualizationComponent::renderTuningAid() {
 
         if (displayed_span_hz > 0) {
             if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
-                // CW frekvencia címke
+                // CW frekvencia címke - törli a területet és biztosan látható pozícióban
                 int line_x = bounds.x + bounds.width / 2;
+                int label_y = bounds.y + bounds.height + 5;
+
+                // Terület törlése a felirat körül
+                tft.fillRect(line_x - 25, label_y - 8, 50, 10, TFT_BLACK);
+
                 tft.setTextColor(TFT_GREEN, TFT_BLACK);
                 tft.setTextSize(1);
                 tft.setTextDatum(BC_DATUM);
-                tft.drawString(String(static_cast<int>(config.data.cwReceiverOffsetHz)) + "Hz", line_x, bounds.y + bounds.height - 2);
+                tft.drawString(String(static_cast<int>(config.data.cwReceiverOffsetHz)) + "Hz", line_x, label_y);
 
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
                 float f_mark = config.data.rttyMarkFrequencyHz;
@@ -1050,11 +1069,15 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                     float ratio_space = (f_space - min_freq_displayed) / displayed_span_hz;
                     int line_x_space = bounds.x + static_cast<int>(std::round(ratio_space * (bounds.width - 1)));
                     line_x_space = constrain(line_x_space, bounds.x, bounds.x + bounds.width - 1);
+                    int label_y = bounds.y + bounds.height + 5;
+
+                    // Terület törlése a felirat körül
+                    tft.fillRect(line_x_space - 25, label_y - 8, 50, 10, TFT_BLACK);
 
                     tft.setTextColor(TFT_CYAN, TFT_BLACK);
                     tft.setTextSize(1);
                     tft.setTextDatum(BC_DATUM);
-                    tft.drawString(String(static_cast<int>(round(f_space))) + "Hz", line_x_space, bounds.y + bounds.height - 2);
+                    tft.drawString(String(static_cast<int>(round(f_space))) + "Hz", line_x_space, label_y);
                 }
 
                 // Mark címke
@@ -1062,11 +1085,15 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                     float ratio_mark = (f_mark - min_freq_displayed) / displayed_span_hz;
                     int line_x_mark = bounds.x + static_cast<int>(std::round(ratio_mark * (bounds.width - 1)));
                     line_x_mark = constrain(line_x_mark, bounds.x, bounds.x + bounds.width - 1);
+                    int label_y = bounds.y + bounds.height + 5;
+
+                    // Terület törlése a felirat körül
+                    tft.fillRect(line_x_mark - 25, label_y - 8, 50, 10, TFT_BLACK);
 
                     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
                     tft.setTextSize(1);
                     tft.setTextDatum(BC_DATUM);
-                    tft.drawString(String(static_cast<int>(round(f_mark))) + "Hz", line_x_mark, bounds.y + bounds.height - 2);
+                    tft.drawString(String(static_cast<int>(round(f_mark))) + "Hz", line_x_mark, label_y);
                 }
             }
         }
