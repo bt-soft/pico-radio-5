@@ -10,11 +10,29 @@ const uint16_t colors0[16] = {0x0000, 0x000F, 0x001F, 0x081F, 0x0810, 0x0800, 0x
 const uint16_t colors1[16] = {0x0000, 0x1000, 0x2000, 0x4000, 0x8000, 0xC000, 0xF800, 0xF8A0, 0xF9C0, 0xFD20, 0xFFE0, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF}; // Hot
 }; // namespace FftDisplayConstants
 
+// ===== ÉRZÉKENYSÉGI / AMPLITÚDÓ SKÁLÁZÁSI KONSTANSOK =====
+// Minden grafikon mód érzékenységét és amplitúdó skálázását itt lehet módosítani
+namespace SensitivityConstants {
+// Spektrum módok (LowRes és HighRes) - magasabb érték = alacsonyabb érzékenység
+constexpr float AMPLITUDE_SCALE = 120.0f; // Spektrum bar-ok amplitúdó skálázása
+
+// Oszcilloszkóp mód - magasabb érték = nagyobb érzékenység
+constexpr float OSCI_SENSITIVITY_FACTOR = 25.0f; // Oszcilloszkóp jel erősítése
+
+// Envelope mód - alacsonyabb érték = kisebb amplitúdó
+constexpr float ENVELOPE_INPUT_GAIN = 0.01f; // Envelope amplitúdó erősítése
+
+// Waterfall mód - alacsonyabb érték = halványabb színek
+constexpr float WATERFALL_INPUT_SCALE = 0.03f; // Waterfall intenzitás skálázása
+
+// CW/RTTY hangolási segéd - alacsonyabb érték = halványabb színek
+constexpr float TUNING_AID_INPUT_SCALE = 0.03f; // Hangolási segéd intenzitás skálázása
+}; // namespace SensitivityConstants
+
 // Analizátor konstansok
 namespace AnalyzerConstants {
 constexpr float ANALYZER_MIN_FREQ_HZ = 300.0f;
 constexpr float ANALYZER_MAX_FREQ_HZ = 15000.0f;
-constexpr float AMPLITUDE_SCALE = 60.0f;        // Tovább növelt érték a bar-ok túlvezérlésének elkerüléséhez
 constexpr uint16_t WATERFALL_TOP_Y = 20;        // A vízesés diagram tetejének Y koordinátája
 constexpr uint16_t ANALYZER_BOTTOM_MARGIN = 20; // Alsó margó a skálának és a vízesésnek
 }; // namespace AnalyzerConstants
@@ -185,14 +203,25 @@ void SpectrumVisualizationComponent::manageSpriteForMode(DisplayMode modeToPrepa
 
     // Teljes terület törlése mód váltáskor az előző grafikon eltávolításához
     if (modeToPrepareFor != lastRenderedMode_) {
-        // Kiterjesztett terület törlése a frekvencia feliratok számára is
-        tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height + 20, TFT_BLACK);
+        // Csak a belső területet töröljük, de az alsó bordert meghagyjuk
+        tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height - 1, TFT_BLACK);
+        // Frekvencia feliratok területének törlése
+        tft.fillRect(bounds.x - 30, bounds.y + bounds.height + 1, bounds.width + 60, 15, TFT_BLACK);
         // Sprite is törlése ha létezett
         if (spriteCreated_) {
             sprite_->fillSprite(TFT_BLACK);
         }
         // Flag resetelése mód váltáskor
         frequencyLabelsDrawn_ = false;
+
+        // Envelope reset mód váltáskor
+        if (modeToPrepareFor == DisplayMode::Envelope) {
+            envelopeLastSmoothedValue_ = 0.0f; // Simított érték nullázása
+            // Wabuf buffer teljes törlése hogy tiszta vonallal kezdődjön az envelope
+            for (auto &row : wabuf) {
+                std::fill(row.begin(), row.end(), 0);
+            }
+        }
     }
 }
 
@@ -235,6 +264,7 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
 
     // Mode indicator megjelenítése 20 másodpercig
     modeIndicatorVisible_ = true;
+    modeIndicatorDrawn_ = false;               // Reset a flag-et hogy azonnal megjelenjen
     modeIndicatorHideTime_ = millis() + 20000; // 20 másodpercig látható
 
     // Sprite előkészítése az új módhoz (radio-2 mintájára)
@@ -291,11 +321,18 @@ void SpectrumVisualizationComponent::setModeIndicatorVisible(bool visible) {
  */
 void SpectrumVisualizationComponent::renderOffMode() {
     if (needsForceRedraw_) {
-        tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, TFT_BLACK);
+        // Terület törlése, de alsó border meghagyása
+        tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height - 1, TFT_BLACK);
+
+        // Alsó border explicit kirajzolása
+        tft.drawFastHLine(bounds.x, bounds.y + bounds.height - 1, bounds.width, TFT_WHITE);
+
+        // OFF szöveg középre igazítása, nagyobb betűmérettel
         tft.setTextColor(TFT_WHITE, TFT_BLACK);
-        tft.setTextSize(1);
-        int textX = bounds.x + bounds.width / 2 - 20;
-        int textY = bounds.y + bounds.height / 2;
+        tft.setTextSize(3);         // Még nagyobb betűméret
+        tft.setTextDatum(MC_DATUM); // Középre igazítás (Middle Center)
+        int textX = bounds.x + bounds.width / 2;
+        int textY = bounds.y + (bounds.height - 1) / 2; // Pontos középre igazítás, figyelembe véve az alsó border-t
         tft.drawString("OFF", textX, textY);
     }
 }
@@ -345,7 +382,7 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
 
         double magnitude = magnitudeData[fft_bin_index];
         // Original radio-2 skálázás
-        int scaled_magnitude = static_cast<int>(magnitude / AnalyzerConstants::AMPLITUDE_SCALE);
+        int scaled_magnitude = static_cast<int>(magnitude / SensitivityConstants::AMPLITUDE_SCALE);
         scaled_magnitude = constrain(scaled_magnitude, 0, graphH - 1);
 
         if (scaled_magnitude > 0) {
@@ -363,6 +400,9 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
+
+    // Explicit alsó border kirajzolása
+    tft.drawFastHLine(bounds.x, bounds.y + bounds.height - 1, bounds.width, TFT_WHITE);
 }
 
 /**
@@ -449,7 +489,7 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
 
         // Javított magnitúdó skálázás (original radio-2 alapján)
         double magnitude = band_magnitudes[band_idx];
-        int dsize = static_cast<int>(magnitude / AnalyzerConstants::AMPLITUDE_SCALE);
+        int dsize = static_cast<int>(magnitude / SensitivityConstants::AMPLITUDE_SCALE);
         dsize = constrain(dsize, 0, actual_low_res_peak_max_height);
 
         if (dsize > Rpeak_[band_idx] && band_idx < MAX_SPECTRUM_BANDS) {
@@ -479,6 +519,9 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
+
+    // Explicit alsó border kirajzolása
+    tft.drawFastHLine(bounds.x, bounds.y + bounds.height - 1, bounds.width, TFT_WHITE);
 }
 
 /**
@@ -517,8 +560,7 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
     // --- Érzékenységi faktor meghatározása ---
     // Az oszcilloszkóp mindig a manuális érzékenységi faktort használja,
     // mivel az osciSamples nyers ADC értékeket tartalmaz, függetlenül az FFT erősítési módjától.
-    const float OSCI_SENSITIVITY_FACTOR = 25.0f;
-    float current_sensitivity_factor = OSCI_SENSITIVITY_FACTOR;
+    float current_sensitivity_factor = SensitivityConstants::OSCI_SENSITIVITY_FACTOR;
 
     int prev_x = -1, prev_y = -1, prev_sample_idx = -1;
 
@@ -562,6 +604,9 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
+
+    // Explicit alsó border kirajzolása
+    tft.drawFastHLine(bounds.x, bounds.y + bounds.height - 1, bounds.width, TFT_WHITE);
 }
 
 /**
@@ -598,15 +643,14 @@ void SpectrumVisualizationComponent::renderEnvelope() {
 
     // 2. Új adatok betöltése (radio-2 alapján, csökkentett erősítéssel)
     // Az Envelope módhoz az magnitudeData értékeit használjuk csökkentett erősítéssel.
-    constexpr float ENVELOPE_INPUT_GAIN = 0.01f; // Csökkentett érték a túlvezérlés elkerüléséhez
-    for (int r = 0; r < bounds.height; ++r) {    // Teljes bounds.height
+    for (int r = 0; r < bounds.height; ++r) { // Teljes bounds.height
         // 'r' (0 to bounds.height-1) leképezése FFT bin indexre a szűkített tartományon belül
         int fft_bin_index = min_bin_for_env + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_env_range - 1)));
         fft_bin_index = constrain(fft_bin_index, min_bin_for_env, max_bin_for_env);
 
         // Az AudioProcessor->getMagnitudeData()[fft_bin_index] már tartalmazza a csillapított értéket.
         // Alkalmazzuk a csökkentett ENVELOPE_INPUT_GAIN-t.
-        double gained_val = magnitudeData[fft_bin_index] * ENVELOPE_INPUT_GAIN;
+        double gained_val = magnitudeData[fft_bin_index] * SensitivityConstants::ENVELOPE_INPUT_GAIN;
         wabuf[r][bounds.width - 1] = static_cast<uint8_t>(constrain(gained_val, 0.0, 255.0)); // 0-255 közé korlátozzuk a wabuf számára
     }
 
@@ -662,6 +706,9 @@ void SpectrumVisualizationComponent::renderEnvelope() {
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
+
+    // Explicit alsó border kirajzolása
+    tft.drawFastHLine(bounds.x, bounds.y + bounds.height - 1, bounds.width, TFT_WHITE);
 }
 
 /**
@@ -703,8 +750,7 @@ void SpectrumVisualizationComponent::renderWaterfall() {
         fft_bin_index = constrain(fft_bin_index, min_bin_for_wf, max_bin_for_wf);
 
         // Waterfall input scale (radio-2 alapján, csökkentett érték)
-        constexpr float WATERFALL_INPUT_SCALE = 0.03f; // További csökkentés a túlvezérlés elkerüléséhez
-        wabuf[r][bounds.width - 1] = static_cast<uint8_t>(constrain(magnitudeData[fft_bin_index] * WATERFALL_INPUT_SCALE, 0.0, 255.0));
+        wabuf[r][bounds.width - 1] = static_cast<uint8_t>(constrain(magnitudeData[fft_bin_index] * SensitivityConstants::WATERFALL_INPUT_SCALE, 0.0, 255.0));
     }
 
     // 3. Sprite görgetése és új oszlop kirajzolása (radio-2 mintájára)
@@ -728,6 +774,9 @@ void SpectrumVisualizationComponent::renderWaterfall() {
 
     // Sprite kirakása a képernyőre (radio-2 mintájára)
     sprite_->pushSprite(bounds.x, bounds.y);
+
+    // Explicit alsó border kirajzolása
+    tft.drawFastHLine(bounds.x, bounds.y + bounds.height - 1, bounds.width, TFT_WHITE);
 }
 
 /**
@@ -978,8 +1027,7 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         fft_bin_index = constrain(fft_bin_index, 2, static_cast<int>(actualFftSize / 2 - 1));
 
         // Hangolási segéd input scale (csökkentett érték a túlvezéreltség ellen)
-        constexpr float TUNING_AID_INPUT_SCALE = 0.03f; // Csökkentett érték (0.1f -> 0.03f)
-        wabuf[0][c] = static_cast<uint8_t>(constrain(magnitudeData[fft_bin_index] * TUNING_AID_INPUT_SCALE, 0.0, 255.0));
+        wabuf[0][c] = static_cast<uint8_t>(constrain(magnitudeData[fft_bin_index] * SensitivityConstants::TUNING_AID_INPUT_SCALE, 0.0, 255.0));
     }
 
     // 3. Sprite törlése és waterfall kirajzolása (radio-2 mintájára)
@@ -1134,7 +1182,7 @@ void SpectrumVisualizationComponent::drawSpectrumBar(int band_idx, double magnit
     if (graphH <= 0)
         return;
 
-    int dsize = static_cast<int>(magnitude / AnalyzerConstants::AMPLITUDE_SCALE);
+    int dsize = static_cast<int>(magnitude / SensitivityConstants::AMPLITUDE_SCALE);
     dsize = constrain(dsize, 0, peak_max_height_for_mode);
     constexpr int bar_gap_pixels = 1;
     int bar_total_width_pixels_dynamic = current_bar_width_pixels + bar_gap_pixels;
