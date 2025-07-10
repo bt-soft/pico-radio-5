@@ -455,30 +455,20 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes(const SharedAudioData 
 
         for (int i = 0; i < AudioProcessorConstants::LOW_RES_BINS; i++) {
             float value = data.spectrum.lowResBins[i];
-            // Peak értékeket jelenleg nem tartjuk számon az új struktúrában
-            float peakValue = value; // Egyszerűsítés: peak = aktuális érték
 
             // Normalizálás a maximális magnitúdóval
             float normalizedValue = data.spectrum.maxMagnitude > 0 ? value / data.spectrum.maxMagnitude : 0.0f;
-            float normalizedPeak = data.spectrum.maxMagnitude > 0 ? peakValue / data.spectrum.maxMagnitude : 0.0f;
 
             // Sáv magasságának kiszámítása
             int barHeight = (int)(normalizedValue * effectiveH);
-            int peakHeight = (int)(normalizedPeak * effectiveH);
 
             // Sáv pozíciója (sprite koordinátákban)
             int barX = i * barWidth;
             int barY = effectiveH - barHeight;
-            int peakY = effectiveH - peakHeight;
 
             // Sáv rajzolása gradienssel sprite-ba
             if (barHeight > 0) {
                 drawGradientBarToSprite(barX, barY, actualBarWidth, barHeight, value);
-            }
-
-            // Peak vonal rajzolása sprite-ba
-            if (peakHeight > 0 && peakHeight > barHeight + 2) {
-                sprite->drawFastHLine(barX, peakY, actualBarWidth, TFT_WHITE);
             }
         }
 
@@ -603,8 +593,6 @@ void SpectrumVisualizationComponent::renderWaterfall(const SharedAudioData &data
     int x = bounds.x;
     int y = bounds.y;
     int width = bounds.width;
-    int height = bounds.height;
-    int effectiveH = height - indicatorFontHeight - 4;
 
     // Sprite használata a villogás elkerülésére
     if (sprite && spriteCreated) {
