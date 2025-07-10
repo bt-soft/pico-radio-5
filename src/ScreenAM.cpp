@@ -303,6 +303,16 @@ void ScreenAM::layoutComponents() {
     createSMeterComponent(smeterBounds);
 
     // ===================================================================
+    // Spektrum vizualizáció komponens létrehozása
+    // ===================================================================
+    int currentY = FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT + 10 + 70 + 5; // S-Meter után
+    int spectrumHeight = SCREEN_H - currentY - 40;                               // Maradék hely - vízszintes gombsor helye
+    if (spectrumHeight > 60) {                                                   // Csak ha van elég hely
+        Rect spectrumBounds(2, currentY, SMeterConstants::SMETER_WIDTH, spectrumHeight);
+        createSpectrumComponent(spectrumBounds, RadioMode::AM);
+    }
+
+    // ===================================================================
     // Audio Display komponens létrehozása (jobb oldalra, kis terület)
     // ===================================================================
 

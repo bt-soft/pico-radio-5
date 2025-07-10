@@ -5,6 +5,7 @@
 #include "SplashScreen.h"
 
 //-------------------- Config
+#include "AudioProcessor.h"
 #include "BandStore.h"
 #include "Config.h"
 #include "EepromLayout.h"
@@ -211,10 +212,12 @@ void setup() {
     delay(100);
 
     //--------------------------------------------------------------------
-    // Lépés 7: Audio Analyzer inicializálása (Core1)
+    // Lépés 7: Audio Analyzer inicializálása (radio-2 alapján)
     splash.updateProgress(7, 8, "Starting audio analyzer...");
+    // Az AudioProcessor most közvetlenül a SpectrumVisualizationComponent-ben van inicializálva
+    delay(100);
 
-        // Lépés 8: Finalizálás
+    // Lépés 8: Finalizálás
     splash.updateProgress(8, 8, "Starting up...");
 
     // ScreenManager inicializálása itt, amikor minden más már kész

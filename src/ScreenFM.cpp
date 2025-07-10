@@ -94,6 +94,12 @@ void ScreenFM::layoutComponents() {
     createSMeterComponent(smeterBounds);
 
     // ===================================================================
+    // Spektrum vizualizáció komponens létrehozása
+    // ===================================================================
+    Rect spectrumBounds(280, 80, 120, 80);
+    createSpectrumComponent(spectrumBounds, RadioMode::FM);
+
+    // ===================================================================
     // Gombsorok létrehozása - Event-driven architektúra
     // ===================================================================
     createCommonVerticalButtons();   // ButtonsGroupManager alapú függőleges gombsor egyedi Memo kezelővel

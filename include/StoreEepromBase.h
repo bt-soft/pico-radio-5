@@ -3,6 +3,7 @@
 
 #include <EEPROM.h>
 
+#include "AudioProcessor.h"
 #include "defines.h"
 #include "utils.h"
 
@@ -62,6 +63,9 @@ template <typename T> class StoreEepromBase {
      * @return CRC16 ellenőrző összeg (0 ha sikertelen)
      */
     static uint16_t save(const T &data, uint16_t address = 0, const char *className = "Ismeretlen") {
+        // Audio feldolgozás szüneteltetése az EEPROM írás idejére (radio-2 alapú verzióban nem szükséges)
+        // Az új implementációban az AudioProcessor közvetlenül hívható
+
         uint16_t crc = Utils::calcCRC16(reinterpret_cast<const uint8_t *>(&data), sizeof(T));
 
         DEBUG("[%s] Adatok mentése EEPROM %d címre (%d bájt)...", className, address, sizeof(T));
@@ -70,6 +74,8 @@ template <typename T> class StoreEepromBase {
         EEPROM.put(address + sizeof(T), crc);
 
         bool commitSuccess = EEPROM.commit();
+
+        // Audio feldolgozás folytatása (radio-2 alapú verzióban nem szükséges)
 
         if (commitSuccess) {
             DEBUG("Sikeres (CRC: %d)\n", crc);
