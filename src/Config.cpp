@@ -61,8 +61,8 @@ const Config_t DEFAULT_CONFIG = {
     .rttyShiftHz = 170.0f,          // RTTY Shift
 
     // Audio processing alapértelmezett beállítások
-    .audioModeAM = 0,     // AudioComponentType::SPECTRUM_LOW_RES
-    .audioModeFM = 0,     // AudioComponentType::SPECTRUM_LOW_RES
+    .audioModeAM = 1,     // AudioComponentType::SPECTRUM_LOW_RES
+    .audioModeFM = 1,     // AudioComponentType::SPECTRUM_LOW_RES
     .audioEnabled = true, // Audio vizualizáció engedélyezve
     .audioFftSize = 256,  // Alapértelmezett FFT méret
     .audioFftGain = 1.0f, // Alapértelmezett FFT erősítés

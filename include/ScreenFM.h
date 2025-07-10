@@ -202,7 +202,7 @@ class ScreenFM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
      */
     inline void createSpectrumComponent(const Rect &spectrumBounds) {
         // FM módhoz 15kHz maximális frekvencia
-        spectrumComponent = std::make_shared<SpectrumVisualizationComponent>(spectrumBounds.x, spectrumBounds.y, spectrumBounds.width, spectrumBounds.height, 15000.0f);
+        spectrumComponent = std::make_shared<SpectrumVisualizationComponent>(spectrumBounds.x, spectrumBounds.y, spectrumBounds.width, spectrumBounds.height, SpectrumVisualizationComponent::RadioMode::FM);
         addChild(spectrumComponent);
     }
 

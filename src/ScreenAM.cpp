@@ -318,9 +318,9 @@ void ScreenAM::layoutComponents() {
         // Rect spectrumBounds(250, 50, 160, 100);
         createSpectrumComponent(spectrumBounds);
 
-        // Spektrum inicializálása Off módban (config-ból később állítható)
+        // Spektrum inicializálása config alapján
         if (spectrumComponent) {
-            spectrumComponent->setInitialMode(SpectrumVisualizationComponent::DisplayMode::Off);
+            spectrumComponent->loadModeFromConfig(); // true = AM mód
         }
     }
 

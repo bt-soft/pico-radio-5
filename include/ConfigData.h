@@ -7,13 +7,14 @@
 
 // Audio vizualizáció típusok enum
 enum class AudioComponentType : uint8_t {
-    SPECTRUM_LOW_RES = 0,  // Alacsony felbontású spektrum (sáv alapú)
-    SPECTRUM_HIGH_RES = 1, // Magas felbontású spektrum
-    OSCILLOSCOPE = 2,      // Oszcilloszkóp (időtartomány)
-    ENVELOPE = 3,          // Burkológörbe
-    WATERFALL = 4,         // Waterfall diagram
-    CW_WATERFALL = 5,      // CW specifikus waterfall
-    RTTY_WATERFALL = 6     // RTTY specifikus waterfall
+    OFF = 0,               // Kikapcsolva
+    SPECTRUM_LOW_RES = 1,  // Alacsony felbontású spektrum (sáv alapú)
+    SPECTRUM_HIGH_RES = 2, // Magas felbontású spektrum
+    OSCILLOSCOPE = 3,      // Oszcilloszkóp (időtartomány)
+    ENVELOPE = 4,          // Burkológörbe
+    WATERFALL = 5,         // Waterfall diagram
+    CW_WATERFALL = 6,      // CW specifikus waterfall
+    RTTY_WATERFALL = 7     // RTTY specifikus waterfall
 };
 
 // Konfig struktúra típusdefiníció

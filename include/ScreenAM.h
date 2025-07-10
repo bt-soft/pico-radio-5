@@ -192,7 +192,7 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
      */
     inline void createSpectrumComponent(const Rect &spectrumBounds) {
         // AM módhoz 6kHz maximális frekvencia
-        spectrumComponent = std::make_shared<SpectrumVisualizationComponent>(spectrumBounds.x, spectrumBounds.y, spectrumBounds.width, spectrumBounds.height, 6000.0f);
+        spectrumComponent = std::make_shared<SpectrumVisualizationComponent>(spectrumBounds.x, spectrumBounds.y, spectrumBounds.width, spectrumBounds.height, SpectrumVisualizationComponent::RadioMode::AM);
         addChild(spectrumComponent);
     }
 };

@@ -15,6 +15,9 @@
 class SpectrumVisualizationComponent : public UIComponent {
 
   public:
+    constexpr static float MAX_DISPLAY_FREQUENCY_AM = 6000.0f;  // Maximális frekvencia AM módban
+    constexpr static float MAX_DISPLAY_FREQUENCY_FM = 15000.0f; // Maximális frekvencia FM módban
+
     /**
      * @brief Megjelenítési módok
      */
@@ -29,15 +32,20 @@ class SpectrumVisualizationComponent : public UIComponent {
         RTTYWaterfall    // RTTY hangolássegéd
     };
 
+    enum class RadioMode {
+        AM, // AM mód
+        FM  // FM mód
+    };
+
     /**
      * @brief Konstruktor
      * @param x X pozíció
      * @param y Y pozíció
      * @param w Szélesség
      * @param h Magasság
-     * @param maxDisplayFreq Maximális megjelenítendő frekvencia (AM: 6kHz, FM: 15kHz)
+     * @param radioMode Működési mód (AM vagy FM)
      */
-    SpectrumVisualizationComponent(int x, int y, int w, int h, float maxDisplayFreq);
+    SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode);
 
     /**
      * @brief Destruktor
@@ -75,6 +83,30 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     void forceRedrawOnNextFrame();
 
+    /**
+     * @brief Config érték alapján DisplayMode konvertálás
+     * @param configValue Config-ból származó érték (AudioComponentType)
+     * @return Megfelelő DisplayMode
+     */
+    static DisplayMode configValueToDisplayMode(uint8_t configValue);
+
+    /**
+     * @brief DisplayMode alapján config érték konvertálás
+     * @param mode DisplayMode
+     * @return Config-ba mentendő érték (AudioComponentType)
+     */
+    static uint8_t displayModeToConfigValue(DisplayMode mode);
+
+    /**
+     * @brief Aktuális mód beállítása config-ba
+     */
+    void setCurrentModeToConfig();
+
+    /**
+     * @brief Mód betöltése config-ból
+     */
+    void loadModeFromConfig();
+
   private:
     // Vízesés színpaletta - MiniAudioFft-ből
     static const uint16_t WATERFALL_COLORS[16];
@@ -98,6 +130,8 @@ class SpectrumVisualizationComponent : public UIComponent {
 
     // Font magasság cache a módkijelzőhöz
     int indicatorFontHeight;
+
+    RadioMode radioMode; // Működési mód (AM vagy FM)
 
     // ===================================================================
     // Belső segédfüggvények

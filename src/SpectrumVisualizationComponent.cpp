@@ -1,5 +1,7 @@
 #include "SpectrumVisualizationComponent.h"
+#include "Band.h"
 #include "Config.h"
+#include "ConfigData.h"
 #include "pico/mutex.h"
 #include "rtVars.h"
 #include <Arduino.h>
@@ -86,16 +88,18 @@ void SpectrumVisualizationComponent::renderCWWaterfall(const SharedAudioData &da
 /**
  * @brief Konstruktor
  */
-SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, float maxDisplayFreq)
-    : UIComponent(Rect(x, y, w, h)), maxDisplayFrequencyHz(maxDisplayFreq), currentMode(DisplayMode::Off), lastRenderedMode(DisplayMode::SpectrumLowRes), modeIndicatorVisible(true), modeIndicatorHideTime(0),
-      lastTouchTime(0), needsForceRedraw(true), envelopeLastSmoothedValue(0.0f), sprite(nullptr), spriteCreated(false), indicatorFontHeight(0) {
+SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode)
+    : UIComponent(Rect(x, y, w, h)), radioMode(radioMode), currentMode(DisplayMode::Off), lastRenderedMode(DisplayMode::SpectrumLowRes), modeIndicatorVisible(true), modeIndicatorHideTime(0), lastTouchTime(0),
+      needsForceRedraw(true), envelopeLastSmoothedValue(0.0f), sprite(nullptr), spriteCreated(false), indicatorFontHeight(0) {
+
+    maxDisplayFrequencyHz = (radioMode == RadioMode::AM) ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM; // AM: 6kHz, FM: 15kHz
 
     // Font magasság meghatározása
     ::tft.setFreeFont();
     ::tft.setTextSize(1);
     indicatorFontHeight = ::tft.fontHeight();
 
-    DEBUG("SpectrumVisualization: Komponens létrehozva %dx%d, max freq: %d kHz\n", w, h, ((int)maxDisplayFreq) / 1000);
+    DEBUG("SpectrumVisualization: Komponens létrehozva %dx%d, max freq: %d kHz\n", w, h, ((int)maxDisplayFrequencyHz) / 1000);
 }
 
 /**
@@ -279,7 +283,9 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
         case DisplayMode::RTTYWaterfall:
             currentMode = DisplayMode::SpectrumLowRes; // Cirkuláris: vissza az elejére
             break;
-    } // Keret újrarajzolása mód váltáskor
+    }
+
+    // Keret újrarajzolása mód váltáskor
     drawFrame();
 
     // AudioProcessor mód beállítása a megjelenítési mód alapján
@@ -297,11 +303,16 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
         case DisplayMode::Oscilloscope:
             audioMode = AudioVisualizationType::OSCILLOSCOPE;
             break;
+        case DisplayMode::Envelope:
+            audioMode = AudioVisualizationType::SPECTRUM_LOW_RES; // Envelope uses spectrum data
+            break;
         default:
             audioMode = AudioVisualizationType::SPECTRUM_LOW_RES;
             break;
     }
     AudioProcessorCore1::setVisualizationMode(audioMode);
+
+    setCurrentModeToConfig();
 
     // Kényszerített újrarajzolás jelzése
     needsForceRedraw = true;
@@ -855,6 +866,110 @@ void SpectrumVisualizationComponent::renderRTTYWaterfall(const SharedAudioData &
     } else {
         renderMutedState();
     }
+}
+
+/**
+ * @brief Config érték alapján DisplayMode konvertálás
+ */
+SpectrumVisualizationComponent::DisplayMode SpectrumVisualizationComponent::configValueToDisplayMode(uint8_t configValue) {
+    switch (configValue) {
+        case static_cast<uint8_t>(AudioComponentType::OFF):
+            return DisplayMode::Off;
+        case static_cast<uint8_t>(AudioComponentType::SPECTRUM_LOW_RES):
+            return DisplayMode::SpectrumLowRes;
+        case static_cast<uint8_t>(AudioComponentType::SPECTRUM_HIGH_RES):
+            return DisplayMode::SpectrumHighRes;
+        case static_cast<uint8_t>(AudioComponentType::OSCILLOSCOPE):
+            return DisplayMode::Oscilloscope;
+        case static_cast<uint8_t>(AudioComponentType::ENVELOPE):
+            return DisplayMode::Envelope;
+        case static_cast<uint8_t>(AudioComponentType::WATERFALL):
+            return DisplayMode::Waterfall;
+        case static_cast<uint8_t>(AudioComponentType::CW_WATERFALL):
+            return DisplayMode::CWWaterfall;
+        case static_cast<uint8_t>(AudioComponentType::RTTY_WATERFALL):
+            return DisplayMode::RTTYWaterfall;
+        default:
+            return DisplayMode::Off; // Alapértelmezett Off
+    }
+}
+
+/**
+ * @brief DisplayMode alapján config érték konvertálás
+ */
+uint8_t SpectrumVisualizationComponent::displayModeToConfigValue(DisplayMode mode) {
+    switch (mode) {
+        case DisplayMode::Off:
+            return static_cast<uint8_t>(AudioComponentType::OFF);
+        case DisplayMode::SpectrumLowRes:
+            return static_cast<uint8_t>(AudioComponentType::SPECTRUM_LOW_RES);
+        case DisplayMode::SpectrumHighRes:
+            return static_cast<uint8_t>(AudioComponentType::SPECTRUM_HIGH_RES);
+        case DisplayMode::Oscilloscope:
+            return static_cast<uint8_t>(AudioComponentType::OSCILLOSCOPE);
+        case DisplayMode::Envelope:
+            return static_cast<uint8_t>(AudioComponentType::ENVELOPE);
+        case DisplayMode::Waterfall:
+            return static_cast<uint8_t>(AudioComponentType::WATERFALL);
+        case DisplayMode::CWWaterfall:
+            return static_cast<uint8_t>(AudioComponentType::CW_WATERFALL);
+        case DisplayMode::RTTYWaterfall:
+            return static_cast<uint8_t>(AudioComponentType::RTTY_WATERFALL);
+        default:
+            return static_cast<uint8_t>(AudioComponentType::OFF); // Alapértelmezett Off
+    }
+}
+
+/**
+ * @brief Aktuális mód mentése config-ba
+ */
+void SpectrumVisualizationComponent::setCurrentModeToConfig() {
+    uint8_t configValue = displayModeToConfigValue(currentMode);
+
+    if (radioMode == RadioMode::AM) {
+        ::config.data.audioModeAM = configValue;
+    } else {
+        ::config.data.audioModeFM = configValue;
+    }
+}
+
+/**
+ * @brief Mód betöltése config-ból
+ */
+void SpectrumVisualizationComponent::loadModeFromConfig() {
+    uint8_t configValue = radioMode == RadioMode::AM ? ::config.data.audioModeAM : ::config.data.audioModeFM;
+    DisplayMode newMode = configValueToDisplayMode(configValue);
+
+    DEBUG("SpectrumVisualization: Loading mode %d from config (%s) -> DisplayMode %d\n", configValue, radioMode == RadioMode::AM ? "AM" : "FM", static_cast<int>(newMode));
+
+    currentMode = newMode;
+
+    // AudioProcessor mód beállítása
+    AudioVisualizationType audioMode = AudioVisualizationType::OFF;
+    switch (currentMode) {
+        case DisplayMode::SpectrumLowRes:
+        case DisplayMode::Waterfall:
+        case DisplayMode::CWWaterfall:
+        case DisplayMode::RTTYWaterfall:
+            audioMode = AudioVisualizationType::SPECTRUM_LOW_RES;
+            break;
+        case DisplayMode::SpectrumHighRes:
+            audioMode = AudioVisualizationType::SPECTRUM_HIGH_RES;
+            break;
+        case DisplayMode::Oscilloscope:
+            audioMode = AudioVisualizationType::OSCILLOSCOPE;
+            break;
+        case DisplayMode::Envelope:
+            audioMode = AudioVisualizationType::SPECTRUM_LOW_RES; // Envelope uses spectrum data
+            break;
+        default:
+            audioMode = AudioVisualizationType::SPECTRUM_LOW_RES;
+            break;
+    }
+    AudioProcessorCore1::setVisualizationMode(audioMode);
+
+    // Kényszerített újrarajzolás
+    needsForceRedraw = true;
 }
 
 /**
