@@ -14,7 +14,7 @@ const uint16_t colors1[16] = {0x0000, 0x1000, 0x2000, 0x4000, 0x8000, 0xC000, 0x
 namespace AnalyzerConstants {
 constexpr float ANALYZER_MIN_FREQ_HZ = 300.0f;
 constexpr float ANALYZER_MAX_FREQ_HZ = 15000.0f;
-constexpr float AMPLITUDE_SCALE = 40.0f;        // Eredeti radio-2 érték (1500.0f -> 40.0f)
+constexpr float AMPLITUDE_SCALE = 25.0f;        // Csökkentett érték a bar-ok amplitúdójának növeléséhez (40.0f -> 25.0f)
 constexpr uint16_t WATERFALL_TOP_Y = 20;        // A vízesés diagram tetejének Y koordinátája
 constexpr uint16_t ANALYZER_BOTTOM_MARGIN = 20; // Alsó margó a skálának és a vízesésnek
 }; // namespace AnalyzerConstants
@@ -28,9 +28,9 @@ const uint16_t SpectrumVisualizationComponent::WATERFALL_COLORS[16] = {0x0000, 0
  * @brief Konstruktor
  */
 SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode)
-    : UIComponent(Rect(x, y, w, h)), radioMode_(radioMode), currentMode_(DisplayMode::Off), lastRenderedMode_(DisplayMode::Off), needsForceRedraw_(true), modeIndicatorVisible_(false), modeIndicatorHideTime_(0),
-      lastTouchTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM), envelopeLastSmoothedValue_(0.0f), sprite_(nullptr), spriteCreated_(false),
-      indicatorFontHeight_(0), currentYAnalyzer_(0), pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f) {
+    : UIComponent(Rect(x, y, w, h)), radioMode_(radioMode), currentMode_(DisplayMode::Off), lastRenderedMode_(DisplayMode::Off), needsForceRedraw_(true), modeIndicatorVisible_(false), modeIndicatorDrawn_(false),
+      modeIndicatorHideTime_(0), lastTouchTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM), envelopeLastSmoothedValue_(0.0f), sprite_(nullptr),
+      spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0), pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f) {
 
     // AudioProcessor inicializálása a megfelelő config referenciával
     float &gainConfigRef = (radioMode == RadioMode::AM) ? config.data.miniAudioFftConfigAm : config.data.miniAudioFftConfigFm;
@@ -119,47 +119,18 @@ void SpectrumVisualizationComponent::draw() {
     // Mode indicator megjelenítése ha szükséges
     if (modeIndicatorVisible_ && millis() > modeIndicatorHideTime_) {
         modeIndicatorVisible_ = false;
-        // Töröljük a területet ahol az indicator volt
-        String modeText = "";
-        switch (currentMode_) {
-            case DisplayMode::Off:
-                modeText = "Off";
-                break;
-            case DisplayMode::SpectrumLowRes:
-                modeText = "FFT LowRes";
-                break;
-            case DisplayMode::SpectrumHighRes:
-                modeText = "FFT HighRes";
-                break;
-            case DisplayMode::Oscilloscope:
-                modeText = "Scope";
-                break;
-            case DisplayMode::Waterfall:
-                modeText = "WaterFall";
-                break;
-            case DisplayMode::Envelope:
-                modeText = "Envelope";
-                break;
-            case DisplayMode::CWWaterfall:
-                modeText = "CW WaterFall";
-                break;
-            case DisplayMode::RTTYWaterfall:
-                modeText = "RTTY WaterFall";
-                break;
-            default:
-                modeText = "Unknown";
-                break;
-        }
-        int textWidth = modeText.length() * 6;
-        int textHeight = 8;
-        int indicatorX = bounds.x + (bounds.width - textWidth) / 2;
-        int indicatorY = bounds.y + bounds.height - textHeight - 4;
-        tft.fillRect(indicatorX - 2, indicatorY - 2, textWidth + 4, textHeight + 4, TFT_BLACK);
+        modeIndicatorDrawn_ = false; // Reset flag when hiding
+        // Töröljük a területet ahol az indicator volt - KERET ALATT
+        int indicatorH = 20;                       // fix magasság az indicator számára
+        int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt
+        tft.fillRect(bounds.x, indicatorY, bounds.width, indicatorH, TFT_BLACK);
         needsForceRedraw_ = true;
     }
 
-    if (modeIndicatorVisible_) {
+    // Only draw mode indicator once when it becomes visible
+    if (modeIndicatorVisible_ && !modeIndicatorDrawn_) {
         renderModeIndicator();
+        modeIndicatorDrawn_ = true; // Mark as drawn
     }
 
     lastRenderedMode_ = currentMode_;
@@ -222,9 +193,11 @@ void SpectrumVisualizationComponent::manageSpriteForMode(DisplayMode modeToPrepa
 }
 
 /**
- * @brief Grafikon magasságának számítása (indicator nélkül)
+ * @brief Grafikon magasságának számítása (teljes keret magasság)
  */
-int SpectrumVisualizationComponent::getGraphHeight() const { return bounds.height - getIndicatorHeight(); }
+int SpectrumVisualizationComponent::getGraphHeight() const {
+    return bounds.height; // Teljes magasság használata, a módkijelző a kereten kívül lesz
+}
 
 /**
  * @brief Indicator magasságának számítása
@@ -234,7 +207,9 @@ int SpectrumVisualizationComponent::getIndicatorHeight() const { return modeIndi
 /**
  * @brief Hatékony magasság számítása (grafikon + indicator)
  */
-int SpectrumVisualizationComponent::getEffectiveHeight() const { return getGraphHeight() + getIndicatorHeight(); }
+int SpectrumVisualizationComponent::getEffectiveHeight() const {
+    return bounds.height + getIndicatorHeight(); // Keret + indicator alatta
+}
 
 /**
  * @brief Teljes újrarajzolás kényszerítése
@@ -301,6 +276,7 @@ void SpectrumVisualizationComponent::loadModeFromConfig() {
  */
 void SpectrumVisualizationComponent::setModeIndicatorVisible(bool visible) {
     modeIndicatorVisible_ = visible;
+    modeIndicatorDrawn_ = false; // Reset draw flag when visibility changes
     if (visible) {
         modeIndicatorHideTime_ = millis() + 20000; // 20 másodperc
     }
@@ -349,7 +325,7 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
 
     const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
     if (!magnitudeData) {
-        sprite_->pushSprite(bounds.x, bounds.y);
+        sprite_->pushSprite(bounds.x, bounds.y - 1);
         return;
     }
 
@@ -382,7 +358,7 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
     }
 
     // Sprite kirakása a képernyőre
-    sprite_->pushSprite(bounds.x, bounds.y);
+    sprite_->pushSprite(bounds.x, bounds.y - 1);
 }
 
 /**
@@ -609,10 +585,10 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     const int max_bin_for_env = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_env_range = std::max(1, max_bin_for_env - min_bin_for_env + 1);
 
-    // 2. Új adatok betöltése (radio-2 alapján, csökkentett erősítéssel)
-    // Az Envelope módhoz az magnitudeData értékeit használjuk, de egy kisebb erősítéssel.
-    constexpr float ENVELOPE_INPUT_GAIN = 0.005f; // További csökkentés (0.01f -> 0.005f)
-    for (int r = 0; r < bounds.height; ++r) {     // Teljes bounds.height
+    // 2. Új adatok betöltése (radio-2 alapján, eredeti erősítéssel)
+    // Az Envelope módhoz az magnitudeData értékeit használjuk az eredeti erősítéssel.
+    constexpr float ENVELOPE_INPUT_GAIN = 0.05f; // Eredeti érték a radio-2-ből
+    for (int r = 0; r < bounds.height; ++r) {    // Teljes bounds.height
         // 'r' (0 to bounds.height-1) leképezése FFT bin indexre a szűkített tartományon belül
         int fft_bin_index = min_bin_for_env + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_env_range - 1)));
         fft_bin_index = constrain(fft_bin_index, min_bin_for_env, max_bin_for_env);
@@ -627,6 +603,10 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     sprite_->fillSprite(TFT_BLACK); // Sprite törlése
 
     constexpr float ENVELOPE_SMOOTH_FACTOR = 0.25f;
+
+    // Először rajzoljunk egy vékony központi vízszintes vonalat (alapvonal)
+    int yCenter_on_sprite = graphH / 2;
+    sprite_->drawFastHLine(0, yCenter_on_sprite, bounds.width, TFT_DARKGREY);
 
     for (int c = 0; c < bounds.width; ++c) {
         int max_val_in_col = 0;
@@ -645,7 +625,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         // A tagváltozót használjuk a simításhoz az oszlopok között
         envelopeLastSmoothedValue_ = ENVELOPE_SMOOTH_FACTOR * envelopeLastSmoothedValue_ + (1.0f - ENVELOPE_SMOOTH_FACTOR) * current_col_max_amplitude;
 
-        // Csak akkor rajzolunk, ha van jel vagy a simított érték számottevő
+        // Csak akkor rajzolunk burkológörbét, ha van számottevő jel
         if (column_has_signal || envelopeLastSmoothedValue_ > 0.5f) {
             // A simított amplitúdó skálázása a grafikon magasságára (0-255 -> 0-graphH)
             float y_offset_float = (envelopeLastSmoothedValue_ / 255.0f) * (graphH / 2 - 1); // 0-255 amplitúdó a grafikon feléig
@@ -655,8 +635,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
             if (y_offset_pixels < 0)
                 y_offset_pixels = 0;
 
-            if (y_offset_pixels >= 0) {
-                int yCenter_on_sprite = graphH / 2;
+            if (y_offset_pixels > 0) { // Csak ha van érdemi eltérés a középvonaltól
                 int yUpper_on_sprite = yCenter_on_sprite - y_offset_pixels;
                 int yLower_on_sprite = yCenter_on_sprite + y_offset_pixels;
 
@@ -670,8 +649,8 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         }
     }
 
-    // Sprite kirakása a képernyőre (radio-2 mintájára)
-    sprite_->pushSprite(bounds.x, bounds.y);
+    // Sprite kirakása a képernyőre (1px-el feljebb tolva, ugyanúgy mint a többi mód)
+    sprite_->pushSprite(bounds.x, bounds.y - 1);
 }
 
 /**
@@ -787,13 +766,13 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
             break;
     }
 
-    // Clear mode indicator area explicitly before text drawing - matching radio-2
-    int indicatorY = bounds.y + bounds.height - indicatorH;
+    // Clear mode indicator area explicitly before text drawing - KERET ALATT
+    int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
     tft.fillRect(bounds.x, indicatorY, bounds.width, indicatorH, TFT_BLACK);
 
-    // Draw text at component bottom, center - matching radio-2 coordinates
-    // Y coordinate will be the text baseline
-    tft.drawString(modeText, bounds.x + bounds.width / 2, bounds.y + bounds.height);
+    // Draw text at component bottom + indicator area, center
+    // Y coordinate will be the text baseline (bottom of the indicator area)
+    tft.drawString(modeText, bounds.x + bounds.width / 2, indicatorY + indicatorH);
 }
 
 /**

@@ -103,6 +103,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     DisplayMode lastRenderedMode_;
     bool needsForceRedraw_;
     bool modeIndicatorVisible_;
+    bool modeIndicatorDrawn_; // Flag to avoid redrawing the indicator unnecessarily
     uint32_t modeIndicatorHideTime_;
     uint32_t lastTouchTime_;
     float maxDisplayFrequencyHz_;
