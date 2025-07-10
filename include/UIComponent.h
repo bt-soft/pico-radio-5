@@ -8,7 +8,7 @@
 #include "defines.h"
 
 // A main.cpp-ben definiálva
-extern IScreenManager *iScreenManager;
+extern IScreenManager **iScreenManager;
 extern TFT_eSPI tft;
 extern uint16_t SCREEN_W;
 extern uint16_t SCREEN_H;
@@ -130,10 +130,10 @@ class UIComponent {
      */
     bool iscurrentScreenDialogActive() {
         // Segédfüggvény a dialog állapot ellenőrzéséhez
-        if (::iScreenManager == nullptr) {
+        if (::iScreenManager == nullptr || *::iScreenManager == nullptr) {
             return false; // Ha nincs képernyőkezelő, akkor nincs aktív dialog
         }
-        return ::iScreenManager->isCurrentScreenDialogActive();
+        return (*::iScreenManager)->isCurrentScreenDialogActive();
     }
 
   public:

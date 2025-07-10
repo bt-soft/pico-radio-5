@@ -39,7 +39,7 @@ Si4735Manager *pSi4735Manager = nullptr; // Si4735Manager: NEM lehet (hardware i
 // Globális képernyőkezelő pointer - inicializálás a setup()-ban történik
 #include "ScreenManager.h"
 ScreenManager *screenManager = nullptr;
-IScreenManager *iScreenManager = nullptr;
+IScreenManager **iScreenManager = (IScreenManager **)&screenManager; // A UIComponent használja
 
 // -----------------------------------------------------------------------------
 
@@ -227,7 +227,6 @@ void setup() {
     // ScreenManager inicializálása itt, amikor minden más már kész
     if (screenManager == nullptr) {
         screenManager = new ScreenManager();
-        iScreenManager = screenManager; // Ne felejtsük el beállítani az interface pointert is!
     }
 
     screenManager->switchToScreen(startScreeName); // A kezdő képernyő
