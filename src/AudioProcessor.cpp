@@ -1,7 +1,6 @@
-#include "AudioProcessor.h"
-
 #include <cmath> // std::abs, std::round
 
+#include "AudioProcessor.h"
 #include "defines.h" // DEBUG makróhoz, ha szükséges
 
 /**

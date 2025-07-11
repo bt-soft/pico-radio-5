@@ -29,15 +29,12 @@ constexpr float ENVELOPE_INPUT_GAIN = 0.15f; // Envelope amplitúdó erősítés
 constexpr float WATERFALL_INPUT_SCALE = 2.0f; // Waterfall intenzitás skálázása (növelve az érzékenységért)
 
 // CW/RTTY hangolási segéd - nagyobb érték = élénkebb színek
-constexpr float TUNING_AID_INPUT_SCALE = 0.03f; // Hangolási segéd intenzitás skálázása
+constexpr float TUNING_AID_INPUT_SCALE = 3.0f; // Hangolási segéd intenzitás skálázása
 }; // namespace SensitivityConstants
 
 // Analizátor konstansok
 namespace AnalyzerConstants {
 constexpr float ANALYZER_MIN_FREQ_HZ = 300.0f;
-constexpr float ANALYZER_MAX_FREQ_HZ = 15000.0f;
-constexpr uint16_t WATERFALL_TOP_Y = 20;        // A vízesés diagram tetejének Y koordinátája
-constexpr uint16_t ANALYZER_BOTTOM_MARGIN = 20; // Alsó margó a skálának és a vízesésnek
 }; // namespace AnalyzerConstants
 
 /**
@@ -874,7 +871,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         }
     }
 
-    // Ennél nem látszanak a tüskék...
+    // Ennél az értéknél nem látszanak a tüskék...
     constexpr int ENVELOPE_BIN_NMUMBER = 40; // Az envelope-hoz használt bin szám
 
     const int min_bin_for_env = std::max(10, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));

@@ -1,12 +1,13 @@
 #ifndef SPECTRUM_VISUALIZATION_COMPONENT_H
 #define SPECTRUM_VISUALIZATION_COMPONENT_H
 
+#include <TFT_eSPI.h>
+#include <vector>
+
 #include "AudioProcessor.h"
 #include "Band.h"
 #include "ConfigData.h"
 #include "UIComponent.h"
-#include <TFT_eSPI.h>
-#include <vector>
 
 /**
  * @brief Rádió módok

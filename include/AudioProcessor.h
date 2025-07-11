@@ -9,9 +9,9 @@ namespace AudioProcessorConstants {
 const double DEFAULT_SAMPLING_FREQUENCY = 30000.0; // 30kHz mintavételezés a 15kHz Nyquist limithez
 
 // FFT konstansok
-const uint16_t DEFAULT_FFT_SAMPLES = 512;
 const uint16_t MIN_FFT_SAMPLES = 64;
 const uint16_t MAX_FFT_SAMPLES = 2048;
+const uint16_t DEFAULT_FFT_SAMPLES = 512;
 
 // Auto gain konstansok
 const float FFT_AUTO_GAIN_TARGET_PEAK = 1500.0f; // Cél amplitúdó auto gain módban
