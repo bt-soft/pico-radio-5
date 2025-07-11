@@ -74,8 +74,6 @@ struct Config_t {
     // Audio processing beállítások
     uint8_t audioModeAM;   // Utolsó audio mód AM képernyőn (AudioComponentType)
     uint8_t audioModeFM;   // Utolsó audio mód FM képernyőn (AudioComponentType)
-    bool audioEnabled;     // Audio vizualizáció be/ki
-    uint16_t audioFftSize; // FFT méret (256, 512, 1024)
     float audioFftGain;    // Audio FFT erősítés (0.1 - 10.0)
 };
 
