@@ -22,18 +22,18 @@ class ScreenSetupAudioProc : public ScreenSetupBase {
         CW_RECEIVER_OFFSET = 400,
         RTTY_SHIFT,
         RTTY_MARK_FREQUENCY,
-        FFT_CONFIG_AM,
-        FFT_CONFIG_FM,
+        FFT_GAIN_AM,
+        FFT_GAIN_FM,
     };
 
     // Segédfüggvények
-    String decodeFFTConfig(float value);
+    String decodeFFTGain(float value);
 
     // Audió feldolgozás specifikus dialógus kezelő függvények
     void handleCwOffsetDialog(int index);
     void handleRttyShiftDialog(int index);
     void handleRttyMarkFrequencyDialog(int index);
-    void handleFFTConfigDialog(int index, bool isAM);
+    void handleFFTGainDialog(int index, bool isAM);
 
   protected:
     // SetupScreenBase virtuális metódusok implementációja

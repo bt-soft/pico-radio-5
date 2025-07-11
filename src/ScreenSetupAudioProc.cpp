@@ -29,8 +29,8 @@ void ScreenSetupAudioProc::populateMenuItems() {
     settingItems.push_back(SettingItem("RTTY Shift", String(config.data.rttyShiftHz) + " Hz", static_cast<int>(AudioProcItemAction::RTTY_SHIFT)));
     settingItems.push_back(SettingItem("RTTY Mark Frequency", String(config.data.rttyMarkFrequencyHz) + " Hz", static_cast<int>(AudioProcItemAction::RTTY_MARK_FREQUENCY)));
 
-    settingItems.push_back(SettingItem("FFT Config AM", decodeFFTConfig(config.data.miniAudioFftConfigAm), static_cast<int>(AudioProcItemAction::FFT_CONFIG_AM)));
-    settingItems.push_back(SettingItem("FFT Config FM", decodeFFTConfig(config.data.miniAudioFftConfigFm), static_cast<int>(AudioProcItemAction::FFT_CONFIG_FM)));
+    settingItems.push_back(SettingItem("FFT Gain AM", decodeFFTGain(config.data.miniAudioFftConfigAm), static_cast<int>(AudioProcItemAction::FFT_GAIN_AM)));
+    settingItems.push_back(SettingItem("FFT Gain FM", decodeFFTGain(config.data.miniAudioFftConfigFm), static_cast<int>(AudioProcItemAction::FFT_GAIN_FM)));
 
     // Lista komponens újrarajzolásának kérése, ha létezik
     if (menuList) {
@@ -59,11 +59,11 @@ void ScreenSetupAudioProc::handleItemAction(int index, int action) {
         case AudioProcItemAction::RTTY_MARK_FREQUENCY:
             handleRttyMarkFrequencyDialog(index);
             break;
-        case AudioProcItemAction::FFT_CONFIG_AM:
-            handleFFTConfigDialog(index, true);
+        case AudioProcItemAction::FFT_GAIN_AM:
+            handleFFTGainDialog(index, true);
             break;
-        case AudioProcItemAction::FFT_CONFIG_FM:
-            handleFFTConfigDialog(index, false);
+        case AudioProcItemAction::FFT_GAIN_FM:
+            handleFFTGainDialog(index, false);
             break;
         case AudioProcItemAction::NONE:
         default:
@@ -166,12 +166,12 @@ void ScreenSetupAudioProc::handleRttyMarkFrequencyDialog(int index) {
 }
 
 /**
- * @brief FFT konfiguráció érték dekódolása olvasható szöveggé
+ * @brief FFT gain érték dekódolása olvasható szöveggé
  *
- * @param value Az FFT konfigurációs érték
+ * @param value Az FFT gain érték
  * @return Olvasható string reprezentáció
  */
-String ScreenSetupAudioProc::decodeFFTConfig(float value) {
+String ScreenSetupAudioProc::decodeFFTGain(float value) {
     if (value == -1.0f)
         return "Disabled";
     else if (value == 0.0f)
@@ -181,14 +181,14 @@ String ScreenSetupAudioProc::decodeFFTConfig(float value) {
 }
 
 /**
- * @brief FFT konfigurációs dialógus kezelése AM vagy FM módhoz
+ * @brief FFT gain dialógus kezelése AM vagy FM módhoz
  *
  * @param index A menüpont indexe a lista frissítéséhez
  * @param isAM true = AM mód, false = FM mód
  */
-void ScreenSetupAudioProc::handleFFTConfigDialog(int index, bool isAM) {
+void ScreenSetupAudioProc::handleFFTGainDialog(int index, bool isAM) {
     float &currentConfig = isAM ? config.data.miniAudioFftConfigAm : config.data.miniAudioFftConfigFm;
-    const char *title = isAM ? "FFT Config AM" : "FFT Config FM";
+    const char *title = isAM ? "FFT Gain AM" : "FFT Gain FM";
 
     int defaultSelection = 0; // Disabled
     if (currentConfig == 0.0f) {
