@@ -52,7 +52,7 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
 
     // AudioProcessor inicializálása a megfelelő config referenciával
     float &gainConfigRef = (radioMode == RadioMode::AM) ? config.data.miniAudioFftConfigAm : config.data.miniAudioFftConfigFm;
-    pAudioProcessor_ = new AudioProcessor(gainConfigRef, AudioProcessorConstants::AUDIO_INPUT_PIN, AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY);
+    pAudioProcessor_ = new AudioProcessor(gainConfigRef, PIN_AUDIO_INPUT, AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY);
 
     if (!pAudioProcessor_) {
         DEBUG("SpectrumVisualizationComponent: AudioProcessor inicializálás sikertelen!\n");
@@ -284,6 +284,21 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
     lastRenderedMode_ = currentMode_;
     currentMode_ = static_cast<DisplayMode>(nextMode);
 
+    // Optimális FFT méret beállítása az új módhoz
+    if (pAudioProcessor_) {
+        uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
+
+        if (pAudioProcessor_->getFftSize() != optimalFftSize) {
+            DEBUG("SpectrumVisualizationComponent: Changing FFT size from %d to %d for mode %d\n", pAudioProcessor_->getFftSize(), optimalFftSize, static_cast<int>(currentMode_));
+
+            if (pAudioProcessor_->setFftSize(optimalFftSize)) {
+                DEBUG("SpectrumVisualizationComponent: FFT size successfully changed to %d\n", optimalFftSize);
+            } else {
+                DEBUG("SpectrumVisualizationComponent: Failed to change FFT size to %d\n", optimalFftSize);
+            }
+        }
+    }
+
     // Mode indicator megjelenítése 20 másodpercig
     modeIndicatorVisible_ = true;
     modeIndicatorDrawn_ = false;               // Reset a flag-et hogy azonnal megjelenjen
@@ -312,6 +327,19 @@ void SpectrumVisualizationComponent::setInitialMode(DisplayMode mode) {
     currentMode_ = mode;
     lastRenderedMode_ = DisplayMode::Off; // Kényszerítjük az újrarajzolást
 
+    // Optimális FFT méret beállítása
+    if (pAudioProcessor_) {
+        uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
+
+        if (pAudioProcessor_->getFftSize() != optimalFftSize) {
+            DEBUG("SpectrumVisualizationComponent: Setting initial FFT size to %d for mode %d\n", optimalFftSize, static_cast<int>(currentMode_));
+
+            if (!pAudioProcessor_->setFftSize(optimalFftSize)) {
+                DEBUG("SpectrumVisualizationComponent: Failed to set initial FFT size to %d\n", optimalFftSize);
+            }
+        }
+    }
+
     // Sprite előkészítése az új módhoz
     manageSpriteForMode(currentMode_);
 }
@@ -330,6 +358,19 @@ void SpectrumVisualizationComponent::loadModeFromConfig() {
     }
 
     currentMode_ = configMode;
+
+    // Optimális FFT méret beállítása
+    if (pAudioProcessor_) {
+        uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
+
+        if (pAudioProcessor_->getFftSize() != optimalFftSize) {
+            DEBUG("SpectrumVisualizationComponent: Loading FFT size %d from config for mode %d\n", optimalFftSize, static_cast<int>(currentMode_));
+
+            if (!pAudioProcessor_->setFftSize(optimalFftSize)) {
+                DEBUG("SpectrumVisualizationComponent: Failed to load FFT size %d from config\n", optimalFftSize);
+            }
+        }
+    }
 
     // Sprite előkészítése az új módhoz
     manageSpriteForMode(currentMode_);
@@ -969,7 +1010,9 @@ void SpectrumVisualizationComponent::setCurrentModeToConfig() {
  * @param type A beállítandó TuningAidType.
  */
 void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
-    constexpr float CW_TUNING_AID_SPAN_HZ = 600.0f;
+
+    constexpr float CW_TUNING_AID_SPAN_HZ = 600.0f; // A config.data.cwReceiverOffsetHz +- 600 Hz körüli CW frekvencia a hangolássegéd sávszélessége
+    constexpr float RTTY_TUNING_AID_SPAN_HZ = 200.0f;
 
     bool typeChanged = (currentTuningAidType_ != type);
     currentTuningAidType_ = type;
@@ -979,18 +1022,24 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
         float oldMaxFreq = currentTuningAidMaxFreqHz_;
 
         if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
+
             // CW: 600 Hz span a CW offset frekvencia körül
             float centerFreq = config.data.cwReceiverOffsetHz;
             currentTuningAidMinFreqHz_ = centerFreq - CW_TUNING_AID_SPAN_HZ / 2.0f;
             currentTuningAidMaxFreqHz_ = centerFreq + CW_TUNING_AID_SPAN_HZ / 2.0f;
+
         } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
             // RTTY: Mark és Space frekvenciák közötti terület + margó
             float f_mark = config.data.rttyMarkFrequencyHz;
             float f_space = f_mark - config.data.rttyShiftHz;
-            float min_freq = std::min(f_mark, f_space) - 100.0f; // 100 Hz margó
-            float max_freq = std::max(f_mark, f_space) + 100.0f; // 100 Hz margó
+
+            // Bal/jobb margó
+            float min_freq = std::min(f_mark, f_space) - RTTY_TUNING_AID_SPAN_HZ;
+            float max_freq = std::max(f_mark, f_space) + RTTY_TUNING_AID_SPAN_HZ;
+
             currentTuningAidMinFreqHz_ = min_freq;
             currentTuningAidMaxFreqHz_ = max_freq;
+
         } else {
             // OFF_DECODER: alapértelmezett tartomány
             currentTuningAidMinFreqHz_ = 0.0f;
@@ -1130,6 +1179,10 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         float max_freq_displayed = currentTuningAidMaxFreqHz_;
         float displayed_span_hz = max_freq_displayed - min_freq_displayed;
 
+        tft.setFreeFont();
+        tft.setTextSize(1);
+        tft.setTextDatum(BC_DATUM);
+
         if (displayed_span_hz > 0) {
             if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
                 // CW frekvencia címke - törli a területet és biztosan látható pozícióban
@@ -1140,8 +1193,6 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                 tft.fillRect(line_x - 25, label_y - 8, 50, 10, TFT_BLACK);
 
                 tft.setTextColor(TFT_GREEN, TFT_BLACK);
-                tft.setTextSize(1);
-                tft.setTextDatum(BC_DATUM);
                 tft.drawString(String(static_cast<int>(config.data.cwReceiverOffsetHz)) + "Hz", line_x, label_y);
 
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
@@ -1159,8 +1210,6 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                     tft.fillRect(line_x_space - 25, label_y - 8, 50, 10, TFT_BLACK);
 
                     tft.setTextColor(TFT_CYAN, TFT_BLACK);
-                    tft.setTextSize(1);
-                    tft.setTextDatum(BC_DATUM);
                     tft.drawString(String(static_cast<int>(round(f_space))) + "Hz", line_x_space, label_y);
                 }
 
@@ -1175,8 +1224,6 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                     tft.fillRect(line_x_mark - 25, label_y - 8, 50, 10, TFT_BLACK);
 
                     tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-                    tft.setTextSize(1);
-                    tft.setTextDatum(BC_DATUM);
                     tft.drawString(String(static_cast<int>(round(f_mark))) + "Hz", line_x_mark, label_y);
                 }
             }
@@ -1245,5 +1292,27 @@ void SpectrumVisualizationComponent::drawSpectrumBar(int band_idx, double magnit
     // Ha a peak érték 0-ra csökkent, töröljük (biztosítjuk, hogy ne jelenjen meg)
     if (band_idx < MAX_SPECTRUM_BANDS && Rpeak_[band_idx] < 1) {
         Rpeak_[band_idx] = 0;
+    }
+}
+
+/**
+ * @brief Optimal FFT méret meghatározása a megjelenítési módhoz
+ */
+uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
+    switch (mode) {
+        case DisplayMode::Waterfall:
+        case DisplayMode::CWWaterfall:
+        case DisplayMode::RTTYWaterfall:
+            return 2048; // 2x jobb felbontás a hangolási segédhez
+
+        case DisplayMode::SpectrumHighRes:
+            return 1024; // Maximum felbontás a spektrum analizáláshoz
+
+        case DisplayMode::SpectrumLowRes:
+        case DisplayMode::Oscilloscope:
+        case DisplayMode::Envelope:
+        case DisplayMode::Off:
+        default:
+            return 512; // Alapértelmezett - gyorsabb
     }
 }

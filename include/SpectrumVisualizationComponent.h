@@ -100,6 +100,13 @@ class SpectrumVisualizationComponent : public UIComponent {
     bool isModeAvailable(DisplayMode mode) const;
 
     /**
+     * @brief Optimális FFT méret meghatározása a megjelenítési módhoz
+     * @param mode A megjelenítési mód
+     * @return Az optimális FFT méret
+     */
+    uint16_t getOptimalFftSizeForMode(DisplayMode mode) const;
+
+    /**
      * @brief Beállítja, hogy a keret rajzolása szükséges-e
      * @param drawn true ha a keretet rajzolni kell, false ha nem
      */

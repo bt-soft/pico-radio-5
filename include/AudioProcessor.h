@@ -6,7 +6,6 @@
 
 namespace AudioProcessorConstants {
 // Audio input konstansok
-const int AUDIO_INPUT_PIN = A1;
 const double DEFAULT_SAMPLING_FREQUENCY = 30000.0; // 30kHz mintavételezés a 15kHz Nyquist limithez
 
 // FFT konstansok
