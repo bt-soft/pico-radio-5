@@ -1,22 +1,23 @@
-#ifndef __SCREEN_SETUP_CW_RTTY_H
-#define __SCREEN_SETUP_CW_RTTY_H
+#ifndef __SCREEN_SETUP_AUDIO_PROC_H
+#define __SCREEN_SETUP_AUDIO_PROC_H
 
 #include "ScreenSetupBase.h"
 
 /**
- * @brief CW és RTTY beállítások képernyő.
+ * @brief Audió feldolgozás beállítások képernyő.
  *
- * Ez a képernyő a CW és RTTY modulációs beállításait kezeli:
+ * Ez a képernyő az audió feldolgozás specifikus beállításait kezeli:
  * - CW receiver offset beállítása (400Hz - 1900Hz)
  * - RTTY shift beállítása (80Hz - 1000Hz)
  * - RTTY mark frequency beállítása (1200Hz - 2500Hz)
+ * - FFT konfigurációk AM és FM módokhoz
  */
-class ScreenSetupCwRtty : public ScreenSetupBase {
+class ScreenSetupAudioProc : public ScreenSetupBase {
   private:
     /**
-     * @brief CW/RTTY specifikus menüpont akciók
+     * @brief Audió feldolgozás specifikus menüpont akciók
      */
-    enum class CwRttyItemAction {
+    enum class AudioProcItemAction {
         NONE = 0,
         CW_RECEIVER_OFFSET = 400,
         RTTY_SHIFT,
@@ -28,7 +29,7 @@ class ScreenSetupCwRtty : public ScreenSetupBase {
     // Segédfüggvények
     String decodeFFTConfig(float value);
 
-    // CW/RTTY specifikus dialógus kezelő függvények
+    // Audió feldolgozás specifikus dialógus kezelő függvények
     void handleCwOffsetDialog(int index);
     void handleRttyShiftDialog(int index);
     void handleRttyMarkFrequencyDialog(int index);
@@ -44,8 +45,8 @@ class ScreenSetupCwRtty : public ScreenSetupBase {
     /**
      * @brief Konstruktor.
      */
-    ScreenSetupCwRtty();
-    virtual ~ScreenSetupCwRtty() = default;
+    ScreenSetupAudioProc();
+    virtual ~ScreenSetupAudioProc() = default;
 };
 
-#endif // __SCREEN_SETUP_CW_RTTY_H
+#endif // __SCREEN_SETUP_AUDIO_PROC_H

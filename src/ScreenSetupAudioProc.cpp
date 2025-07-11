@@ -1,36 +1,36 @@
-#include "ScreenSetupCwRtty.h"
+#include "ScreenSetupAudioProc.h"
 #include "Config.h"
 #include "MultiButtonDialog.h"
 #include "ValueChangeDialog.h"
 
 /**
- * @brief ScreenSetupCwRtty konstruktor
+ * @brief ScreenSetupAudioProc konstruktor
  */
-ScreenSetupCwRtty::ScreenSetupCwRtty() : ScreenSetupBase(SCREEN_NAME_SETUP_CW_RTTY) { layoutComponents(); }
+ScreenSetupAudioProc::ScreenSetupAudioProc() : ScreenSetupBase(SCREEN_NAME_SETUP_AUDIO_PROC) { layoutComponents(); }
 
 /**
  * @brief Képernyő címének visszaadása
  *
  * @return A képernyő címe
  */
-const char *ScreenSetupCwRtty::getScreenTitle() const { return "CW/RTTY Settings"; }
+const char *ScreenSetupAudioProc::getScreenTitle() const { return "Audio Processing"; }
 
 /**
- * @brief Menüpontok feltöltése CW/RTTY specifikus beállításokkal
+ * @brief Menüpontok feltöltése audió feldolgozás specifikus beállításokkal
  *
- * Ez a metódus feltölti a menüpontokat a CW/RTTY aktuális
+ * Ez a metódus feltölti a menüpontokat az audió feldolgozás aktuális
  * konfigurációs értékeivel.
  */
-void ScreenSetupCwRtty::populateMenuItems() {
+void ScreenSetupAudioProc::populateMenuItems() {
     // Korábbi menüpontok törlése
     settingItems.clear();
 
-    settingItems.push_back(SettingItem("CW Receiver Offset", String(config.data.cwReceiverOffsetHz) + " Hz", static_cast<int>(CwRttyItemAction::CW_RECEIVER_OFFSET)));
-    settingItems.push_back(SettingItem("RTTY Shift", String(config.data.rttyShiftHz) + " Hz", static_cast<int>(CwRttyItemAction::RTTY_SHIFT)));
-    settingItems.push_back(SettingItem("RTTY Mark Frequency", String(config.data.rttyMarkFrequencyHz) + " Hz", static_cast<int>(CwRttyItemAction::RTTY_MARK_FREQUENCY)));
+    settingItems.push_back(SettingItem("CW Receiver Offset", String(config.data.cwReceiverOffsetHz) + " Hz", static_cast<int>(AudioProcItemAction::CW_RECEIVER_OFFSET)));
+    settingItems.push_back(SettingItem("RTTY Shift", String(config.data.rttyShiftHz) + " Hz", static_cast<int>(AudioProcItemAction::RTTY_SHIFT)));
+    settingItems.push_back(SettingItem("RTTY Mark Frequency", String(config.data.rttyMarkFrequencyHz) + " Hz", static_cast<int>(AudioProcItemAction::RTTY_MARK_FREQUENCY)));
 
-    settingItems.push_back(SettingItem("FFT Config AM", decodeFFTConfig(config.data.miniAudioFftConfigAm), static_cast<int>(CwRttyItemAction::FFT_CONFIG_AM)));
-    settingItems.push_back(SettingItem("FFT Config FM", decodeFFTConfig(config.data.miniAudioFftConfigFm), static_cast<int>(CwRttyItemAction::FFT_CONFIG_FM)));
+    settingItems.push_back(SettingItem("FFT Config AM", decodeFFTConfig(config.data.miniAudioFftConfigAm), static_cast<int>(AudioProcItemAction::FFT_CONFIG_AM)));
+    settingItems.push_back(SettingItem("FFT Config FM", decodeFFTConfig(config.data.miniAudioFftConfigFm), static_cast<int>(AudioProcItemAction::FFT_CONFIG_FM)));
 
     // Lista komponens újrarajzolásának kérése, ha létezik
     if (menuList) {
@@ -41,33 +41,33 @@ void ScreenSetupCwRtty::populateMenuItems() {
 /**
  * @brief Menüpont akció kezelése
  *
- * Ez a metódus kezeli a CW/RTTY specifikus menüpontok kattintásait.
+ * Ez a metódus kezeli az audió feldolgozás specifikus menüpontok kattintásait.
  *
  * @param index A menüpont indexe
  * @param action Az akció azonosító
  */
-void ScreenSetupCwRtty::handleItemAction(int index, int action) {
-    CwRttyItemAction cwRttyAction = static_cast<CwRttyItemAction>(action);
+void ScreenSetupAudioProc::handleItemAction(int index, int action) {
+    AudioProcItemAction audioProcAction = static_cast<AudioProcItemAction>(action);
 
-    switch (cwRttyAction) {
-        case CwRttyItemAction::CW_RECEIVER_OFFSET:
+    switch (audioProcAction) {
+        case AudioProcItemAction::CW_RECEIVER_OFFSET:
             handleCwOffsetDialog(index);
             break;
-        case CwRttyItemAction::RTTY_SHIFT:
+        case AudioProcItemAction::RTTY_SHIFT:
             handleRttyShiftDialog(index);
             break;
-        case CwRttyItemAction::RTTY_MARK_FREQUENCY:
+        case AudioProcItemAction::RTTY_MARK_FREQUENCY:
             handleRttyMarkFrequencyDialog(index);
             break;
-        case CwRttyItemAction::FFT_CONFIG_AM:
+        case AudioProcItemAction::FFT_CONFIG_AM:
             handleFFTConfigDialog(index, true);
             break;
-        case CwRttyItemAction::FFT_CONFIG_FM:
+        case AudioProcItemAction::FFT_CONFIG_FM:
             handleFFTConfigDialog(index, false);
             break;
-        case CwRttyItemAction::NONE:
+        case AudioProcItemAction::NONE:
         default:
-            DEBUG("ScreenSetupCwRtty: Unknown action: %d\n", action);
+            DEBUG("ScreenSetupAudioProc: Unknown action: %d\n", action);
             break;
     }
 }
@@ -77,7 +77,7 @@ void ScreenSetupCwRtty::handleItemAction(int index, int action) {
  *
  * @param index A menüpont indexe a lista frissítéséhez
  */
-void ScreenSetupCwRtty::handleCwOffsetDialog(int index) {
+void ScreenSetupAudioProc::handleCwOffsetDialog(int index) {
     auto tempValuePtr = std::make_shared<int>(static_cast<int>(config.data.cwReceiverOffsetHz));
 
     auto cwOffsetDialog = std::make_shared<ValueChangeDialog>(
@@ -89,7 +89,7 @@ void ScreenSetupCwRtty::handleCwOffsetDialog(int index) {
             if (std::holds_alternative<int>(liveNewValue)) {
                 int currentDialogVal = std::get<int>(liveNewValue);
                 config.data.cwReceiverOffsetHz = static_cast<uint16_t>(currentDialogVal);
-                DEBUG("ScreenSetupCwRtty: Live CW offset preview: %u Hz\n", config.data.cwReceiverOffsetHz);
+                DEBUG("ScreenSetupAudioProc: Live CW offset preview: %u Hz\n", config.data.cwReceiverOffsetHz);
             }
         },
         [this, index, tempValuePtr](UIDialogBase *sender, MessageDialog::DialogResult dialogResult) {
@@ -108,7 +108,7 @@ void ScreenSetupCwRtty::handleCwOffsetDialog(int index) {
  *
  * @param index A menüpont indexe a lista frissítéséhez
  */
-void ScreenSetupCwRtty::handleRttyShiftDialog(int index) {
+void ScreenSetupAudioProc::handleRttyShiftDialog(int index) {
     auto tempValuePtr = std::make_shared<int>(static_cast<int>(config.data.rttyShiftHz));
 
     auto rttyShiftDialog = std::make_shared<ValueChangeDialog>(
@@ -120,7 +120,7 @@ void ScreenSetupCwRtty::handleRttyShiftDialog(int index) {
             if (std::holds_alternative<int>(liveNewValue)) {
                 int currentDialogVal = std::get<int>(liveNewValue);
                 config.data.rttyShiftHz = static_cast<uint16_t>(currentDialogVal);
-                DEBUG("ScreenSetupCwRtty: Live RTTY shift preview: %u Hz\n", config.data.rttyShiftHz);
+                DEBUG("ScreenSetupAudioProc: Live RTTY shift preview: %u Hz\n", config.data.rttyShiftHz);
             }
         },
         [this, index, tempValuePtr](UIDialogBase *sender, MessageDialog::DialogResult dialogResult) {
@@ -139,7 +139,7 @@ void ScreenSetupCwRtty::handleRttyShiftDialog(int index) {
  *
  * @param index A menüpont indexe a lista frissítéséhez
  */
-void ScreenSetupCwRtty::handleRttyMarkFrequencyDialog(int index) {
+void ScreenSetupAudioProc::handleRttyMarkFrequencyDialog(int index) {
     auto tempValuePtr = std::make_shared<int>(static_cast<int>(config.data.rttyMarkFrequencyHz));
 
     auto rttyMarkDialog = std::make_shared<ValueChangeDialog>(
@@ -151,7 +151,7 @@ void ScreenSetupCwRtty::handleRttyMarkFrequencyDialog(int index) {
             if (std::holds_alternative<int>(liveNewValue)) {
                 int currentDialogVal = std::get<int>(liveNewValue);
                 config.data.rttyMarkFrequencyHz = static_cast<uint16_t>(currentDialogVal);
-                DEBUG("ScreenSetupCwRtty: Live RTTY mark frequency preview: %u Hz\n", config.data.rttyMarkFrequencyHz);
+                DEBUG("ScreenSetupAudioProc: Live RTTY mark frequency preview: %u Hz\n", config.data.rttyMarkFrequencyHz);
             }
         },
         [this, index, tempValuePtr](UIDialogBase *sender, MessageDialog::DialogResult dialogResult) {
@@ -171,7 +171,7 @@ void ScreenSetupCwRtty::handleRttyMarkFrequencyDialog(int index) {
  * @param value Az FFT konfigurációs érték
  * @return Olvasható string reprezentáció
  */
-String ScreenSetupCwRtty::decodeFFTConfig(float value) {
+String ScreenSetupAudioProc::decodeFFTConfig(float value) {
     if (value == -1.0f)
         return "Disabled";
     else if (value == 0.0f)
@@ -186,7 +186,7 @@ String ScreenSetupCwRtty::decodeFFTConfig(float value) {
  * @param index A menüpont indexe a lista frissítéséhez
  * @param isAM true = AM mód, false = FM mód
  */
-void ScreenSetupCwRtty::handleFFTConfigDialog(int index, bool isAM) {
+void ScreenSetupAudioProc::handleFFTConfigDialog(int index, bool isAM) {
     float &currentConfig = isAM ? config.data.miniAudioFftConfigAm : config.data.miniAudioFftConfigFm;
     const char *title = isAM ? "FFT Config AM" : "FFT Config FM";
 

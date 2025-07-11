@@ -20,7 +20,7 @@
 #define SCREEN_NAME_SETUP "ScreenSetup"
 #define SCREEN_NAME_SETUP_SYSTEM "ScreenSetupSystem"
 #define SCREEN_NAME_SETUP_SI4735 "ScreenSetupSi4735"
-#define SCREEN_NAME_SETUP_CW_RTTY "ScreenSetupCwRtty"
+#define SCREEN_NAME_SETUP_AUDIO_PROC "ScreenSetupAudioProc"
 
 #define SCREEN_NAME_MEMORY "ScreenMemory"
 #define SCREEN_NAME_SCAN "ScreenScan"
