@@ -122,6 +122,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     bool needBorderDrawn;       // Flag to indicate if the border needs to be redrawn
     uint32_t modeIndicatorHideTime_;
     uint32_t lastTouchTime_;
+    uint32_t lastFrameTime_; // FPS limitáláshoz
     float maxDisplayFrequencyHz_;
     float envelopeLastSmoothedValue_;
 
@@ -187,6 +188,14 @@ class SpectrumVisualizationComponent : public UIComponent {
     int getGraphHeight() const;
     int getIndicatorHeight() const;
     int getEffectiveHeight() const;
+
+    /**
+     * @brief Core1 audio adatok kezelése
+     */
+    bool getCore1SpectrumData(const double **outData, uint16_t *outSize, float *outBinWidth, float *outAutoGain);
+    bool getCore1OscilloscopeData(const int **outData);
+    float getCore1BinWidthHz();
+    uint16_t getCore1FftSize();
 
     /**
      * @brief Config konverziós függvények

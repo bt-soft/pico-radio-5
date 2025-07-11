@@ -1,4 +1,5 @@
 #include "SpectrumVisualizationComponent.h"
+#include "AudioCore1Manager.h"
 #include "Config.h"
 #include "defines.h"
 #include <cmath>
@@ -47,16 +48,15 @@ const uint16_t SpectrumVisualizationComponent::WATERFALL_COLORS[16] = {0x0000, 0
  */
 SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode)
     : UIComponent(Rect(x, y, w, h)), radioMode_(radioMode), currentMode_(DisplayMode::Off), lastRenderedMode_(DisplayMode::Off), modeIndicatorVisible_(false), modeIndicatorDrawn_(false), frequencyLabelsDrawn_(false),
-      modeIndicatorHideTime_(0), lastTouchTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM), envelopeLastSmoothedValue_(0.0f), sprite_(nullptr),
-      spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0), pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f) {
+      modeIndicatorHideTime_(0), lastTouchTime_(0), lastFrameTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM), envelopeLastSmoothedValue_(0.0f),
+      sprite_(nullptr), spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0), pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f),
+      currentTuningAidMaxFreqHz_(0.0f) {
 
-    // AudioProcessor inicializálása a megfelelő config referenciával
-    float &gainConfigRef = (radioMode == RadioMode::AM) ? config.data.miniAudioFftConfigAm : config.data.miniAudioFftConfigFm;
-    pAudioProcessor_ = new AudioProcessor(gainConfigRef, PIN_AUDIO_INPUT, AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY);
+    // Core1 AudioManager használata helyett a helyi AudioProcessor
+    // Az AudioProcessor most már a core1-en fut az AudioCore1Manager-en keresztül
+    pAudioProcessor_ = nullptr; // Már nem használjuk a helyi AudioProcessor-t
 
-    if (!pAudioProcessor_) {
-        DEBUG("SpectrumVisualizationComponent: AudioProcessor inicializálás sikertelen!\n");
-    }
+    DEBUG("SpectrumVisualizationComponent: Inicializálva core1 audio feldolgozással.\n");
 
     // Peak detection buffer inicializálása
     memset(Rpeak_, 0, sizeof(Rpeak_));
@@ -83,10 +83,8 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
         sprite_ = nullptr;
     }
 
-    if (pAudioProcessor_) {
-        delete pAudioProcessor_;
-        pAudioProcessor_ = nullptr;
-    }
+    // AudioProcessor már nem itt van felszabadítva, a core1-en fut
+    pAudioProcessor_ = nullptr;
 }
 
 /**
@@ -94,8 +92,16 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
  */
 void SpectrumVisualizationComponent::draw() {
 
+    // FPS limitálás - maximum ~30 FPS a villogás csökkentéséhez
+    uint32_t currentTime = millis();
+    if (currentTime - lastFrameTime_ < 33) { // 33ms = ~30 FPS
+        return;
+    }
+    lastFrameTime_ = currentTime;
+
     // Ha nincs processzor vagy a dialog aktív, ne rajzoljunk újra (kivéve ha force redraw van)
-    if (!pAudioProcessor_ or iscurrentScreenDialogActive()) {
+    // Ellenőrizzük, hogy a core1 audio manager fut-e és van-e aktív dialógus
+    if (!AudioCore1Manager::isRunning() || iscurrentScreenDialogActive()) {
         return;
     }
 
@@ -104,9 +110,8 @@ void SpectrumVisualizationComponent::draw() {
         needBorderDrawn = false; // Reset the flag after drawing
     }
 
-    // Audio feldolgozás
-    bool collectOsci = (currentMode_ == DisplayMode::Oscilloscope);
-    pAudioProcessor_->process(collectOsci);
+    // Audio adatok már a core1-en feldolgozás alatt vannak
+    // Itt csak lekérjük a feldolgozott adatokat
 
     // Biztonsági ellenőrzés: FM módban CW/RTTY módok nem engedélyezettek
     if (radioMode_ == RadioMode::FM && (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall)) {
@@ -285,13 +290,15 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
     currentMode_ = static_cast<DisplayMode>(nextMode);
 
     // Optimális FFT méret beállítása az új módhoz
-    if (pAudioProcessor_) {
+    // Core1 AudioManager használatával FFT méret beállítása
+    if (AudioCore1Manager::isRunning()) {
         uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
+        uint16_t currentFftSize = getCore1FftSize();
 
-        if (pAudioProcessor_->getFftSize() != optimalFftSize) {
-            DEBUG("SpectrumVisualizationComponent: Changing FFT size from %d to %d for mode %d\n", pAudioProcessor_->getFftSize(), optimalFftSize, static_cast<int>(currentMode_));
+        if (currentFftSize != optimalFftSize) {
+            DEBUG("SpectrumVisualizationComponent: Changing FFT size from %d to %d for mode %d\n", currentFftSize, optimalFftSize, static_cast<int>(currentMode_));
 
-            if (pAudioProcessor_->setFftSize(optimalFftSize)) {
+            if (AudioCore1Manager::setFftSize(optimalFftSize)) {
                 DEBUG("SpectrumVisualizationComponent: FFT size successfully changed to %d\n", optimalFftSize);
             } else {
                 DEBUG("SpectrumVisualizationComponent: Failed to change FFT size to %d\n", optimalFftSize);
@@ -327,14 +334,15 @@ void SpectrumVisualizationComponent::setInitialMode(DisplayMode mode) {
     currentMode_ = mode;
     lastRenderedMode_ = DisplayMode::Off; // Kényszerítjük az újrarajzolást
 
-    // Optimális FFT méret beállítása
-    if (pAudioProcessor_) {
+    // Optimális FFT méret beállítása Core1-en
+    if (AudioCore1Manager::isRunning()) {
         uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
+        uint16_t currentFftSize = getCore1FftSize();
 
-        if (pAudioProcessor_->getFftSize() != optimalFftSize) {
+        if (currentFftSize != optimalFftSize) {
             DEBUG("SpectrumVisualizationComponent: Setting initial FFT size to %d for mode %d\n", optimalFftSize, static_cast<int>(currentMode_));
 
-            if (!pAudioProcessor_->setFftSize(optimalFftSize)) {
+            if (!AudioCore1Manager::setFftSize(optimalFftSize)) {
                 DEBUG("SpectrumVisualizationComponent: Failed to set initial FFT size to %d\n", optimalFftSize);
             }
         }
@@ -359,14 +367,15 @@ void SpectrumVisualizationComponent::loadModeFromConfig() {
 
     currentMode_ = configMode;
 
-    // Optimális FFT méret beállítása
-    if (pAudioProcessor_) {
+    // Optimális FFT méret beállítása Core1-en
+    if (AudioCore1Manager::isRunning()) {
         uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
+        uint16_t currentFftSize = getCore1FftSize();
 
-        if (pAudioProcessor_->getFftSize() != optimalFftSize) {
+        if (currentFftSize != optimalFftSize) {
             DEBUG("SpectrumVisualizationComponent: Loading FFT size %d from config for mode %d\n", optimalFftSize, static_cast<int>(currentMode_));
 
-            if (!pAudioProcessor_->setFftSize(optimalFftSize)) {
+            if (!AudioCore1Manager::setFftSize(optimalFftSize)) {
                 DEBUG("SpectrumVisualizationComponent: Failed to load FFT size %d from config\n", optimalFftSize);
             }
         }
@@ -430,9 +439,7 @@ void SpectrumVisualizationComponent::renderOffMode() {
  * @brief Low resolution spektrum renderelése (sprite-tal, javított amplitúdóval)
  */
 void SpectrumVisualizationComponent::renderSpectrumLowRes() {
-    if (!pAudioProcessor_) {
-        return;
-    }
+    // Audio feldolgozás Core1-en történik, AudioCore1Manager-en keresztül
 
     int graphH = getGraphHeight();
     if (!spriteCreated_ || bounds.width == 0 || graphH <= 0) {
@@ -442,8 +449,7 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
         return;
     }
 
-    // Sprite törlése
-    sprite_->fillSprite(TFT_BLACK);
+    // Ne töröljük a teljes sprite-ot minden frame-ben - csak az oszlopokat rajzoljuk újra
 
     int actual_low_res_peak_max_height = graphH - 1;
     constexpr int bar_gap_pixels = 1;
@@ -478,17 +484,24 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
         }
     }
 
-    float currentBinWidthHz = pAudioProcessor_->getBinWidthHz();
-    if (currentBinWidthHz == 0)
-        currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+    // Core1 spektrum adatok lekérése
+    const double *magnitudeData = nullptr;
+    uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
+    float currentBinWidthHz = 0.0f;
+    float currentAutoGain = 1.0f;
 
-    const uint16_t actualFftSize = pAudioProcessor_->getFftSize();
+    bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
+
+    if (!dataAvailable || currentBinWidthHz == 0) {
+        // Ha nincs friss adat, használjuk a default értékeket
+        currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+    }
+
     const int min_bin_idx_low_res = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
     const int max_bin_idx_low_res = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_low_res_range = std::max(1, max_bin_idx_low_res - min_bin_idx_low_res + 1);
 
     double band_magnitudes[LOW_RES_BANDS] = {0.0};
-    const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
 
     if (!magnitudeData) {
         memset(band_magnitudes, 0, sizeof(band_magnitudes));
@@ -504,6 +517,9 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
     // Sávok kirajzolása sprite-ra (javított amplitúdóval)
     for (int band_idx = 0; band_idx < bands_to_display_on_screen; band_idx++) {
         int x_pos_for_bar = x_offset + bar_total_width_pixels_dynamic * band_idx;
+
+        // Előbb töröljük az oszlop területét (fekete háttér)
+        sprite_->fillRect(x_pos_for_bar, 0, dynamic_bar_width_pixels, graphH, TFT_BLACK);
 
         // Javított magnitúdó skálázás
         double magnitude = band_magnitudes[band_idx];
@@ -543,8 +559,7 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
  * @brief High resolution spektrum renderelése (sprite-tal, javított amplitúdóval)
  */
 void SpectrumVisualizationComponent::renderSpectrumHighRes() {
-    if (!pAudioProcessor_)
-        return;
+    // Audio feldolgozás Core1-en történik, AudioCore1Manager-en keresztül
 
     int graphH = getGraphHeight();
     if (!spriteCreated_ || bounds.width == 0 || graphH <= 0) {
@@ -554,21 +569,24 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
         return;
     }
 
-    // Sprite törlése
-    sprite_->fillSprite(TFT_BLACK);
+    // Ne töröljük a teljes sprite-ot minden frame-ben - csak a vonalakat rajzoljuk újra
 
-    float currentBinWidthHz = pAudioProcessor_->getBinWidthHz();
-    if (currentBinWidthHz == 0) {
+    // Core1 spektrum adatok lekérése
+    const double *magnitudeData = nullptr;
+    uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
+    float currentBinWidthHz = 0.0f;
+    float currentAutoGain = 1.0f;
+
+    bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
+
+    if (!dataAvailable || currentBinWidthHz == 0) {
         currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
     }
-
-    const uint16_t actualFftSize = pAudioProcessor_->getFftSize();
     const int min_bin_idx_for_display = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
     const int max_bin_idx_for_display = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_display_range = std::max(1, max_bin_idx_for_display - min_bin_idx_for_display + 1);
 
-    const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
-    if (!magnitudeData) {
+    if (!dataAvailable || !magnitudeData) {
         sprite_->pushSprite(bounds.x, bounds.y - 1);
         return;
     }
@@ -582,6 +600,9 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
             fft_bin_index = min_bin_idx_for_display + static_cast<int>(std::round(ratio * (num_bins_in_display_range - 1)));
         }
         fft_bin_index = constrain(fft_bin_index, 0, static_cast<int>(actualFftSize / 2 - 1));
+
+        // Előbb töröljük a pixel oszlopot (fekete vonal)
+        sprite_->drawFastVLine(screen_pixel_x, 0, graphH, TFT_BLACK);
 
         double magnitude = magnitudeData[fft_bin_index];
         // Amplitúdó skálázás
@@ -609,8 +630,7 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
  * @brief Oszcilloszkóp renderelése
  */
 void SpectrumVisualizationComponent::renderOscilloscope() {
-    if (!pAudioProcessor_)
-        return;
+    // Audio feldolgozás Core1-en történik, AudioCore1Manager-en keresztül
 
     int graphH = getGraphHeight();
     if (!spriteCreated_ || bounds.width == 0 || graphH <= 0) {
@@ -623,8 +643,11 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
     // Sprite törlése
     sprite_->fillSprite(TFT_BLACK);
 
-    const int *osciData = pAudioProcessor_->getOscilloscopeData();
-    if (!osciData) {
+    // Core1 oszcilloszkóp adatok lekérése
+    const int *osciData = nullptr;
+    bool dataAvailable = getCore1OscilloscopeData(&osciData);
+
+    if (!dataAvailable || !osciData) {
         sprite_->pushSprite(bounds.x, bounds.y);
         return;
     }
@@ -691,8 +714,7 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
  * @brief Envelope renderelése
  */
 void SpectrumVisualizationComponent::renderEnvelope() {
-    if (!pAudioProcessor_)
-        return;
+    // Audio feldolgozás Core1-en történik, AudioCore1Manager-en keresztül
 
     int graphH = getGraphHeight();
     if (!spriteCreated_ || bounds.width == 0 || graphH <= 0 || wabuf.empty() || wabuf[0].empty()) {
@@ -702,9 +724,15 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         return;
     }
 
-    const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
-    float currentBinWidthHz = pAudioProcessor_->getBinWidthHz();
-    if (currentBinWidthHz == 0)
+    // Core1 spektrum adatok lekérése
+    const double *magnitudeData = nullptr;
+    uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
+    float currentBinWidthHz = 0.0f;
+    float currentAutoGain = 1.0f;
+
+    bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
+
+    if (!dataAvailable || currentBinWidthHz == 0)
         currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
 
     // 1. Adatok eltolása balra a wabuf-ban
@@ -714,7 +742,6 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         }
     }
 
-    const uint16_t actualFftSize = pAudioProcessor_->getFftSize();
     const int min_bin_for_env = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
     const int max_bin_for_env = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_env_range = std::max(1, max_bin_for_env - min_bin_for_env + 1);
@@ -790,8 +817,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
  * @brief Waterfall renderelése
  */
 void SpectrumVisualizationComponent::renderWaterfall() {
-    if (!pAudioProcessor_)
-        return;
+    // Audio feldolgozás Core1-en történik, AudioCore1Manager-en keresztül
 
     int graphH = getGraphHeight();
     if (!spriteCreated_ || bounds.width == 0 || graphH <= 0 || wabuf.empty() || wabuf[0].empty()) {
@@ -801,9 +827,15 @@ void SpectrumVisualizationComponent::renderWaterfall() {
         return;
     }
 
-    const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
-    float currentBinWidthHz = pAudioProcessor_->getBinWidthHz();
-    if (currentBinWidthHz == 0)
+    // Core1 spektrum adatok lekérése
+    const double *magnitudeData = nullptr;
+    uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
+    float currentBinWidthHz = 0.0f;
+    float currentAutoGain = 1.0f;
+
+    bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
+
+    if (!dataAvailable || currentBinWidthHz == 0)
         currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
 
     // 1. Adatok eltolása balra a wabuf-ban (ez továbbra is szükséges a wabuf frissítéséhez)
@@ -813,7 +845,6 @@ void SpectrumVisualizationComponent::renderWaterfall() {
         }
     }
 
-    const uint16_t actualFftSize = pAudioProcessor_->getFftSize();
     const int min_bin_for_wf = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
     const int max_bin_for_wf = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_wf_range = std::max(1, max_bin_for_wf - min_bin_for_wf + 1);
@@ -1076,8 +1107,7 @@ void SpectrumVisualizationComponent::renderRTTYWaterfall() {
  * @brief Hangolási segéd renderelése (CW/RTTY waterfall)
  */
 void SpectrumVisualizationComponent::renderTuningAid() {
-    if (!pAudioProcessor_)
-        return;
+    // Audio feldolgozás Core1-en történik, AudioCore1Manager-en keresztül
 
     int graphH = getGraphHeight();
     if (!spriteCreated_ || bounds.width == 0 || graphH <= 0 || wabuf.empty() || wabuf[0].empty()) {
@@ -1087,9 +1117,15 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         return;
     }
 
-    const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
-    float currentBinWidthHz = pAudioProcessor_->getBinWidthHz();
-    if (currentBinWidthHz == 0)
+    // Core1 spektrum adatok lekérése
+    const double *magnitudeData = nullptr;
+    uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
+    float currentBinWidthHz = 0.0f;
+    float currentAutoGain = 1.0f;
+
+    bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
+
+    if (!dataAvailable || currentBinWidthHz == 0)
         currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
 
     // 1. Adatok eltolása "lefelé" a wabuf-ban (időbeli léptetés)
@@ -1101,7 +1137,6 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         }
     }
 
-    const uint16_t actualFftSize = pAudioProcessor_->getFftSize();
     const int min_fft_bin_for_tuning = std::max(1, static_cast<int>(std::round(currentTuningAidMinFreqHz_ / currentBinWidthHz)));
     const int max_fft_bin_for_tuning = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(currentTuningAidMaxFreqHz_ / currentBinWidthHz)));
     const int num_bins_in_tuning_range = std::max(1, max_fft_bin_for_tuning - min_fft_bin_for_tuning + 1);
@@ -1315,4 +1350,51 @@ uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mo
         default:
             return 512; // Alapértelmezett - gyorsabb
     }
+}
+
+/**
+ * @brief Core1 spektrum adatok lekérése
+ */
+bool SpectrumVisualizationComponent::getCore1SpectrumData(const double **outData, uint16_t *outSize, float *outBinWidth, float *outAutoGain) {
+    return AudioCore1Manager::getSpectrumData(outData, outSize, outBinWidth, outAutoGain);
+}
+
+/**
+ * @brief Core1 oszcilloszkóp adatok lekérése
+ */
+bool SpectrumVisualizationComponent::getCore1OscilloscopeData(const int **outData) { return AudioCore1Manager::getOscilloscopeData(outData); }
+
+/**
+ * @brief Core1 bin szélesség lekérése (ha nincs friss adat, cached érték)
+ */
+float SpectrumVisualizationComponent::getCore1BinWidthHz() {
+    const double *dummyData;
+    uint16_t dummySize;
+    float binWidth = 0.0f;
+    float dummyGain;
+
+    // Csak a bin width-et kérdezzük le, ha van friss adat
+    if (AudioCore1Manager::getSpectrumData(&dummyData, &dummySize, &binWidth, &dummyGain)) {
+        return binWidth;
+    }
+
+    // Ha nincs friss adat, visszaadunk egy becsült értéket
+    return AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY / 512.0f; // Default estimate
+}
+
+/**
+ * @brief Core1 FFT méret lekérése (ha nincs friss adat, cached érték)
+ */
+uint16_t SpectrumVisualizationComponent::getCore1FftSize() {
+    const double *dummyData;
+    uint16_t fftSize = 512; // Default
+    float dummyBinWidth, dummyGain;
+
+    // Csak az FFT méretet kérdezzük le, ha van friss adat
+    if (AudioCore1Manager::getSpectrumData(&dummyData, &fftSize, &dummyBinWidth, &dummyGain)) {
+        return fftSize;
+    }
+
+    // Ha nincs friss adat, visszaadunk egy alapértelmezett értéket
+    return AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
 }

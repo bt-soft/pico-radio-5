@@ -5,6 +5,7 @@
 #include "SplashScreen.h"
 
 //-------------------- Config
+#include "AudioCore1Manager.h"
 #include "AudioProcessor.h"
 #include "BandStore.h"
 #include "Config.h"
@@ -30,6 +31,7 @@ uint16_t SCREEN_W;
 uint16_t SCREEN_H;
 
 //------------------ SI4735
+#include "Band.h" // Band típusok konstansaihoz
 #include "Si4735Manager.h"
 Si4735Manager *pSi4735Manager = nullptr; // Si4735Manager: NEM lehet (hardware inicializálás miatt) statikus, mert HW inicializálások is vannak benne
 
@@ -212,13 +214,33 @@ void setup() {
     delay(100);
 
     //--------------------------------------------------------------------
-    // Lépés 7: Audio Analyzer inicializálása (radio-2 alapján)
-    splash.updateProgress(7, 8, "Starting audio analyzer...");
-    // Az AudioProcessor most közvetlenül a SpectrumVisualizationComponent-ben van inicializálva
+    // Lépés 7: Core1 Audio Manager inicializálása
+    splash.updateProgress(7, 9, "Starting Core1 audio processor...");
+
+    // Core1 Audio Manager inicializálása a megfelelő FFT gain referenciákkal
+    bool core1InitSuccess = AudioCore1Manager::init(config.data.miniAudioFftConfigAm,                    // AM FFT gain referencia
+                                                    config.data.miniAudioFftConfigFm,                    // FM FFT gain referencia
+                                                    PIN_AUDIO_INPUT,                                     // Audio bemenet pin
+                                                    AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY, // Mintavételezési frekvencia
+                                                    AudioProcessorConstants::DEFAULT_FFT_SAMPLES         // Kezdeti FFT méret
+    );
+
+    if (!core1InitSuccess) {
+        DEBUG("Core1 Audio Manager inicializálás sikertelen!\n");
+        Utils::beepError();
+        // Folytatjuk anélkül is, de spectrum nem fog működni
+    } else {
+        DEBUG("Core1 Audio Manager sikeresen inicializálva!\n");
+
+        // Beállítjuk a kezdeti módot (AM vagy FM)
+        bool isAM = (pSi4735Manager->getCurrentBandType() != FM_BAND_TYPE);
+        AudioCore1Manager::setCurrentMode(isAM);
+    }
+
     delay(100);
 
-    // Lépés 8: Finalizálás
-    splash.updateProgress(8, 8, "Starting up...");
+    // Lépés 8: ScreenManager inicializálása
+    splash.updateProgress(8, 9, "Preparing display...");
 
     // ScreenManager inicializálása itt, amikor minden más már kész
     if (screenManager == nullptr) {
@@ -226,6 +248,11 @@ void setup() {
     }
 
     screenManager->switchToScreen(startScreeName); // A kezdő képernyő
+
+    delay(100);
+
+    // Lépés 9: Finalizálás
+    splash.updateProgress(9, 9, "Starting up...");
 
     delay(100); // Rövidebb delay
 
@@ -261,6 +288,19 @@ void loop() {
         lasDebugMemoryInfo = millis();
     }
 #endif
+
+    //------------------- Core1 Audio Manager band váltás figyelése
+    static int lastBandType = -1;
+    if (pSi4735Manager) {
+        int currentBandType = pSi4735Manager->getCurrentBandType();
+        if (lastBandType != -1 && lastBandType != currentBandType) {
+            // Band váltás történt, frissítjük a Core1 audio manager módját
+            bool isAM = (currentBandType != FM_BAND_TYPE);
+            AudioCore1Manager::setCurrentMode(isAM);
+            DEBUG("Core1 Audio Manager: Band váltás %s módra\n", isAM ? "AM" : "FM");
+        }
+        lastBandType = currentBandType;
+    }
 
     //------------------- Touch esemény kezelése
     uint16_t touchX, touchY;
