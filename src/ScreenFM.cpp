@@ -222,6 +222,11 @@ void ScreenFM::drawContent() {
     if (smeterComp) {
         smeterComp->drawSmeterScale();
     }
+
+    // Spektrum vizualizáció komponens border frissítése
+    if (spectrumComp) {
+        spectrumComp->setBorderDrawn();
+    }
 }
 
 /**
@@ -242,11 +247,6 @@ void ScreenFM::activate() {
 
     // StatusLine frissítése
     checkAndUpdateMemoryStatus();
-
-    if (spectrumComp) {
-        // Spektrum vizualizáció komponens frissítése
-        spectrumComp->setBorderDrawn(); // Border rajzolása engedélyezve
-    }
 }
 
 /**

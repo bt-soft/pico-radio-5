@@ -140,7 +140,9 @@ bool ScreenAM::handleRotary(const RotaryEvent &event) {
     } else {
         // Léptetjük a rádiót, ez el is menti a band táblába
         newFreq = ::pSi4735Manager->stepFrequency(event.value);
-    } // AGC
+    }
+
+    // AGC
     ::pSi4735Manager->checkAGC();
 
     // Frekvencia kijelző azonnali frissítése
@@ -205,6 +207,11 @@ void ScreenAM::drawContent() {
 
     // TODO: Statikus címkék és UI elemek
     // drawStaticLabels();
+
+    // Spektrum vizualizáció komponens border frissítése
+    if (spectrumComp) {
+        spectrumComp->setBorderDrawn();
+    }
 }
 
 /**
@@ -239,11 +246,6 @@ void ScreenAM::activate() {
     updateCommonHorizontalButtonStates(); // Közös gombok szinkronizálása
     updateHorizontalButtonStates();       // AM-specifikus gombok szinkronizálása
     updateFreqDisplayWidth();             // FreqDisplay szélességének frissítése
-
-    if (spectrumComp) {
-        // Spektrum vizualizáció komponens frissítése
-        spectrumComp->setBorderDrawn(); // Border rajzolása engedélyezve
-    }
 }
 
 /**
@@ -301,18 +303,14 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     // S-Meter komponens létrehozása - RadioScreen közös implementáció
     // ===================================================================
-    Rect smeterBounds(2, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT + 10, SMeterConstants::SMETER_WIDTH, 70);
+    Rect smeterBounds(2, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT, SMeterConstants::SMETER_WIDTH, 70);
     createSMeterComponent(smeterBounds);
 
     // ===================================================================
     // Spektrum vizualizáció komponens létrehozása
     // ===================================================================
-    int currentY = FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT + 10 + 70 + 5; // S-Meter után
-    int spectrumHeight = SCREEN_H - currentY - 40;                               // Maradék hely - vízszintes gombsor helye
-    if (spectrumHeight > 60) {                                                   // Csak ha van elég hely
-        Rect spectrumBounds(2, currentY, SMeterConstants::SMETER_WIDTH, spectrumHeight);
-        createSpectrumComponent(spectrumBounds, RadioMode::AM);
-    }
+    Rect spectrumBounds(255, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT, 150, 80);
+    createSpectrumComponent(spectrumBounds, RadioMode::AM);
 
     // ===================================================================
     // Audio Display komponens létrehozása (jobb oldalra, kis terület)

@@ -298,7 +298,9 @@ void FreqDisplay::drawSsbCwStyle(const FrequencyDisplayData &data) {
 
         // Érintési területek kiszámítása az aláhúzáshoz
         calculateSsbCwTouchAreas(freqSpriteX, freqSpriteWidth);
-    } // 3. Mértékegység pozicionálása
+    }
+
+    // 3. Mértékegység pozicionálása
     int unitX, unitY;
     uint8_t textDatum;
 
@@ -312,13 +314,18 @@ void FreqDisplay::drawSsbCwStyle(const FrequencyDisplayData &data) {
     } else {
         // Normál mód: mértékegység az utolsó digit alatt, aláhúzás alatt
         // Az utolsó digit (10Hz) pozíciója: digit10Hz_offset a sprite bal szélétől
-        int digit10Hz_offset = 196;                                // 10Hz digit (8. pozíció a maszkban)
-        int digitWidth = 25;                                       // Ismert DSEG7 digit szélesség
-        unitX = freqSpriteX + digit10Hz_offset + (digitWidth / 2); // Digit közepéhez igazítva
-        unitY = bounds.y + FREQ_7SEGMENT_HEIGHT                    //
-                + UNDERLINE_Y_OFFSET + UNDERLINE_HEIGHT            //
-                + 20;                                              // Aláhúzás alatt 20 pixelrel lejjebb
-        textDatum = BR_DATUM;                                      // Jobb alsó sarokhoz igazítás
+        // int digit10Hz_offset = 196;                                // 10Hz digit (8. pozíció a maszkban)
+        // int digitWidth = 25;                                       // Ismert DSEG7 digit szélesség
+        // unitX = freqSpriteX + digit10Hz_offset + (digitWidth / 2); // Digit közepéhez igazítva
+        // unitY = bounds.y + FREQ_7SEGMENT_HEIGHT                    //
+        //         + UNDERLINE_Y_OFFSET + UNDERLINE_HEIGHT            //
+        //         + 20;                                              // Aláhúzás alatt 20 pixelrel lejjebb
+
+        // Egy alsó vonalba a digitekkel
+        unitX = freqSpriteX + 250;
+        unitY = bounds.y + FREQ_7SEGMENT_HEIGHT;
+
+        textDatum = BR_DATUM; // Jobb alsó sarokhoz igazítás
     }
 
     drawText(data.unit, unitX, unitY, UNIT_TEXT_SIZE, textDatum, colors.indicator);
