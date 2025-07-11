@@ -96,7 +96,7 @@ void ScreenFM::layoutComponents() {
     // ===================================================================
     // Spektrum vizualizáció komponens létrehozása
     // ===================================================================
-    Rect spectrumBounds(280, 80, 120, 80);
+    Rect spectrumBounds(255, 80, 150, 80);
     createSpectrumComponent(spectrumBounds, RadioMode::FM);
 
     // ===================================================================

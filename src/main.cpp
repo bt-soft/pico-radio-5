@@ -279,14 +279,12 @@ void loop() {
     // Touch press event (immediate response)
     if (touched && !lastTouchState) {
         TouchEvent touchEvent(touchX, touchY, true);
-        if (screenManager)
-            screenManager->handleTouch(touchEvent);
+        screenManager->handleTouch(touchEvent);
         lastTouchX = touchX;
         lastTouchY = touchY;
     } else if (!touched && lastTouchState) { // Touch release event (immediate response)
         TouchEvent touchEvent(lastTouchX, lastTouchY, false);
-        if (screenManager)
-            screenManager->handleTouch(touchEvent);
+        screenManager->handleTouch(touchEvent);
     }
 
     lastTouchState = touched;
