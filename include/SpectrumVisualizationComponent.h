@@ -97,6 +97,13 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     void setModeIndicatorVisible(bool visible);
 
+    /**
+     * @brief Ellenőrzi, hogy egy megjelenítési mód elérhető-e az aktuális rádió módban
+     * @param mode A vizsgálandó megjelenítési mód
+     * @return true ha a mód elérhető, false ha nem
+     */
+    bool isModeAvailable(DisplayMode mode) const;
+
   private:
     RadioMode radioMode_;
     DisplayMode currentMode_;

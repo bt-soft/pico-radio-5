@@ -107,6 +107,12 @@ void SpectrumVisualizationComponent::draw() {
     bool collectOsci = (currentMode_ == DisplayMode::Oscilloscope);
     pAudioProcessor_->process(collectOsci);
 
+    // Biztonsági ellenőrzés: FM módban CW/RTTY módok nem engedélyezettek
+    if (radioMode_ == RadioMode::FM && (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall)) {
+        currentMode_ = DisplayMode::Waterfall; // Automatikus váltás Waterfall módra
+        needsForceRedraw_ = true;
+    }
+
     // Renderelés módjának megfelelően
     switch (currentMode_) {
         case DisplayMode::Off:
@@ -254,8 +260,21 @@ void SpectrumVisualizationComponent::forceRedraw() { needsForceRedraw_ = true; }
  */
 void SpectrumVisualizationComponent::cycleThroughModes() {
     int nextMode = static_cast<int>(currentMode_) + 1;
-    if (nextMode > static_cast<int>(DisplayMode::RTTYWaterfall)) {
-        nextMode = static_cast<int>(DisplayMode::Off);
+
+    // FM módban kihagyjuk a CW és RTTY hangolási segéd módokat
+    if (radioMode_ == RadioMode::FM) {
+        if (nextMode == static_cast<int>(DisplayMode::CWWaterfall)) {
+            nextMode = static_cast<int>(DisplayMode::Off); // Ugrás az Off módra
+        } else if (nextMode == static_cast<int>(DisplayMode::RTTYWaterfall)) {
+            nextMode = static_cast<int>(DisplayMode::Off); // Ugrás az Off módra
+        } else if (nextMode > static_cast<int>(DisplayMode::Waterfall)) {
+            nextMode = static_cast<int>(DisplayMode::Off);
+        }
+    } else {
+        // AM módban minden mód elérhető
+        if (nextMode > static_cast<int>(DisplayMode::RTTYWaterfall)) {
+            nextMode = static_cast<int>(DisplayMode::Off);
+        }
     }
 
     // Előző mód megőrzése a tisztításhoz
@@ -283,6 +302,11 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
  * @brief Kezdeti mód beállítása
  */
 void SpectrumVisualizationComponent::setInitialMode(DisplayMode mode) {
+    // FM módban CW/RTTY módok nem engedélyezettek
+    if (radioMode_ == RadioMode::FM && (mode == DisplayMode::CWWaterfall || mode == DisplayMode::RTTYWaterfall)) {
+        mode = DisplayMode::Waterfall; // Alapértelmezés FM módban
+    }
+
     currentMode_ = mode;
     lastRenderedMode_ = DisplayMode::Off; // Kényszerítjük az újrarajzolást
 
@@ -296,8 +320,16 @@ void SpectrumVisualizationComponent::setInitialMode(DisplayMode mode) {
  * @brief Mód betöltése config-ból
  */
 void SpectrumVisualizationComponent::loadModeFromConfig() {
-    // Itt kellene a Config-ból betölteni, most alapértelmezett
-    currentMode_ = DisplayMode::Waterfall;
+    // Config-ból betöltjük az aktuális rádió módnak megfelelő audio módot
+    uint8_t configValue = (radioMode_ == RadioMode::AM) ? config.data.audioModeAM : config.data.audioModeFM;
+    DisplayMode configMode = configValueToDisplayMode(configValue);
+
+    // FM módban CW/RTTY módok nem engedélyezettek
+    if (radioMode_ == RadioMode::FM && (configMode == DisplayMode::CWWaterfall || configMode == DisplayMode::RTTYWaterfall)) {
+        configMode = DisplayMode::Waterfall; // Alapértelmezés FM módban
+    }
+
+    currentMode_ = configMode;
 
     // Sprite előkészítése az új módhoz (radio-2 mintájára)
     manageSpriteForMode(currentMode_);
@@ -314,6 +346,19 @@ void SpectrumVisualizationComponent::setModeIndicatorVisible(bool visible) {
     if (visible) {
         modeIndicatorHideTime_ = millis() + 20000; // 20 másodperc
     }
+}
+
+/**
+ * @brief Ellenőrzi, hogy egy megjelenítési mód elérhető-e az aktuális rádió módban
+ */
+bool SpectrumVisualizationComponent::isModeAvailable(DisplayMode mode) const {
+    // FM módban CW és RTTY hangolási segéd módok nem elérhetők
+    if (radioMode_ == RadioMode::FM && (mode == DisplayMode::CWWaterfall || mode == DisplayMode::RTTYWaterfall)) {
+        return false;
+    }
+
+    // Minden más mód minden rádió módban elérhető
+    return true;
 }
 
 /**
@@ -920,8 +965,17 @@ SpectrumVisualizationComponent::DisplayMode SpectrumVisualizationComponent::conf
 uint8_t SpectrumVisualizationComponent::displayModeToConfigValue(DisplayMode mode) { return static_cast<uint8_t>(mode); }
 
 void SpectrumVisualizationComponent::setCurrentModeToConfig() {
-    // Itt kellene a Config-ba menteni
-    // config.setSpectrumMode(displayModeToConfigValue(currentMode_));
+    // Config-ba mentjük az aktuális audio módot a megfelelő rádió mód alapján
+    uint8_t modeValue = displayModeToConfigValue(currentMode_);
+
+    if (radioMode_ == RadioMode::AM) {
+        config.data.audioModeAM = modeValue;
+    } else if (radioMode_ == RadioMode::FM) {
+        config.data.audioModeFM = modeValue;
+    }
+
+    // TODO: Itt kellene menteni az EEPROM-ba a config változásokat
+    // config.save();
 }
 
 /**
