@@ -24,7 +24,7 @@ constexpr float OSCI_SENSITIVITY_FACTOR = 25.0f; // Oszcilloszkóp jel erősít�
 constexpr float ENVELOPE_INPUT_GAIN = 0.01f; // Envelope amplitúdó erősítése
 
 // Waterfall mód - alacsonyabb érték = halványabb színek
-constexpr float WATERFALL_INPUT_SCALE = 0.03f; // Waterfall intenzitás skálázása
+constexpr float WATERFALL_INPUT_SCALE = 0.5f; // Waterfall intenzitás skálázása (10x növelve a jobb érzékenységért)
 
 // CW/RTTY hangolási segéd - alacsonyabb érték = halványabb színek
 constexpr float TUNING_AID_INPUT_SCALE = 0.03f; // Hangolási segéd intenzitás skálázása
@@ -37,6 +37,36 @@ constexpr float ANALYZER_MAX_FREQ_HZ = 15000.0f;
 constexpr uint16_t WATERFALL_TOP_Y = 20;        // A vízesés diagram tetejének Y koordinátája
 constexpr uint16_t ANALYZER_BOTTOM_MARGIN = 20; // Alsó margó a skálának és a vízesésnek
 }; // namespace AnalyzerConstants
+
+/**
+ * @brief Optimális amplitúdó skálázási faktor meghatározása
+ * @param baseScale Alap skálázási konstans
+ * @param currentAutoGain Core1-ből érkező auto gain érték
+ * @param isAutoGainMode True, ha auto gain módban vagyunk
+ * @return Végső skálázási faktor
+ */
+float SpectrumVisualizationComponent::getOptimalAmplitudeScale(float baseScale, float currentAutoGain, bool isAutoGainMode) {
+    if (!isAutoGainMode) {
+        return baseScale; // Manual módban az eredeti konstanst használjuk
+    }
+
+    // Auto gain módban az auto gain faktorral módosítjuk a skálázást
+    // Ha az auto gain magas (hangos jel), csökkentjük a skálázást
+    // Ha az auto gain alacsony (halk jel), növeljük a skálázást
+    float adaptiveScale = baseScale / std::max(0.1f, currentAutoGain);
+
+    // Korlátozzuk a skálázási faktort ésszerű tartományban
+    return constrain(adaptiveScale, baseScale * 0.1f, baseScale * 10.0f);
+}
+
+/**
+ * @brief Ellenőrzi, hogy auto gain módban vagyunk-e
+ * @return True, ha auto gain mód aktív
+ */
+bool SpectrumVisualizationComponent::isAutoGainMode() {
+    float currentConfig = (radioMode_ == RadioMode::AM) ? config.data.miniAudioFftConfigAm : config.data.miniAudioFftConfigFm;
+    return (currentConfig == 0.0f); // 0.0f = Auto Gain
+}
 
 /**
  * Waterfall színpaletta RGB565 formátumban
@@ -503,6 +533,10 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
     const int max_bin_idx_low_res = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_low_res_range = std::max(1, max_bin_idx_low_res - min_bin_idx_low_res + 1);
 
+    // Autogain alapú skálázás meghatározása
+    bool autoGainActive = isAutoGainMode();
+    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::AMPLITUDE_SCALE, currentAutoGain, autoGainActive);
+
     double band_magnitudes[LOW_RES_BANDS] = {0.0};
 
     // magnitudeData már garantáltan nem nullptr itt
@@ -520,9 +554,9 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
         // Előbb töröljük az oszlop területét (fekete háttér)
         sprite_->fillRect(x_pos_for_bar, 0, dynamic_bar_width_pixels, graphH, TFT_BLACK);
 
-        // Javított magnitúdó skálázás
+        // Javított magnitúdó skálázás - autogain figyelembevételével
         double magnitude = band_magnitudes[band_idx];
-        int dsize = static_cast<int>(magnitude / SensitivityConstants::AMPLITUDE_SCALE);
+        int dsize = static_cast<int>(magnitude / adaptiveScale);
         dsize = constrain(dsize, 0, actual_low_res_peak_max_height);
 
         if (dsize > Rpeak_[band_idx] && band_idx < MAX_SPECTRUM_BANDS) {
@@ -589,6 +623,10 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
     const int max_bin_idx_for_display = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_display_range = std::max(1, max_bin_idx_for_display - min_bin_idx_for_display + 1);
 
+    // Autogain alapú skálázás meghatározása
+    bool autoGainActive = isAutoGainMode();
+    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::AMPLITUDE_SCALE, currentAutoGain, autoGainActive);
+
     for (int screen_pixel_x = 0; screen_pixel_x < bounds.width; ++screen_pixel_x) {
         int fft_bin_index;
         if (bounds.width == 1) {
@@ -603,8 +641,8 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
         sprite_->drawFastVLine(screen_pixel_x, 0, graphH, TFT_BLACK);
 
         double magnitude = magnitudeData[fft_bin_index];
-        // Amplitúdó skálázás
-        int scaled_magnitude = static_cast<int>(magnitude / SensitivityConstants::AMPLITUDE_SCALE);
+        // Amplitúdó skálázás - autogain figyelembevételével
+        int scaled_magnitude = static_cast<int>(magnitude / adaptiveScale);
         scaled_magnitude = constrain(scaled_magnitude, 0, graphH - 1);
 
         if (scaled_magnitude > 0) {
@@ -731,7 +769,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
 
     if (!dataAvailable || currentBinWidthHz == 0)
-        currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+        currentBinWidthHz = (AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
 
     // 1. Adatok eltolása balra a wabuf-ban
     for (int r = 0; r < bounds.height; ++r) { // Teljes bounds.height
@@ -744,6 +782,10 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     const int max_bin_for_env = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_env_range = std::max(1, max_bin_for_env - min_bin_for_env + 1);
 
+    // Autogain alapú skálázás meghatározása envelope-hoz
+    bool autoGainActive = isAutoGainMode();
+    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::ENVELOPE_INPUT_GAIN, currentAutoGain, autoGainActive);
+
     // 2. Új adatok betöltése
     // Az Envelope módhoz az magnitudeData értékeit használjuk csökkentett erősítéssel.
     for (int r = 0; r < bounds.height; ++r) { // Teljes bounds.height
@@ -752,8 +794,8 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         fft_bin_index = constrain(fft_bin_index, min_bin_for_env, max_bin_for_env);
 
         // Az AudioProcessor->getMagnitudeData()[fft_bin_index] már tartalmazza a csillapított értéket.
-        // Alkalmazzuk a csökkentett ENVELOPE_INPUT_GAIN-t.
-        double gained_val = magnitudeData[fft_bin_index] * SensitivityConstants::ENVELOPE_INPUT_GAIN;
+        // Alkalmazzuk az autogain figyelembevételével módosított ENVELOPE_INPUT_GAIN-t.
+        double gained_val = magnitudeData[fft_bin_index] * adaptiveScale;
         wabuf[r][bounds.width - 1] = static_cast<uint8_t>(constrain(gained_val, 0.0, 255.0)); // 0-255 közé korlátozzuk a wabuf számára
     }
 
@@ -833,8 +875,12 @@ void SpectrumVisualizationComponent::renderWaterfall() {
 
     bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
 
-    if (!dataAvailable || currentBinWidthHz == 0)
-        currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+    // Ha nincs friss adat, ne frissítsük a waterfall buffert - megelőzzük a hamis mintákat
+    if (!dataAvailable || !magnitudeData || currentBinWidthHz == 0) {
+        // Csak a sprite kirakása a korábbi tartalommal
+        sprite_->pushSprite(bounds.x, bounds.y);
+        return;
+    }
 
     // 1. Adatok eltolása balra a wabuf-ban (ez továbbra is szükséges a wabuf frissítéséhez)
     for (int r = 0; r < bounds.height; ++r) { // A teljes bounds.height magasságon iterálunk a wabuf miatt
@@ -848,13 +894,24 @@ void SpectrumVisualizationComponent::renderWaterfall() {
     const int num_bins_in_wf_range = std::max(1, max_bin_for_wf - min_bin_for_wf + 1);
 
     // 2. Új adatok betöltése a wabuf jobb szélére (a wabuf továbbra is bounds.height magas)
+    static uint32_t debugCounter = 0;
+    bool shouldDebug = (++debugCounter % 30 == 0); // Debug minden 30. frame-ben
+
+    // Autogain alapú skálázás meghatározása
+    bool autoGainActive = isAutoGainMode();
+    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::WATERFALL_INPUT_SCALE, currentAutoGain, autoGainActive);
+
     for (int r = 0; r < bounds.height; ++r) {
         // 'r' (0 to bounds.height-1) leképezése FFT bin indexre a szűkített tartományon belül
         int fft_bin_index = min_bin_for_wf + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_wf_range - 1)));
         fft_bin_index = constrain(fft_bin_index, min_bin_for_wf, max_bin_for_wf);
 
-        // Waterfall input scale
-        wabuf[r][bounds.width - 1] = static_cast<uint8_t>(constrain(magnitudeData[fft_bin_index] * SensitivityConstants::WATERFALL_INPUT_SCALE, 0.0, 255.0));
+        // Waterfall input scale - autogain figyelembevételével
+        double rawMagnitude = magnitudeData[fft_bin_index];
+        double scaledMagnitude = rawMagnitude * adaptiveScale;
+        uint8_t finalValue = static_cast<uint8_t>(constrain(scaledMagnitude, 0.0, 255.0));
+
+        wabuf[r][bounds.width - 1] = finalValue;
     }
 
     // 3. Sprite görgetése és új oszlop kirajzolása
@@ -1124,12 +1181,12 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
 
     if (!dataAvailable || currentBinWidthHz == 0)
-        currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+        currentBinWidthHz = (AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
 
     // 1. Adatok eltolása "lefelé" a wabuf-ban (időbeli léptetés)
     // Csak a grafikon magasságáig (graphH) használjuk a wabuf sorait.
     // A wabuf mérete (bounds.height x bounds.width), de itt csak graphH sort használunk fel a vízeséshez.
-    for (int r = graphH - 1; r > 0; --r) {       // Utolsó sortól a másodikig
+    for (int r = graphH - 1; r > 0; --r) {
         for (int c = 0; c < bounds.width; ++c) { // Minden oszlop (frekvencia bin)
             wabuf[r][c] = wabuf[r - 1][c];
         }
@@ -1139,6 +1196,10 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     const int max_fft_bin_for_tuning = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(currentTuningAidMaxFreqHz_ / currentBinWidthHz)));
     const int num_bins_in_tuning_range = std::max(1, max_fft_bin_for_tuning - min_fft_bin_for_tuning + 1);
 
+    // Autogain alapú skálázás meghatározása hangolási segédhez
+    bool autoGainActive = isAutoGainMode();
+    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::TUNING_AID_INPUT_SCALE, currentAutoGain, autoGainActive);
+
     // 2. Új adatok betöltése a wabuf tetejére (első sor)
     for (int c = 0; c < bounds.width; ++c) {
         // Képernyő pixel X koordinátájának (c) leképezése FFT bin indexre
@@ -1147,8 +1208,10 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         fft_bin_index = constrain(fft_bin_index, min_fft_bin_for_tuning, max_fft_bin_for_tuning);
         fft_bin_index = constrain(fft_bin_index, 2, static_cast<int>(actualFftSize / 2 - 1));
 
-        // Hangolási segéd input scale (csökkentett érték a túlvezéreltség ellen)
-        wabuf[0][c] = static_cast<uint8_t>(constrain(magnitudeData[fft_bin_index] * SensitivityConstants::TUNING_AID_INPUT_SCALE, 0.0, 255.0));
+        // Hangolási segéd input scale - autogain figyelembevételével
+        double rawMagnitude = magnitudeData[fft_bin_index];
+        double scaledMagnitude = rawMagnitude * adaptiveScale;
+        wabuf[0][c] = static_cast<uint8_t>(constrain(scaledMagnitude, 0.0, 255.0));
     }
 
     // 3. Sprite törlése és waterfall kirajzolása
@@ -1334,6 +1397,7 @@ void SpectrumVisualizationComponent::drawSpectrumBar(int band_idx, double magnit
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
     switch (mode) {
         case DisplayMode::Waterfall:
+            return 1024; // Maximum felbontás a spektrum analizáláshoz
         case DisplayMode::CWWaterfall:
         case DisplayMode::RTTYWaterfall:
             return 2048; // 2x jobb felbontás a hangolási segédhez

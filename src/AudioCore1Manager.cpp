@@ -32,6 +32,7 @@ bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int
     pSharedData_->configChanged = false;
     pSharedData_->eepromWriteInProgress = false;
     pSharedData_->core1AudioPaused = false;
+    pSharedData_->core1AudioPausedAck = false;
     pSharedData_->spectrumSize = initialFftSize;
     pSharedData_->fftGainConfigAm = gainConfigAmRef;
     pSharedData_->fftGainConfigFm = gainConfigFmRef;
@@ -133,8 +134,17 @@ void AudioCore1Manager::core1AudioLoop() {
     while (!pSharedData_->core1ShouldStop) {
         // EEPROM írás esetén várakozás
         if (pSharedData_->eepromWriteInProgress || pSharedData_->core1AudioPaused) {
+            // Jelezzük vissza, hogy szüneteltettük az audio feldolgozást
+            if (!pSharedData_->core1AudioPausedAck) {
+                pSharedData_->core1AudioPausedAck = true;
+            }
             delay(1); // Rövid várakozás EEPROM művelet alatt
             continue;
+        }
+
+        // Ha kilépünk a pause állapotból, töröljük az ACK flag-et
+        if (pSharedData_->core1AudioPausedAck) {
+            pSharedData_->core1AudioPausedAck = false;
         }
 
         uint32_t now = millis();
@@ -321,10 +331,24 @@ void AudioCore1Manager::pauseCore1Audio() {
     mutex_enter_blocking(&pSharedData_->dataMutex);
     pSharedData_->eepromWriteInProgress = true;
     pSharedData_->core1AudioPaused = true;
+    pSharedData_->core1AudioPausedAck = false; // Töröljük az ACK flag-et
     mutex_exit(&pSharedData_->dataMutex);
 
-    // Rövid várakozás, hogy a Core1 észlelje a változást
-    delay(2);
+    // Várjuk meg, hogy a Core1 ténylegesen szüneteltesse az audio feldolgozást
+    uint32_t timeout = millis() + 100; // 100ms timeout
+    while (millis() < timeout) {
+        mutex_enter_blocking(&pSharedData_->dataMutex);
+        bool ack = pSharedData_->core1AudioPausedAck;
+        mutex_exit(&pSharedData_->dataMutex);
+
+        if (ack) {
+            DEBUG("AudioCore1Manager: Core1 audio sikeresen szüneteltetve.\n");
+            return;
+        }
+        delay(1);
+    }
+
+    DEBUG("AudioCore1Manager: FIGYELEM - Core1 audio szüneteltetés timeout!\n");
 }
 
 /**

@@ -198,6 +198,12 @@ class SpectrumVisualizationComponent : public UIComponent {
     uint16_t getCore1FftSize();
 
     /**
+     * @brief Autogain kezelés
+     */
+    float getOptimalAmplitudeScale(float baseScale, float currentAutoGain, bool isAutoGainMode);
+    bool isAutoGainMode();
+
+    /**
      * @brief Config konverziós függvények
      */
     DisplayMode configValueToDisplayMode(uint8_t configValue);

@@ -37,6 +37,7 @@ class AudioCore1Manager {
         // EEPROM mutex védelem
         volatile bool eepromWriteInProgress;
         volatile bool core1AudioPaused;
+        volatile bool core1AudioPausedAck; // Core1 visszajelzés a szüneteltetésről
 
         // Mutex a thread-safe hozzáféréshez
         mutex_t dataMutex;
