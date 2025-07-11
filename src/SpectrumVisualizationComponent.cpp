@@ -218,7 +218,7 @@ void SpectrumVisualizationComponent::drawFrame() {
     tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, TFT_BLACK);
 
     // Teljes külső keret rajzolása (1 pixel vastag, minden oldalon)
-    tft.drawRect(bounds.x - 1, bounds.y - 2, bounds.width + 3, bounds.height + 2, TFT_WHITE);
+    tft.drawRect(bounds.x - 1, bounds.y - 2, bounds.width + 3, bounds.height + 2, TFT_DARKGREY);
 }
 
 /**
