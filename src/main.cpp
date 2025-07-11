@@ -290,9 +290,9 @@ void loop() {
 #endif
 
     //------------------- Core1 Audio Manager band váltás figyelése
-    static int lastBandType = -1;
+    static uint8_t lastBandType = -1;
     if (pSi4735Manager) {
-        int currentBandType = pSi4735Manager->getCurrentBandType();
+        uint8_t currentBandType = pSi4735Manager->getCurrentBandType();
         if (lastBandType != -1 && lastBandType != currentBandType) {
             // Band váltás történt, frissítjük a Core1 audio manager módját
             bool isAM = (currentBandType != FM_BAND_TYPE);

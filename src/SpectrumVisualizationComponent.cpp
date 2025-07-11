@@ -492,9 +492,11 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
 
     bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
 
-    if (!dataAvailable || currentBinWidthHz == 0) {
-        // Ha nincs friss adat, használjuk a default értékeket
-        currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+    // Ha nincs friss adat vagy nincs magnitude adat, ne rajzoljunk újra (megelőzzük a villogást)
+    if (!dataAvailable || !magnitudeData || currentBinWidthHz == 0) {
+        // Csak a sprite kirakása a korábbi tartalommal
+        sprite_->pushSprite(bounds.x, bounds.y);
+        return;
     }
 
     const int min_bin_idx_low_res = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
@@ -503,14 +505,11 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
 
     double band_magnitudes[LOW_RES_BANDS] = {0.0};
 
-    if (!magnitudeData) {
-        memset(band_magnitudes, 0, sizeof(band_magnitudes));
-    } else {
-        for (int i = min_bin_idx_low_res; i <= max_bin_idx_low_res; i++) {
-            uint8_t band_idx = getBandVal(i, min_bin_idx_low_res, num_bins_in_low_res_range, LOW_RES_BANDS);
-            if (band_idx < LOW_RES_BANDS) {
-                band_magnitudes[band_idx] = std::max(band_magnitudes[band_idx], magnitudeData[i]);
-            }
+    // magnitudeData már garantáltan nem nullptr itt
+    for (int i = min_bin_idx_low_res; i <= max_bin_idx_low_res; i++) {
+        uint8_t band_idx = getBandVal(i, min_bin_idx_low_res, num_bins_in_low_res_range, LOW_RES_BANDS);
+        if (band_idx < LOW_RES_BANDS) {
+            band_magnitudes[band_idx] = std::max(band_magnitudes[band_idx], magnitudeData[i]);
         }
     }
 
@@ -579,17 +578,16 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
 
     bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
 
-    if (!dataAvailable || currentBinWidthHz == 0) {
-        currentBinWidthHz = (30000.0f / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+    // Ha nincs friss adat vagy nincs magnitude adat, ne rajzoljunk újra (megelőzzük a villogást)
+    if (!dataAvailable || !magnitudeData || currentBinWidthHz == 0) {
+        // Csak a sprite kirakása a korábbi tartalommal
+        sprite_->pushSprite(bounds.x, bounds.y);
+        return;
     }
+
     const int min_bin_idx_for_display = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
     const int max_bin_idx_for_display = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_display_range = std::max(1, max_bin_idx_for_display - min_bin_idx_for_display + 1);
-
-    if (!dataAvailable || !magnitudeData) {
-        sprite_->pushSprite(bounds.x, bounds.y - 1);
-        return;
-    }
 
     for (int screen_pixel_x = 0; screen_pixel_x < bounds.width; ++screen_pixel_x) {
         int fft_bin_index;
