@@ -21,12 +21,18 @@ class ScreenSetupCwRtty : public ScreenSetupBase {
         CW_RECEIVER_OFFSET = 400,
         RTTY_SHIFT,
         RTTY_MARK_FREQUENCY,
+        FFT_CONFIG_AM,
+        FFT_CONFIG_FM,
     };
+
+    // Segédfüggvények
+    String decodeFFTConfig(float value);
 
     // CW/RTTY specifikus dialógus kezelő függvények
     void handleCwOffsetDialog(int index);
     void handleRttyShiftDialog(int index);
     void handleRttyMarkFrequencyDialog(int index);
+    void handleFFTConfigDialog(int index, bool isAM);
 
   protected:
     // SetupScreenBase virtuális metódusok implementációja

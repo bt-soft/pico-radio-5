@@ -19,11 +19,9 @@ class ScreenSetupSi4735 : public ScreenSetupBase {
     enum class Si4735ItemAction { NONE = 0, SQUELCH_BASIS = 100, FFT_CONFIG_AM = 101, FFT_CONFIG_FM = 102, VOLUME_LEVEL = 103, AUDIO_MUTE = 104, STEREO_THRESHOLD = 105 };
 
     // Segédfüggvények
-    String decodeFFTConfig(float value);
 
     // Si4735 specifikus dialógus kezelő függvények
     void handleSquelchBasisDialog(int index);
-    void handleFFTConfigDialog(int index, bool isAM);
     void handleVolumeLevelDialog(int index);
     void handleToggleItem(int index, bool &configValue);
     void handleStereoThresholdDialog(int index);

@@ -30,10 +30,6 @@ void ScreenSetupSi4735::populateMenuItems() {
     // Si4735 specifikus beállítások hozzáadása
     settingItems.push_back(SettingItem("Squelch Basis", String(config.data.squelchUsesRSSI ? "RSSI" : "SNR"), static_cast<int>(Si4735ItemAction::SQUELCH_BASIS)));
 
-    settingItems.push_back(SettingItem("FFT Config AM", decodeFFTConfig(config.data.miniAudioFftConfigAm), static_cast<int>(Si4735ItemAction::FFT_CONFIG_AM)));
-
-    settingItems.push_back(SettingItem("FFT Config FM", decodeFFTConfig(config.data.miniAudioFftConfigFm), static_cast<int>(Si4735ItemAction::FFT_CONFIG_FM)));
-
     // Példa további Si4735 beállításokra (ha léteznek a config-ban)
     // settingItems.push_back(SettingItem("Volume Level",
     //     String(config.data.volumeLevel),
@@ -64,12 +60,6 @@ void ScreenSetupSi4735::handleItemAction(int index, int action) {
         case Si4735ItemAction::SQUELCH_BASIS:
             handleSquelchBasisDialog(index);
             break;
-        case Si4735ItemAction::FFT_CONFIG_AM:
-            handleFFTConfigDialog(index, true);
-            break;
-        case Si4735ItemAction::FFT_CONFIG_FM:
-            handleFFTConfigDialog(index, false);
-            break;
         // case Si4735ItemAction::VOLUME_LEVEL:
         //     handleVolumeLevelDialog(index);
         //     break;
@@ -81,21 +71,6 @@ void ScreenSetupSi4735::handleItemAction(int index, int action) {
             DEBUG("ScreenSetupSi4735: Unknown action: %d\n", action);
             break;
     }
-}
-
-/**
- * @brief FFT konfiguráció érték dekódolása olvasható szöveggé
- *
- * @param value Az FFT konfigurációs érték
- * @return Olvasható string reprezentáció
- */
-String ScreenSetupSi4735::decodeFFTConfig(float value) {
-    if (value == -1.0f)
-        return "Disabled";
-    else if (value == 0.0f)
-        return "Auto Gain";
-    else
-        return "Manual: " + String(value, 1) + "x";
 }
 
 /**
@@ -120,69 +95,6 @@ void ScreenSetupSi4735::handleSquelchBasisDialog(int index) {
         },
         true, currentSelection, true, Rect(-1, -1, 250, 120));
     this->showDialog(basisDialog);
-}
-
-/**
- * @brief FFT konfigurációs dialógus kezelése AM vagy FM módhoz
- *
- * @param index A menüpont indexe a lista frissítéséhez
- * @param isAM true = AM mód, false = FM mód
- */
-void ScreenSetupSi4735::handleFFTConfigDialog(int index, bool isAM) {
-    float &currentConfig = isAM ? config.data.miniAudioFftConfigAm : config.data.miniAudioFftConfigFm;
-    const char *title = isAM ? "FFT Config AM" : "FFT Config FM";
-
-    int defaultSelection = 0; // Disabled
-    if (currentConfig == 0.0f) {
-        defaultSelection = 1; // Auto Gain
-    } else if (currentConfig > 0.0f) {
-        defaultSelection = 2; // Manual Gain
-    }
-
-    const char *options[] = {"Disabled", "Auto G", "Manual G"};
-
-    auto fftDialog = std::make_shared<MultiButtonDialog>(
-        this, title, "Select FFT gain mode:", options, ARRAY_ITEM_COUNT(options),
-        [this, index, isAM, &currentConfig, title](int buttonIndex, const char *buttonLabel, MultiButtonDialog *dialog) {
-            switch (buttonIndex) {
-                case 0: // Disabled
-                    currentConfig = -1.0f;
-                    config.checkSave();
-                    settingItems[index].value = "Disabled";
-                    updateListItem(index);
-                    dialog->close(UIDialogBase::DialogResult::Accepted);
-                    break;
-
-                case 1: // Auto Gain
-                    currentConfig = 0.0f;
-                    config.checkSave();
-                    settingItems[index].value = "Auto Gain";
-                    updateListItem(index);
-                    dialog->close(UIDialogBase::DialogResult::Accepted);
-                    break;
-
-                case 2: // Manual Gain
-                {
-                    dialog->close(UIDialogBase::DialogResult::Accepted);
-
-                    auto tempGainValuePtr = std::make_shared<float>((currentConfig > 0.0f) ? currentConfig : 1.0f);
-
-                    auto gainDialog = std::make_shared<ValueChangeDialog>(
-                        this, (String(title) + " - Manual Gain").c_str(), "Set gain factor (0.1 - 10.0):", tempGainValuePtr.get(), 0.1f, 10.0f, 0.1f, nullptr,
-                        [this, index, &currentConfig, tempGainValuePtr](UIDialogBase *sender, MessageDialog::DialogResult result) {
-                            if (result == MessageDialog::DialogResult::Accepted) {
-                                currentConfig = *tempGainValuePtr;
-                                config.checkSave();
-                                populateMenuItems(); // Teljes frissítés a helyes érték megjelenítéséhez
-                            }
-                        },
-                        Rect(-1, -1, 300, 0));
-                    this->showDialog(gainDialog);
-                } break;
-            }
-        },
-        false, defaultSelection, false, Rect(-1, -1, 340, 120));
-    this->showDialog(fftDialog);
 }
 
 /**

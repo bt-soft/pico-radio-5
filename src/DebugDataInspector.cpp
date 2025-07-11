@@ -61,8 +61,6 @@ void DebugDataInspector::printConfigData(const Config_t &configData) {
     DEBUG("  screenSaverTimeoutMinutes: %u\n", configData.screenSaverTimeoutMinutes);
     DEBUG("  beeperEnabled: %s\n", configData.beeperEnabled ? "true" : "false");
     DEBUG("  rotaryAcceleratonEnabled: %s\n", configData.rotaryAcceleratonEnabled ? "true" : "false");
-    DEBUG("  miniAudioFftModeAm: %u\n", configData.miniAudioFftModeAm);
-    DEBUG("  miniAudioFftModeFm: %u\n", configData.miniAudioFftModeFm);
     if (configData.miniAudioFftConfigAm == -1.0f) {
         DEBUG("  miniAudioFftConfigAm: Disabled\n");
     } else if (configData.miniAudioFftConfigAm == 0.0f) {
