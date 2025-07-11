@@ -126,6 +126,19 @@ class SpectrumVisualizationComponent : public UIComponent {
     float maxDisplayFrequencyHz_;
     float envelopeLastSmoothedValue_;
 
+    // Frame-alapú adaptív autogain rendszer
+    static constexpr int FRAME_HISTORY_SIZE = 16; // Több frame átlagolás a stabilabb működésért
+    float frameMaxHistory_[FRAME_HISTORY_SIZE];   // Frame maximum értékek története
+    int frameHistoryIndex_;                       // Jelenlegi index a circular bufferben
+    bool frameHistoryFull_;                       // Már tele van-e a history buffer
+    float adaptiveGainFactor_;                    // Frame-alapú adaptív gain faktor
+    uint32_t lastGainUpdateTime_;                 // Utolsó gain frissítés ideje
+
+    static constexpr uint32_t GAIN_UPDATE_INTERVAL_MS = 750; // Lassabb frissítés a stabilabb működésért
+    static constexpr float TARGET_MAX_UTILIZATION = 0.75f;   // 75%-os maximális kitöltés
+    static constexpr float GAIN_SMOOTH_FACTOR = 0.2f;        // Lassabb simítási faktor a stabilabb működésért
+    static constexpr float MIN_SIGNAL_THRESHOLD = 0.1f;      // Minimum jel küszöb
+
     // Sprite handling
     TFT_eSprite *sprite_;
     bool spriteCreated_;
@@ -200,8 +213,16 @@ class SpectrumVisualizationComponent : public UIComponent {
     /**
      * @brief Autogain kezelés
      */
-    float getOptimalAmplitudeScale(float baseScale, float currentAutoGain, bool isAutoGainMode);
     bool isAutoGainMode();
+
+    /**
+     * @brief Frame-alapú adaptív autogain rendszer
+     */
+    void updateFrameBasedGain(float currentFrameMaxValue);
+    float getAdaptiveScale(float baseConstant);
+    void resetAdaptiveGain();
+    float getCurrentGainFactor() const { return adaptiveGainFactor_; }
+    float getAverageFrameMax() const;
 
     /**
      * @brief Config konverziós függvények

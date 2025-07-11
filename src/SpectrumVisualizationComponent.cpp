@@ -13,20 +13,21 @@ const uint16_t colors1[16] = {0x0000, 0x1000, 0x2000, 0x4000, 0x8000, 0xC000, 0x
 
 // ===== ÉRZÉKENYSÉGI / AMPLITÚDÓ SKÁLÁZÁSI KONSTANSOK =====
 // Minden grafikon mód érzékenységét és amplitúdó skálázását itt lehet módosítani
+// EGYSÉGES LOGIKA: nagyobb érték = nagyobb érzékenység (minden módnál)
 namespace SensitivityConstants {
-// Spektrum módok (LowRes és HighRes) - magasabb érték = alacsonyabb érzékenység
-constexpr float AMPLITUDE_SCALE = 120.0f; // Spektrum bar-ok amplitúdó skálázása
+// Spektrum módok (LowRes és HighRes) - nagyobb érték = nagyobb érzékenység
+constexpr float AMPLITUDE_SCALE = 0.8f; // Spektrum bar-ok amplitúdó skálázása (csökkentve a túlvezérlés ellen)
 
-// Oszcilloszkóp mód - magasabb érték = nagyobb érzékenység
+// Oszcilloszkóp mód - nagyobb érték = nagyobb érzékenység
 constexpr float OSCI_SENSITIVITY_FACTOR = 25.0f; // Oszcilloszkóp jel erősítése
 
-// Envelope mód - alacsonyabb érték = kisebb amplitúdó
-constexpr float ENVELOPE_INPUT_GAIN = 0.01f; // Envelope amplitúdó erősítése
+// Envelope mód - nagyobb érték = nagyobb amplitúdó
+constexpr float ENVELOPE_INPUT_GAIN = 0.15f; // Envelope amplitúdó erősítése (eredeti nagyítás visszaállítása)
 
-// Waterfall mód - alacsonyabb érték = halványabb színek
-constexpr float WATERFALL_INPUT_SCALE = 0.5f; // Waterfall intenzitás skálázása (10x növelve a jobb érzékenységért)
+// Waterfall mód - nagyobb érték = élénkebb színek
+constexpr float WATERFALL_INPUT_SCALE = 2.0f; // Waterfall intenzitás skálázása (növelve az érzékenységért)
 
-// CW/RTTY hangolási segéd - alacsonyabb érték = halványabb színek
+// CW/RTTY hangolási segéd - nagyobb érték = élénkebb színek
 constexpr float TUNING_AID_INPUT_SCALE = 0.03f; // Hangolási segéd intenzitás skálázása
 }; // namespace SensitivityConstants
 
@@ -39,24 +40,103 @@ constexpr uint16_t ANALYZER_BOTTOM_MARGIN = 20; // Alsó margó a skálának és
 }; // namespace AnalyzerConstants
 
 /**
- * @brief Optimális amplitúdó skálázási faktor meghatározása
- * @param baseScale Alap skálázási konstans
- * @param currentAutoGain Core1-ből érkező auto gain érték
- * @param isAutoGainMode True, ha auto gain módban vagyunk
- * @return Végső skálázási faktor
+ * @brief Frame-alapú adaptív autogain frissítése
+ * @param currentFrameMaxValue Jelenlegi frame maximális értéke
  */
-float SpectrumVisualizationComponent::getOptimalAmplitudeScale(float baseScale, float currentAutoGain, bool isAutoGainMode) {
-    if (!isAutoGainMode) {
-        return baseScale; // Manual módban az eredeti konstanst használjuk
+void SpectrumVisualizationComponent::updateFrameBasedGain(float currentFrameMaxValue) {
+    uint32_t now = millis();
+
+    // Frame maximum érték hozzáadása a history bufferhez
+    frameMaxHistory_[frameHistoryIndex_] = currentFrameMaxValue;
+    frameHistoryIndex_ = (frameHistoryIndex_ + 1) % FRAME_HISTORY_SIZE;
+
+    // Jelöljük, hogy már van elég adatunk
+    if (frameHistoryIndex_ == 0) {
+        frameHistoryFull_ = true;
     }
 
-    // Auto gain módban az auto gain faktorral módosítjuk a skálázást
-    // Ha az auto gain magas (hangos jel), csökkentjük a skálázást
-    // Ha az auto gain alacsony (halk jel), növeljük a skálázást
-    float adaptiveScale = baseScale / std::max(0.1f, currentAutoGain);
+    // Rendszeres gain frissítés (gyakrabban, mint régen)
+    if (now - lastGainUpdateTime_ > GAIN_UPDATE_INTERVAL_MS && frameHistoryFull_) {
+        float averageFrameMax = getAverageFrameMax();
 
-    // Korlátozzuk a skálázási faktort ésszerű tartományban
-    return constrain(adaptiveScale, baseScale * 0.1f, baseScale * 10.0f);
+        if (averageFrameMax > MIN_SIGNAL_THRESHOLD) {
+            int graphH = getGraphHeight();
+            float targetMaxHeight = graphH * TARGET_MAX_UTILIZATION; // 75% a grafikon magasságából
+            float idealGain = targetMaxHeight / averageFrameMax;
+            float oldGain = adaptiveGainFactor_;
+
+            // Simított átmenet az új gain faktorhoz
+            adaptiveGainFactor_ = GAIN_SMOOTH_FACTOR * idealGain + (1.0f - GAIN_SMOOTH_FACTOR) * adaptiveGainFactor_;
+
+            // Biztonsági korlátok - alacsonyabb minimum az érzékenyebb jelekhez
+            adaptiveGainFactor_ = constrain(adaptiveGainFactor_, 0.001f, 5.0f);
+
+            // DEBUG kimenet (ritkábban)
+            static uint32_t lastDebugTime = 0;
+            if (now - lastDebugTime > 2000) { // 2 másodpercenként
+                Serial.print("FRAME-GAIN: avgMax=");
+                Serial.print(averageFrameMax, 3);
+                Serial.print(", target=");
+                Serial.print(targetMaxHeight, 1);
+                Serial.print(", ideal=");
+                Serial.print(idealGain, 3);
+                Serial.print(", old=");
+                Serial.print(oldGain, 3);
+                Serial.print(", new=");
+                Serial.println(adaptiveGainFactor_, 3);
+                lastDebugTime = now;
+            }
+        }
+
+        lastGainUpdateTime_ = now;
+    }
+}
+
+/**
+ * @brief Átlagos frame maximum kiszámítása
+ * @return Az utolsó FRAME_HISTORY_SIZE frame átlagos maximuma
+ */
+float SpectrumVisualizationComponent::getAverageFrameMax() const {
+    if (!frameHistoryFull_) {
+        // Ha még nincs elég adat, használjunk egy magas értéket,
+        // hogy a gain alacsony maradjon a túlvezérlés elkerülésére
+        return 5000.0f; // Feltételezzük, hogy ez egy tipikus magas érték
+    }
+
+    float sum = 0.0f;
+    for (int i = 0; i < FRAME_HISTORY_SIZE; i++) {
+        sum += frameMaxHistory_[i];
+    }
+    return sum / FRAME_HISTORY_SIZE;
+}
+
+/**
+ * @brief Adaptív skálázási faktor lekérése
+ * @param baseConstant Alap konstans érték
+ * @return Adaptív skálázási faktor
+ */
+float SpectrumVisualizationComponent::getAdaptiveScale(float baseConstant) {
+    // Auto gain módban az adaptív faktort használjuk
+    if (isAutoGainMode()) {
+        return baseConstant * adaptiveGainFactor_;
+    }
+    // Manual módban az eredeti konstanst használjuk
+    return baseConstant;
+}
+
+/**
+ * @brief Adaptív autogain reset
+ */
+void SpectrumVisualizationComponent::resetAdaptiveGain() {
+    adaptiveGainFactor_ = 0.02f; // Alacsony kezdeti érték a túlvezérlés elkerülésére
+    frameHistoryIndex_ = 0;
+    frameHistoryFull_ = false;
+    lastGainUpdateTime_ = millis();
+
+    // Frame history buffer resetelése
+    for (int i = 0; i < FRAME_HISTORY_SIZE; i++) {
+        frameMaxHistory_[i] = 0.0f;
+    }
 }
 
 /**
@@ -79,8 +159,8 @@ const uint16_t SpectrumVisualizationComponent::WATERFALL_COLORS[16] = {0x0000, 0
 SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode)
     : UIComponent(Rect(x, y, w, h)), radioMode_(radioMode), currentMode_(DisplayMode::Off), lastRenderedMode_(DisplayMode::Off), modeIndicatorVisible_(false), modeIndicatorDrawn_(false), frequencyLabelsDrawn_(false),
       modeIndicatorHideTime_(0), lastTouchTime_(0), lastFrameTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM), envelopeLastSmoothedValue_(0.0f),
-      sprite_(nullptr), spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0), pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f),
-      currentTuningAidMaxFreqHz_(0.0f) {
+      frameHistoryIndex_(0), frameHistoryFull_(false), adaptiveGainFactor_(0.02f), lastGainUpdateTime_(0), sprite_(nullptr), spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0),
+      pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f) {
 
     // Core1 AudioManager használata helyett a helyi AudioProcessor
     // Az AudioProcessor most már a core1-en fut az AudioCore1Manager-en keresztül
@@ -90,6 +170,11 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
 
     // Peak detection buffer inicializálása
     memset(Rpeak_, 0, sizeof(Rpeak_));
+
+    // Frame history buffer inicializálása
+    for (int i = 0; i < FRAME_HISTORY_SIZE; i++) {
+        frameMaxHistory_[i] = 0.0f;
+    }
 
     // Waterfall buffer inicializálása
     if (bounds.height > 0 && bounds.width > 0) {
@@ -533,9 +618,20 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
     const int max_bin_idx_low_res = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_low_res_range = std::max(1, max_bin_idx_low_res - min_bin_idx_low_res + 1);
 
-    // Autogain alapú skálázás meghatározása
-    bool autoGainActive = isAutoGainMode();
-    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::AMPLITUDE_SCALE, currentAutoGain, autoGainActive);
+    // Adaptív autogain használata
+    float adaptiveScale = getAdaptiveScale(SensitivityConstants::AMPLITUDE_SCALE);
+
+    // DEBUG: Egy alkalmmal kiírjuk az adaptiveScale értékét
+    static uint32_t lastDebugTime = 0;
+    if (millis() - lastDebugTime > 2000) { // 2 másodpercenként
+        Serial.print("LowRes: adaptiveScale=");
+        Serial.print(adaptiveScale, 3);
+        Serial.print(", gainFactor=");
+        Serial.print(getCurrentGainFactor(), 3);
+        Serial.print(", baseScale=");
+        Serial.println(SensitivityConstants::AMPLITUDE_SCALE, 1);
+        lastDebugTime = millis();
+    }
 
     double band_magnitudes[LOW_RES_BANDS] = {0.0};
 
@@ -547,16 +643,22 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
         }
     }
 
-    // Sávok kirajzolása sprite-ra (javított amplitúdóval)
+    // Legnagyobb érték megkeresése az adaptív autogain számára
+    float maxMagnitude = 0.0f;
+    for (int band_idx = 0; band_idx < LOW_RES_BANDS; band_idx++) {
+        maxMagnitude = std::max(maxMagnitude, static_cast<float>(band_magnitudes[band_idx]));
+    }
+
+    // Sávok kirajzolása sprite-ra (adaptív autogain-nel)
     for (int band_idx = 0; band_idx < bands_to_display_on_screen; band_idx++) {
         int x_pos_for_bar = x_offset + bar_total_width_pixels_dynamic * band_idx;
 
         // Előbb töröljük az oszlop területét (fekete háttér)
         sprite_->fillRect(x_pos_for_bar, 0, dynamic_bar_width_pixels, graphH, TFT_BLACK);
 
-        // Javított magnitúdó skálázás - autogain figyelembevételével
+        // Adaptív magnitúdó skálázás - egységes logika: nagyobb scale = nagyobb érzékenység
         double magnitude = band_magnitudes[band_idx];
-        int dsize = static_cast<int>(magnitude / adaptiveScale);
+        int dsize = static_cast<int>(magnitude * adaptiveScale);
         dsize = constrain(dsize, 0, actual_low_res_peak_max_height);
 
         if (dsize > Rpeak_[band_idx] && band_idx < MAX_SPECTRUM_BANDS) {
@@ -583,6 +685,9 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
             sprite_->fillRect(x_pos_for_bar, y_peak, dynamic_bar_width_pixels, 2, TFT_CYAN); // 2 pixel magas cyan csík
         }
     }
+
+    // Adaptív autogain frissítése
+    updateFrameBasedGain(maxMagnitude);
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
@@ -623,9 +728,9 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
     const int max_bin_idx_for_display = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
     const int num_bins_in_display_range = std::max(1, max_bin_idx_for_display - min_bin_idx_for_display + 1);
 
-    // Autogain alapú skálázás meghatározása
-    bool autoGainActive = isAutoGainMode();
-    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::AMPLITUDE_SCALE, currentAutoGain, autoGainActive);
+    // Adaptív autogain használata
+    float adaptiveScale = getAdaptiveScale(SensitivityConstants::AMPLITUDE_SCALE);
+    float maxMagnitude = 0.0f;
 
     for (int screen_pixel_x = 0; screen_pixel_x < bounds.width; ++screen_pixel_x) {
         int fft_bin_index;
@@ -637,12 +742,14 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
         }
         fft_bin_index = constrain(fft_bin_index, 0, static_cast<int>(actualFftSize / 2 - 1));
 
+        double magnitude = magnitudeData[fft_bin_index];
+        maxMagnitude = std::max(maxMagnitude, static_cast<float>(magnitude));
+
         // Előbb töröljük a pixel oszlopot (fekete vonal)
         sprite_->drawFastVLine(screen_pixel_x, 0, graphH, TFT_BLACK);
 
-        double magnitude = magnitudeData[fft_bin_index];
-        // Amplitúdó skálázás - autogain figyelembevételével
-        int scaled_magnitude = static_cast<int>(magnitude / adaptiveScale);
+        // Amplitúdó skálázás - adaptív autogain-nel - egységes logika: nagyobb scale = nagyobb érzékenység
+        int scaled_magnitude = static_cast<int>(magnitude * adaptiveScale);
         scaled_magnitude = constrain(scaled_magnitude, 0, graphH - 1);
 
         if (scaled_magnitude > 0) {
@@ -657,6 +764,9 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
             }
         }
     }
+
+    // Adaptív autogain frissítése
+    updateFrameBasedGain(maxMagnitude);
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
@@ -778,72 +888,125 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         }
     }
 
-    const int min_bin_for_env = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
-    const int max_bin_for_env = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
+    // Ennél nem látszanak a tüskék...
+    constexpr int ENVELOPE_BIN_NMUMBER = 40; // Az envelope-hoz használt bin szám
+
+    const int min_bin_for_env = std::max(10, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
+    const int max_bin_for_env = std::min(static_cast<int>(actualFftSize / ENVELOPE_BIN_NMUMBER - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ * 0.2f / currentBinWidthHz)));
     const int num_bins_in_env_range = std::max(1, max_bin_for_env - min_bin_for_env + 1);
 
-    // Autogain alapú skálázás meghatározása envelope-hoz
-    bool autoGainActive = isAutoGainMode();
-    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::ENVELOPE_INPUT_GAIN, currentAutoGain, autoGainActive);
+    // Frame-alapú adaptív skálázás envelope-hoz
+    float adaptiveScale = getAdaptiveScale(SensitivityConstants::ENVELOPE_INPUT_GAIN);
 
-    // 2. Új adatok betöltése
+    // Konzervatív korlátok envelope-hez
+    adaptiveScale = constrain(adaptiveScale, SensitivityConstants::ENVELOPE_INPUT_GAIN * 0.1f, SensitivityConstants::ENVELOPE_INPUT_GAIN * 10.0f); // 2. Új adatok betöltése
     // Az Envelope módhoz az magnitudeData értékeit használjuk csökkentett erősítéssel.
-    for (int r = 0; r < bounds.height; ++r) { // Teljes bounds.height
+    float maxRawMagnitude = 0.0f;
+    float maxGainedVal = 0.0f;
+
+    // Minden sort feldolgozunk a teljes felbontásért
+    for (int r = 0; r < bounds.height; ++r) {
         // 'r' (0 to bounds.height-1) leképezése FFT bin indexre a szűkített tartományon belül
         int fft_bin_index = min_bin_for_env + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_env_range - 1)));
-        fft_bin_index = constrain(fft_bin_index, min_bin_for_env, max_bin_for_env);
+        fft_bin_index = constrain(fft_bin_index, min_bin_for_env, max_bin_for_env); // Finomabb gain alkalmazás envelope-hez
+        double rawMagnitude = magnitudeData[fft_bin_index];
 
-        // Az AudioProcessor->getMagnitudeData()[fft_bin_index] már tartalmazza a csillapított értéket.
-        // Alkalmazzuk az autogain figyelembevételével módosított ENVELOPE_INPUT_GAIN-t.
-        double gained_val = magnitudeData[fft_bin_index] * adaptiveScale;
-        wabuf[r][bounds.width - 1] = static_cast<uint8_t>(constrain(gained_val, 0.0, 255.0)); // 0-255 közé korlátozzuk a wabuf számára
+        // KRITIKUS: Infinity és NaN értékek szűrése!
+        if (!isfinite(rawMagnitude) || rawMagnitude < 0.0) {
+            rawMagnitude = 0.0;
+        }
+
+        // További védelem: túl nagy értékek limitálása
+        if (rawMagnitude > 10000.0) {
+            rawMagnitude = 10000.0;
+        }
+
+        double gained_val = rawMagnitude * adaptiveScale;
+
+        // Debug info gyűjtése
+        maxRawMagnitude = std::max(maxRawMagnitude, static_cast<float>(rawMagnitude));
+        maxGainedVal = std::max(maxGainedVal, static_cast<float>(gained_val));
+
+        wabuf[r][bounds.width - 1] = static_cast<uint8_t>(constrain(gained_val, 0.0, 255.0));
     }
 
     // 3. Sprite törlése és burkológörbe kirajzolása
     sprite_->fillSprite(TFT_BLACK); // Sprite törlése
 
-    constexpr float ENVELOPE_SMOOTH_FACTOR = 0.25f;
+    // Erőteljes simítás a tüskék ellen
+    constexpr float ENVELOPE_SMOOTH_FACTOR = 0.05f;   // Sokkal erősebb simítás (volt 0.15f)
+    constexpr float ENVELOPE_NOISE_THRESHOLD = 10.0f; // Magasabb zajküszöb a tüskék ellen (volt 2.0f)
 
     // Először rajzoljunk egy vékony központi vízszintes vonalat (alapvonal) - mindig látható
     int yCenter_on_sprite = graphH / 2;
     sprite_->drawFastHLine(0, yCenter_on_sprite, bounds.width, TFT_WHITE);
 
     for (int c = 0; c < bounds.width; ++c) {
-        int max_val_in_col = 0;
+        int sum_val_in_col = 0;
+        int count_val_in_col = 0;
         bool column_has_signal = false;
 
         for (int r_wabuf = 0; r_wabuf < bounds.height; ++r_wabuf) { // Teljes bounds.height
-            if (wabuf[r_wabuf][c] > 0)
+            if (wabuf[r_wabuf][c] > ENVELOPE_NOISE_THRESHOLD) {
                 column_has_signal = true;
-            if (wabuf[r_wabuf][c] > max_val_in_col) {
-                max_val_in_col = wabuf[r_wabuf][c];
+                sum_val_in_col += wabuf[r_wabuf][c];
+                count_val_in_col++;
             }
         }
 
-        // A maximális amplitúdó simítása az oszlopban
-        float current_col_max_amplitude = static_cast<float>(max_val_in_col);
-        // A tagváltozót használjuk a simításhoz az oszlopok között
+        // A maximális amplitúdó simítása az oszlopban - átlag helyett maximum, de korlátozott
+        float current_col_max_amplitude = 0.0f;
+        if (count_val_in_col > 0) {
+            current_col_max_amplitude = static_cast<float>(sum_val_in_col) / count_val_in_col;
+            // NEM korlátozzuk itt - a rajzolásnál fogjuk kezelni a tüskéket
+        }
+
+        // Zajszűrés: kis amplitúdók elnyomása
+        if (current_col_max_amplitude < ENVELOPE_NOISE_THRESHOLD) {
+            current_col_max_amplitude = 0.0f;
+        }
+
+        // Erősebb simítás az oszlopok között - lassabb változás
         envelopeLastSmoothedValue_ = ENVELOPE_SMOOTH_FACTOR * envelopeLastSmoothedValue_ + (1.0f - ENVELOPE_SMOOTH_FACTOR) * current_col_max_amplitude;
 
-        // Csak akkor rajzolunk burkológörbét, ha van számottevő jel
+        // További simítás: csak jelentős változásokat engedünk át
+        if (abs(current_col_max_amplitude - envelopeLastSmoothedValue_) < ENVELOPE_NOISE_THRESHOLD) {
+            current_col_max_amplitude = envelopeLastSmoothedValue_;
+        } // Csak akkor rajzolunk burkológörbét, ha van számottevő jel
         if (column_has_signal || envelopeLastSmoothedValue_ > 0.5f) {
-            // A simított amplitúdó skálázása a grafikon magasságára (0-255 -> 0-graphH)
-            float y_offset_float = (envelopeLastSmoothedValue_ / 255.0f) * (graphH / 2 - 1); // 0-255 amplitúdó a grafikon feléig
+            // VÍZSZINTES NAGYÍTÁS: Csak a középső részt használjuk nagyobb felbontásért
+            float displayValue = envelopeLastSmoothedValue_;
+
+            // Intelligens tüske korlát megtartva
+            if (displayValue > 150.0f) {
+                displayValue = 150.0f + (displayValue - 150.0f) * 0.1f;
+            }
+
+            // EREDETI NAGYÍTÁS + vízszintes szétnyújtás
+            // A teljes grafikon magasság 80%-át használjuk a jobb láthatóságért
+            float y_offset_float = (displayValue / 100.0f) * (graphH * 0.8f); // Nagyobb skálázás, több részlet
 
             int y_offset_pixels = static_cast<int>(round(y_offset_float));
-            y_offset_pixels = std::min(y_offset_pixels, graphH / 2 - 1);
+            y_offset_pixels = std::min(y_offset_pixels, graphH - 4); // Kis margó
             if (y_offset_pixels < 0)
                 y_offset_pixels = 0;
 
-            if (y_offset_pixels > 0) { // Csak ha van érdemi eltérés a középvonaltól
-                int yUpper_on_sprite = yCenter_on_sprite - y_offset_pixels;
-                int yLower_on_sprite = yCenter_on_sprite + y_offset_pixels;
+            if (y_offset_pixels > 1) {
+                // Szimmetrikus burkoló a középvonaltól - eredeti stílus
+                int yUpper_on_sprite = yCenter_on_sprite - y_offset_pixels / 2;
+                int yLower_on_sprite = yCenter_on_sprite + y_offset_pixels / 2;
 
-                yUpper_on_sprite = constrain(yUpper_on_sprite, 0, graphH - 1);
-                yLower_on_sprite = constrain(yLower_on_sprite, 0, graphH - 1);
+                yUpper_on_sprite = constrain(yUpper_on_sprite, 2, graphH - 3);
+                yLower_on_sprite = constrain(yLower_on_sprite, 2, graphH - 3);
 
                 if (yUpper_on_sprite <= yLower_on_sprite) {
+                    // Vastagabb vonal a jobb láthatóságért
                     sprite_->drawFastVLine(c, yUpper_on_sprite, yLower_on_sprite - yUpper_on_sprite + 1, TFT_WHITE);
+                    // Második vonal a széleken a részletesebb megjelenítésért
+                    if (y_offset_pixels > 4) {
+                        sprite_->drawPixel(c, yUpper_on_sprite - 1, TFT_WHITE);
+                        sprite_->drawPixel(c, yLower_on_sprite + 1, TFT_WHITE);
+                    }
                 }
             }
         }
@@ -894,20 +1057,19 @@ void SpectrumVisualizationComponent::renderWaterfall() {
     const int num_bins_in_wf_range = std::max(1, max_bin_for_wf - min_bin_for_wf + 1);
 
     // 2. Új adatok betöltése a wabuf jobb szélére (a wabuf továbbra is bounds.height magas)
-    static uint32_t debugCounter = 0;
-    bool shouldDebug = (++debugCounter % 30 == 0); // Debug minden 30. frame-ben
 
-    // Autogain alapú skálázás meghatározása
-    bool autoGainActive = isAutoGainMode();
-    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::WATERFALL_INPUT_SCALE, currentAutoGain, autoGainActive);
+    // Adaptív autogain használata waterfall-hoz
+    float adaptiveScale = getAdaptiveScale(SensitivityConstants::WATERFALL_INPUT_SCALE);
+    float maxMagnitude = 0.0f;
 
     for (int r = 0; r < bounds.height; ++r) {
         // 'r' (0 to bounds.height-1) leképezése FFT bin indexre a szűkített tartományon belül
         int fft_bin_index = min_bin_for_wf + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_wf_range - 1)));
         fft_bin_index = constrain(fft_bin_index, min_bin_for_wf, max_bin_for_wf);
 
-        // Waterfall input scale - autogain figyelembevételével
+        // Waterfall input scale - adaptív autogain-nel
         double rawMagnitude = magnitudeData[fft_bin_index];
+        maxMagnitude = std::max(maxMagnitude, static_cast<float>(rawMagnitude));
         double scaledMagnitude = rawMagnitude * adaptiveScale;
         uint8_t finalValue = static_cast<uint8_t>(constrain(scaledMagnitude, 0.0, 255.0));
 
@@ -932,6 +1094,9 @@ void SpectrumVisualizationComponent::renderWaterfall() {
             sprite_->drawPixel(bounds.width - 1, y_on_sprite, color);                                                              // Rajzolás a sprite jobb szélére
         }
     }
+
+    // Adaptív autogain frissítése
+    updateFrameBasedGain(maxMagnitude);
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
@@ -983,6 +1148,8 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
             modeText = "Unknown";
             break;
     }
+
+    modeText += isAutoGainMode() ? " (Auto)" : " (Manual)";
 
     // Clear mode indicator area explicitly before text drawing - KERET ALATT
     int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
@@ -1196,9 +1363,9 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     const int max_fft_bin_for_tuning = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(currentTuningAidMaxFreqHz_ / currentBinWidthHz)));
     const int num_bins_in_tuning_range = std::max(1, max_fft_bin_for_tuning - min_fft_bin_for_tuning + 1);
 
-    // Autogain alapú skálázás meghatározása hangolási segédhez
-    bool autoGainActive = isAutoGainMode();
-    float adaptiveScale = getOptimalAmplitudeScale(SensitivityConstants::TUNING_AID_INPUT_SCALE, currentAutoGain, autoGainActive);
+    // Adaptív autogain használata hangolási segédhez
+    float adaptiveScale = getAdaptiveScale(SensitivityConstants::TUNING_AID_INPUT_SCALE);
+    float maxMagnitude = 0.0f;
 
     // 2. Új adatok betöltése a wabuf tetejére (első sor)
     for (int c = 0; c < bounds.width; ++c) {
@@ -1208,8 +1375,9 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         fft_bin_index = constrain(fft_bin_index, min_fft_bin_for_tuning, max_fft_bin_for_tuning);
         fft_bin_index = constrain(fft_bin_index, 2, static_cast<int>(actualFftSize / 2 - 1));
 
-        // Hangolási segéd input scale - autogain figyelembevételével
+        // Hangolási segéd input scale - adaptív autogain-nel
         double rawMagnitude = magnitudeData[fft_bin_index];
+        maxMagnitude = std::max(maxMagnitude, static_cast<float>(rawMagnitude));
         double scaledMagnitude = rawMagnitude * adaptiveScale;
         wabuf[0][c] = static_cast<uint8_t>(constrain(scaledMagnitude, 0.0, 255.0));
     }
@@ -1325,6 +1493,9 @@ void SpectrumVisualizationComponent::renderTuningAid() {
             }
         }
     }
+
+    // Adaptív autogain frissítése
+    updateFrameBasedGain(maxMagnitude);
 }
 
 /**
