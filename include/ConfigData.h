@@ -72,9 +72,9 @@ struct Config_t {
     uint16_t rttyShiftHz;         // RTTY Shift Hz-ben
 
     // Audio processing beállítások
-    uint8_t audioModeAM;   // Utolsó audio mód AM képernyőn (AudioComponentType)
-    uint8_t audioModeFM;   // Utolsó audio mód FM képernyőn (AudioComponentType)
-    float audioFftGain;    // Audio FFT erősítés (0.1 - 10.0)
+    uint8_t audioModeAM; // Utolsó audio mód AM képernyőn (AudioComponentType)
+    uint8_t audioModeFM; // Utolsó audio mód FM képernyőn (AudioComponentType)
+    // float audioFftGain;    // Audio FFT erősítés (0.1 - 10.0)
 };
 
 #endif // CONFIG_DATA_H
