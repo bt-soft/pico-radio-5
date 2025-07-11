@@ -240,8 +240,10 @@ void ScreenAM::activate() {
     updateHorizontalButtonStates();       // AM-specifikus gombok szinkronizálása
     updateFreqDisplayWidth();             // FreqDisplay szélességének frissítése
 
-    // MEGJEGYZÉS: A frekvencia kijelző frissítése nem szükséges itt,
-    // mert a FreqDisplay konstruktor már beállította a helyes frekvenciát
+    if (spectrumComp) {
+        // Spektrum vizualizáció komponens frissítése
+        spectrumComp->setBorderDrawn(); // Border rajzolása engedélyezve
+    }
 }
 
 /**

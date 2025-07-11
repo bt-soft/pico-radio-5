@@ -242,6 +242,11 @@ void ScreenFM::activate() {
 
     // StatusLine frissítése
     checkAndUpdateMemoryStatus();
+
+    if (spectrumComp) {
+        // Spektrum vizualizáció komponens frissítése
+        spectrumComp->setBorderDrawn(); // Border rajzolása engedélyezve
+    }
 }
 
 /**

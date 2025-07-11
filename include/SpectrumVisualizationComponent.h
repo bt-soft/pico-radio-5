@@ -68,11 +68,6 @@ class SpectrumVisualizationComponent : public UIComponent {
     void drawFrame();
 
     /**
-     * @brief Teljes újrarajzolás kényszerítése
-     */
-    void forceRedraw();
-
-    /**
      * @brief Módok közötti váltás
      */
     void cycleThroughModes();
@@ -104,14 +99,20 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     bool isModeAvailable(DisplayMode mode) const;
 
+    /**
+     * @brief Beállítja, hogy a keret rajzolása szükséges-e
+     * @param drawn true ha a keretet rajzolni kell, false ha nem
+     */
+    inline void setBorderDrawn() { needBorderDrawn = true; }
+
   private:
     RadioMode radioMode_;
     DisplayMode currentMode_;
     DisplayMode lastRenderedMode_;
-    bool needsForceRedraw_;
     bool modeIndicatorVisible_;
     bool modeIndicatorDrawn_;   // Flag to avoid redrawing the indicator unnecessarily
     bool frequencyLabelsDrawn_; // Flag to avoid redrawing frequency labels unnecessarily
+    bool needBorderDrawn;       // Flag to indicate if the border needs to be redrawn
     uint32_t modeIndicatorHideTime_;
     uint32_t lastTouchTime_;
     float maxDisplayFrequencyHz_;
@@ -142,7 +143,6 @@ class SpectrumVisualizationComponent : public UIComponent {
      * @brief Sprite kezelő függvények (radio-2 alapján)
      */
     void manageSpriteForMode(DisplayMode modeToPrepareFor);
-    void ensureSpriteCreated();
 
     /**
      * @brief Renderelő függvények - radio-2 alapján

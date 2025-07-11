@@ -137,9 +137,6 @@ class UIComponent {
     }
 
   public:
-    // Statikus inicializáló metódus
-    static void initScreenDimensions(TFT_eSPI &tft);
-
     /**
      * @brief Konstruktor
      * @param bounds A komponens határai (Rect)
