@@ -1631,6 +1631,8 @@ void SpectrumVisualizationComponent::drawMutedMessage() {
     // A terület közepének meghatározása
     int16_t x = bounds.x + bounds.width / 2;
     int16_t y = bounds.y + bounds.height / 2;
+    tft.setFreeFont();
+    tft.setTextSize(2);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.setTextDatum(MC_DATUM); // Middle center
     tft.drawString("-- Muted --", x, y);
