@@ -98,9 +98,23 @@ void SpectrumVisualizationComponent::draw() {
         return;
     }
 
+    // Ha dialog aktív, ne rajzoljunk újra (kivéve ha force redraw van)
+    if (iscurrentScreenDialogActive() && !needsForceRedraw_) {
+        return;
+    }
+
     // Keret rajzolása ha szükséges
     if (needsForceRedraw_ || currentMode_ != lastRenderedMode_) {
         drawFrame();
+    }
+
+    // Ha dialog aktív és force redraw történt, rajzoljunk egy tiszta keretet
+    if (iscurrentScreenDialogActive() && needsForceRedraw_) {
+        // Explicit teljes keret rajzolás minden esetben
+        tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, TFT_BLACK);
+        tft.drawRect(bounds.x - 1, bounds.y - 1, bounds.width + 2, bounds.height + 2, TFT_WHITE);
+        needsForceRedraw_ = false;
+        return;
     }
 
     // Audio feldolgozás
@@ -178,9 +192,15 @@ bool SpectrumVisualizationComponent::handleTouch(const TouchEvent &touch) {
  * @brief Keret rajzolása
  */
 void SpectrumVisualizationComponent::drawFrame() {
-    // Szép keret rajzolás
+    // Teljes külső keret rajzolása (1 pixel vastag, minden oldalon)
     tft.drawRect(bounds.x - 1, bounds.y - 1, bounds.width + 2, bounds.height + 2, TFT_WHITE);
-    tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, TFT_BLACK);
+
+    // Belső terület kitöltése feketével - MINDEN border-től 1 pixellel beljebb
+    // A külső keret bounds.x-1, bounds.y-1 pozícióban van, ezért a fillRect
+    // bounds.x, bounds.y koordinátától kezdődik, de minden oldalon 1 pixellel kevesebb
+    if (bounds.width > 2 && bounds.height > 2) {
+        tft.fillRect(bounds.x + 1, bounds.y + 1, bounds.width - 2, bounds.height - 2, TFT_BLACK);
+    }
 }
 
 /**
