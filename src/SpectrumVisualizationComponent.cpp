@@ -3,6 +3,7 @@
 #include "Config.h"
 #include "defines.h"
 #include <cmath>
+#include <cstring>
 #include <vector>
 
 // Színprofilok
@@ -63,29 +64,12 @@ void SpectrumVisualizationComponent::updateFrameBasedGain(float currentFrameMaxV
             int graphH = getGraphHeight();
             float targetMaxHeight = graphH * TARGET_MAX_UTILIZATION; // 75% a grafikon magasságából
             float idealGain = targetMaxHeight / averageFrameMax;
-            float oldGain = adaptiveGainFactor_;
 
             // Simított átmenet az új gain faktorhoz
             adaptiveGainFactor_ = GAIN_SMOOTH_FACTOR * idealGain + (1.0f - GAIN_SMOOTH_FACTOR) * adaptiveGainFactor_;
 
             // Biztonsági korlátok - alacsonyabb minimum az érzékenyebb jelekhez
             adaptiveGainFactor_ = constrain(adaptiveGainFactor_, 0.001f, 5.0f);
-
-            // DEBUG kimenet (ritkábban)
-            static uint32_t lastDebugTime = 0;
-            if (now - lastDebugTime > 2000) { // 2 másodpercenként
-                Serial.print("FRAME-GAIN: avgMax=");
-                Serial.print(averageFrameMax, 3);
-                Serial.print(", target=");
-                Serial.print(targetMaxHeight, 1);
-                Serial.print(", ideal=");
-                Serial.print(idealGain, 3);
-                Serial.print(", old=");
-                Serial.print(oldGain, 3);
-                Serial.print(", new=");
-                Serial.println(adaptiveGainFactor_, 3);
-                lastDebugTime = now;
-            }
         }
 
         lastGainUpdateTime_ = now;
@@ -160,7 +144,7 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
     : UIComponent(Rect(x, y, w, h)), radioMode_(radioMode), currentMode_(DisplayMode::Off), lastRenderedMode_(DisplayMode::Off), modeIndicatorVisible_(false), modeIndicatorDrawn_(false), frequencyLabelsDrawn_(false),
       modeIndicatorHideTime_(0), lastTouchTime_(0), lastFrameTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM), envelopeLastSmoothedValue_(0.0f),
       frameHistoryIndex_(0), frameHistoryFull_(false), adaptiveGainFactor_(0.02f), lastGainUpdateTime_(0), sprite_(nullptr), spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0),
-      pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f) {
+      pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f), isMutedDrawn(false) {
 
     // Core1 AudioManager használata helyett a helyi AudioProcessor
     // Az AudioProcessor most már a core1-en fut az AudioCore1Manager-en keresztül
@@ -213,6 +197,20 @@ void SpectrumVisualizationComponent::draw() {
         return;
     }
     lastFrameTime_ = currentTime;
+
+    // Ha Mute állapotban vagyunk
+    if (rtv::muteStat) {
+        if (!isMutedDrawn) {
+            DEBUG("SpectrumVisualizationComponent: Mute állapotban vagyunk\n");
+            drawFrame();
+            drawMutedMessage();
+        }
+        return;
+    } else if (!rtv::muteStat && isMutedDrawn) {
+        DEBUG("SpectrumVisualizationComponent: Mute állapot megszűnt, kirajzoljuk a keretet\n");
+        isMutedDrawn = false;
+        needBorderDrawn = true; // Muted állapot megszűnt, rajzoljuk újra a keretet
+    }
 
     // Ha nincs processzor vagy a dialog aktív, ne rajzoljunk újra (kivéve ha force redraw van)
     // Ellenőrizzük, hogy a core1 audio manager fut-e és van-e aktív dialógus
@@ -620,18 +618,6 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
 
     // Adaptív autogain használata
     float adaptiveScale = getAdaptiveScale(SensitivityConstants::AMPLITUDE_SCALE);
-
-    // DEBUG: Egy alkalmmal kiírjuk az adaptiveScale értékét
-    static uint32_t lastDebugTime = 0;
-    if (millis() - lastDebugTime > 2000) { // 2 másodpercenként
-        Serial.print("LowRes: adaptiveScale=");
-        Serial.print(adaptiveScale, 3);
-        Serial.print(", gainFactor=");
-        Serial.print(getCurrentGainFactor(), 3);
-        Serial.print(", baseScale=");
-        Serial.println(SensitivityConstants::AMPLITUDE_SCALE, 1);
-        lastDebugTime = millis();
-    }
 
     double band_magnitudes[LOW_RES_BANDS] = {0.0};
 
@@ -1630,4 +1616,25 @@ uint16_t SpectrumVisualizationComponent::getCore1FftSize() {
 
     // Ha nincs friss adat, visszaadunk egy alapértelmezett értéket
     return AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
+}
+
+/**
+ * @brief Muted üzenet kirajzolása
+ */
+void SpectrumVisualizationComponent::drawMutedMessage() {
+
+    // Ha már kirajzoltuk, nem csinálunk semmit
+    if (isMutedDrawn) {
+        return;
+    }
+
+    // A terület közepének meghatározása
+    int16_t x = bounds.x + bounds.width / 2;
+    int16_t y = bounds.y + bounds.height / 2;
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+    tft.setTextDatum(MC_DATUM); // Middle center
+    tft.drawString("-- Muted --", x, y);
+    // tft.setTextDatum(TL_DATUM); // Visszaállítás bal felsőre
+
+    isMutedDrawn = true;
 }

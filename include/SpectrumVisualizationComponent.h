@@ -223,6 +223,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     void resetAdaptiveGain();
     float getCurrentGainFactor() const { return adaptiveGainFactor_; }
     float getAverageFrameMax() const;
+    float isMutedDrawn;
 
     /**
      * @brief Config konverziós függvények
@@ -230,6 +231,11 @@ class SpectrumVisualizationComponent : public UIComponent {
     DisplayMode configValueToDisplayMode(uint8_t configValue);
     uint8_t displayModeToConfigValue(DisplayMode mode);
     void setCurrentModeToConfig();
+
+    /**
+     * @brief Kiírja a spektrum terület közepére, hogy "-- Muted --"
+     */
+    void drawMutedMessage();
 };
 
 #endif // SPECTRUM_VISUALIZATION_COMPONENT_H
