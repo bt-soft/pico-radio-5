@@ -7,6 +7,7 @@
 #include "ScreenMemory.h"
 #include "ScreenScreenSaver.h"
 #include "ScreenSetup.h"
+#include "ScreenSetupCwRtty.h"
 #include "ScreenSetupSi4735.h"
 #include "ScreenSetupSystem.h"
 #include "ScreenTest.h"
@@ -30,6 +31,7 @@ void ScreenManager::registerDefaultScreenFactories() {
     registerScreenFactory(SCREEN_NAME_SETUP, []() { return std::make_shared<ScreenSetup>(); });
     registerScreenFactory(SCREEN_NAME_SETUP_SYSTEM, []() { return std::make_shared<ScreenSetupSystem>(); });
     registerScreenFactory(SCREEN_NAME_SETUP_SI4735, []() { return std::make_shared<ScreenSetupSi4735>(); });
+    registerScreenFactory(SCREEN_NAME_SETUP_CW_RTTY, []() { return std::make_shared<ScreenSetupCwRtty>(); });
 
     // Teszt képernyők regisztrálása
     registerScreenFactory(SCREEN_NAME_TEST, []() { return std::make_shared<ScreenTest>(); });

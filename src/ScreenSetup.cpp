@@ -29,6 +29,7 @@ void ScreenSetup::populateMenuItems() {
     // Fő setup menü elemek hozzáadása
     settingItems.push_back(SettingItem("System Settings", "", static_cast<int>(MainItemAction::DISPLAY_SETTINGS), true, SCREEN_NAME_SETUP_SYSTEM));
     settingItems.push_back(SettingItem("Si4735 Settings", "", static_cast<int>(MainItemAction::SI4735_SETTINGS), true, SCREEN_NAME_SETUP_SI4735));
+    settingItems.push_back(SettingItem("CW/RTTY Settings", "", static_cast<int>(MainItemAction::CW_RTTY_SETTINGS), true, SCREEN_NAME_SETUP_CW_RTTY));
     settingItems.push_back(SettingItem("System Information", "", static_cast<int>(MainItemAction::INFO)));
     settingItems.push_back(SettingItem("Factory Reset", "", static_cast<int>(MainItemAction::FACTORY_RESET)));
 
@@ -54,6 +55,7 @@ void ScreenSetup::handleItemAction(int index, int action) {
         case MainItemAction::DISPLAY_SETTINGS:
         case MainItemAction::SI4735_SETTINGS:
         case MainItemAction::DECODER_SETTINGS:
+        case MainItemAction::CW_RTTY_SETTINGS:
             // Ezeket a ScreenSetupBase::onItemClicked kezeli (almenü navigáció)
             break;
         case MainItemAction::INFO:

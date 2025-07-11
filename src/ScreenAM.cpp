@@ -309,7 +309,7 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     // Spektrum vizualizáció komponens létrehozása
     // ===================================================================
-    Rect spectrumBounds(255, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT, 150, 80);
+    Rect spectrumBounds(255, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT-10, 150, 80);
     createSpectrumComponent(spectrumBounds, RadioMode::AM);
 
     // ===================================================================

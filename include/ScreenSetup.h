@@ -22,8 +22,9 @@ class ScreenSetup : public ScreenSetupBase {
         DISPLAY_SETTINGS = 400, // Almenü: Display beállítások
         SI4735_SETTINGS = 401,  // Almenü: Si4735 beállítások
         DECODER_SETTINGS = 402, // Almenü: Dekóder beállítások
-        INFO = 403,             // System Information dialógus
-        FACTORY_RESET = 404     // Factory Reset dialógus
+        CW_RTTY_SETTINGS = 403, // Almenü: CW/RTTY beállítások
+        INFO = 404,             // System Information dialógus
+        FACTORY_RESET = 405     // Factory Reset dialógus
     };
 
     // Dialógus kezelő függvények
