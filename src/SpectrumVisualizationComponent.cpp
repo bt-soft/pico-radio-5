@@ -167,12 +167,6 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
 
     // Sprite előkészítése a kezdeti módhoz
     manageSpriteForMode(currentMode_);
-
-    // CW/RTTY dekóder példányosítása (egyszer, ha még nincs)
-    if (!cwDecoder) {
-        cwDecoder = new CwRttyDecoder(config.data.cwReceiverOffsetHz, getCore1FftSize(), getCore1BinWidthHz());
-        cwDecoder->setCwFreq(config.data.cwReceiverOffsetHz);
-    }
 }
 
 /**
@@ -183,12 +177,6 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
         sprite_->deleteSprite();
         delete sprite_;
         sprite_ = nullptr;
-    }
-
-    // CW dekóder törlése, ha létezik
-    if (!cwDecoder) {
-        delete cwDecoder;
-        cwDecoder = nullptr;
     }
 
     // AudioProcessor már nem itt van felszabadítva, a core1-en fut
@@ -1458,11 +1446,6 @@ void SpectrumVisualizationComponent::renderTuningAid() {
 
     // Adaptív autogain frissítése
     updateFrameBasedGain(maxMagnitude);
-
-    // --- CW/RTTY dekóder meghívása teszteléshez ---
-    if (cwDecoder) {
-        cwDecoder->process(magnitudeData);
-    }
 }
 
 /**
