@@ -178,6 +178,9 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
     void handleStepButton(const UIButton::ButtonEvent &event);
 
   private:
+    // ===================================================================
+    // AM specifikus tagváltozók
+    // ===================================================================
 };
 
 #endif // __SCREEN_AM_H

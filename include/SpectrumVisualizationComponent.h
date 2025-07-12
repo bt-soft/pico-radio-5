@@ -7,6 +7,7 @@
 #include "AudioProcessor.h"
 #include "Band.h"
 #include "ConfigData.h"
+#include "CwRttyDecoder.h"
 #include "UIComponent.h"
 
 /**
@@ -231,6 +232,10 @@ class SpectrumVisualizationComponent : public UIComponent {
      * @brief Kiírja a spektrum terület közepére, hogy "-- Muted --"
      */
     void drawMutedMessage();
+
+  private:
+    // CW/RTTY dekóder példány (teszteléshez, később refaktorálható máshová)
+    CwRttyDecoder *cwDecoder = nullptr;
 };
 
 #endif // SPECTRUM_VISUALIZATION_COMPONENT_H

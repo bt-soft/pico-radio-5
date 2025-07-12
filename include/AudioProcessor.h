@@ -5,6 +5,7 @@
 #include <Arduino.h>
 
 namespace AudioProcessorConstants {
+// CwRttyDecoder deklaráció
 // Audio input konstansok
 const double DEFAULT_SAMPLING_FREQUENCY = 30000.0; // 30kHz mintavételezés a 15kHz Nyquist limithez
 
@@ -116,4 +117,9 @@ class AudioProcessor {
      * FFT méret lekérése
      */
     uint16_t getFftSize() const { return currentFftSize_; }
+
+    // const double *getRvReal() const { return RvReal; }
+    // int getCurrentFftSize() const { return currentFftSize_; }
+    // float getBinWidthHz() const { return binWidthHz_; }
+    // float getSamplingFrequency() const { return targetSamplingFrequency_; }
 };

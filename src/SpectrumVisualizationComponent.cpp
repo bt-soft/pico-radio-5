@@ -167,6 +167,12 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
 
     // Sprite előkészítése a kezdeti módhoz
     manageSpriteForMode(currentMode_);
+
+    // CW/RTTY dekóder példányosítása (egyszer, ha még nincs)
+    if (!cwDecoder) {
+        cwDecoder = new CwRttyDecoder(config.data.cwReceiverOffsetHz, getCore1FftSize(), getCore1BinWidthHz());
+        cwDecoder->setCwFreq(config.data.cwReceiverOffsetHz);
+    }
 }
 
 /**
@@ -177,6 +183,12 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
         sprite_->deleteSprite();
         delete sprite_;
         sprite_ = nullptr;
+    }
+
+    // CW dekóder törlése, ha létezik
+    if (!cwDecoder) {
+        delete cwDecoder;
+        cwDecoder = nullptr;
     }
 
     // AudioProcessor már nem itt van felszabadítva, a core1-en fut
@@ -1446,6 +1458,11 @@ void SpectrumVisualizationComponent::renderTuningAid() {
 
     // Adaptív autogain frissítése
     updateFrameBasedGain(maxMagnitude);
+
+    // --- CW/RTTY dekóder meghívása teszteléshez ---
+    if (cwDecoder) {
+        cwDecoder->process(magnitudeData);
+    }
 }
 
 /**
@@ -1570,16 +1587,14 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
  */
 uint16_t SpectrumVisualizationComponent::getCore1FftSize() {
     const double *dummyData;
-    uint16_t fftSize = 512; // Default
+    uint16_t fftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES; // Default
     float dummyBinWidth, dummyGain;
 
     // Csak az FFT méretet kérdezzük le, ha van friss adat
-    if (AudioCore1Manager::getSpectrumData(&dummyData, &fftSize, &dummyBinWidth, &dummyGain)) {
-        return fftSize;
-    }
+    AudioCore1Manager::getSpectrumData(&dummyData, &fftSize, &dummyBinWidth, &dummyGain);
 
     // Ha nincs friss adat, visszaadunk egy alapértelmezett értéket
-    return AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
+    return fftSize;
 }
 
 /**
