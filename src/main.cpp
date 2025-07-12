@@ -229,13 +229,14 @@ void setup() {
         DEBUG("Core1 Audio Manager inicializálás sikertelen!\n");
         Utils::beepError();
         // Folytatjuk anélkül is, de spectrum nem fog működni
-    } else {
-        DEBUG("Core1 Audio Manager sikeresen inicializálva!\n");
+    } 
+    // else {
+    //     DEBUG("Core1 Audio Manager sikeresen inicializálva!\n");
 
-        // Beállítjuk a kezdeti módot (AM vagy FM)
-        bool isAM = (pSi4735Manager->getCurrentBandType() != FM_BAND_TYPE);
-        AudioCore1Manager::setCurrentMode(isAM);
-    }
+    //     // Beállítjuk a kezdeti módot (AM vagy FM)
+    //     bool isAM = (pSi4735Manager->getCurrentBandType() != FM_BAND_TYPE);
+    //     AudioCore1Manager::setCurrentMode(isAM);
+    // }
 
     delay(100);
 
@@ -289,18 +290,18 @@ void loop() {
     }
 #endif
 
-    //------------------- Core1 Audio Manager band váltás figyelése
-    static uint8_t lastBandType = -1;
-    if (pSi4735Manager) {
-        uint8_t currentBandType = pSi4735Manager->getCurrentBandType();
-        if (lastBandType != -1 && lastBandType != currentBandType) {
-            // Band váltás történt, frissítjük a Core1 audio manager módját
-            bool isAM = (currentBandType != FM_BAND_TYPE);
-            AudioCore1Manager::setCurrentMode(isAM);
-            DEBUG("Core1 Audio Manager: Band váltás %s módra\n", isAM ? "AM" : "FM");
-        }
-        lastBandType = currentBandType;
-    }
+    // //------------------- Core1 Audio Manager band váltás figyelése
+    // static uint8_t lastBandType = -1;
+    // if (pSi4735Manager) {
+    //     uint8_t currentBandType = pSi4735Manager->getCurrentBandType();
+    //     if (lastBandType != -1 && lastBandType != currentBandType) {
+    //         // Band váltás történt, frissítjük a Core1 audio manager módját
+    //         bool isAM = (currentBandType != FM_BAND_TYPE);
+    //         AudioCore1Manager::setCurrentMode(isAM);
+    //         DEBUG("Core1 Audio Manager: Band váltás %s módra\n", isAM ? "AM" : "FM");
+    //     }
+    //     lastBandType = currentBandType;
+    // }
 
     //------------------- Touch esemény kezelése
     uint16_t touchX, touchY;

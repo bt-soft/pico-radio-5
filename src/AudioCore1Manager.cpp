@@ -281,22 +281,6 @@ bool AudioCore1Manager::setFftSize(uint16_t newSize) {
 }
 
 /**
- * @brief Aktuális gain konfiguráció beállítása (core0-ból hívható)
- */
-void AudioCore1Manager::setCurrentMode(bool isAM) {
-    if (!initialized_ || !pSharedData_)
-        return;
-
-    // A gain referencia váltás egyszerű pointer swap
-    // Ez thread-safe, mert csak egy pointer értéket változtatunk
-    if (isAM) {
-        currentGainConfigRef_ = &pSharedData_->fftGainConfigAm;
-    } else {
-        currentGainConfigRef_ = &pSharedData_->fftGainConfigFm;
-    }
-}
-
-/**
  * @brief Core1 állapot lekérése
  */
 bool AudioCore1Manager::isRunning() { return initialized_ && pSharedData_ && pSharedData_->core1Running; }

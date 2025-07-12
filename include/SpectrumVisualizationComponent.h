@@ -73,15 +73,10 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     void cycleThroughModes();
 
-    /**
-     * @brief Aktuális mód szöveges neve
-     */
-    const char *getModeText() const;
-
-    /**
-     * @brief Kezdeti mód beállítása
-     */
-    void setInitialMode(DisplayMode mode);
+    // /**
+    //  * @brief Kezdeti mód beállítása
+    //  */
+    // void setInitialMode(DisplayMode mode);
 
     /**
      * @brief Mód betöltése config-ból
@@ -196,7 +191,6 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     uint16_t getSpectrumColor(float intensity);
     void drawGradientBar(int x, int y, int w, int h, float intensity);
-    void drawGradientBarToSprite(int x, int y, int w, int h, float intensity);
     uint16_t interpolateColor(uint16_t color1, uint16_t color2, float ratio);
     uint16_t valueToWaterfallColor(float val, float min_val, float max_val, byte colorProfileIndex);
     int getGraphHeight() const;

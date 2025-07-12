@@ -100,12 +100,6 @@ class AudioCore1Manager {
     static bool setFftSize(uint16_t newSize);
 
     /**
-     * @brief Aktuális gain konfiguráció beállítása (core0-ból hívható)
-     * @param isAM true = AM mód, false = FM mód
-     */
-    static void setCurrentMode(bool isAM);
-
-    /**
      * @brief Core1 állapot lekérése
      * @return true ha a core1 fut és működik
      */

@@ -430,39 +430,6 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
 }
 
 /**
- * @brief Aktuális mód szöveges neve
- */
-/**
- * @brief Kezdeti mód beállítása
- */
-void SpectrumVisualizationComponent::setInitialMode(DisplayMode mode) {
-    // FM módban CW/RTTY módok nem engedélyezettek
-    if (radioMode_ == RadioMode::FM && (mode == DisplayMode::CWWaterfall || mode == DisplayMode::RTTYWaterfall)) {
-        mode = DisplayMode::Waterfall; // Alapértelmezés FM módban
-    }
-
-    currentMode_ = mode;
-    lastRenderedMode_ = DisplayMode::Off; // Kényszerítjük az újrarajzolást
-
-    // Optimális FFT méret beállítása Core1-en
-    if (AudioCore1Manager::isRunning()) {
-        uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
-        uint16_t currentFftSize = getCore1FftSize();
-
-        if (currentFftSize != optimalFftSize) {
-            DEBUG("SpectrumVisualizationComponent: Setting initial FFT size to %d for mode %d\n", optimalFftSize, static_cast<int>(currentMode_));
-
-            if (!AudioCore1Manager::setFftSize(optimalFftSize)) {
-                DEBUG("SpectrumVisualizationComponent: Failed to set initial FFT size to %d\n", optimalFftSize);
-            }
-        }
-    }
-
-    // Sprite előkészítése az új módhoz
-    manageSpriteForMode(currentMode_);
-}
-
-/**
  * @brief Mód betöltése config-ból
  */
 void SpectrumVisualizationComponent::loadModeFromConfig() {
