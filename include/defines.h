@@ -7,8 +7,8 @@
 
 //---- Program Information ------------------------------------------
 
-#define PROGRAM_NAME "Pico Radio v4"
-#define PROGRAM_VERSION "0.0.4"
+#define PROGRAM_NAME "Pico Radio v5"
+#define PROGRAM_VERSION "0.0.5"
 #define PROGRAM_AUTHOR "bt-soft"
 
 //---- Program Information ------------------------------------------
