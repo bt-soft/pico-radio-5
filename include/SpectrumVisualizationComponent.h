@@ -231,6 +231,11 @@ class SpectrumVisualizationComponent : public UIComponent {
      * @brief Kiírja a spektrum terület közepére, hogy "-- Muted --"
      */
     void drawMutedMessage();
+
+    /**
+     * @brief Spektrum mód dekódolása szöveggé
+     */
+    const char *decodeModeToStr();
 };
 
 #endif // SPECTRUM_VISUALIZATION_COMPONENT_H

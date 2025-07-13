@@ -218,25 +218,18 @@ void setup() {
     splash.updateProgress(7, 9, "Starting Core1 audio processor...");
 
     // Core1 Audio Manager inicializálása a megfelelő FFT gain referenciákkal
-    bool core1InitSuccess = AudioCore1Manager::init(config.data.miniAudioFftConfigAm,                    // AM FFT gain referencia
-                                                    config.data.miniAudioFftConfigFm,                    // FM FFT gain referencia
+    bool core1InitSuccess = AudioCore1Manager::init(config.data.audioFftConfigAm,                        // AM FFT gain referencia
+                                                    config.data.audioFftConfigFm,                        // FM FFT gain referencia
                                                     PIN_AUDIO_INPUT,                                     // Audio bemenet pin
                                                     AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY, // Mintavételezési frekvencia
                                                     AudioProcessorConstants::DEFAULT_FFT_SAMPLES         // Kezdeti FFT méret
     );
 
     if (!core1InitSuccess) {
-        DEBUG("Core1 Audio Manager inicializálás sikertelen!\n");
+        DEBUG("HIBA: A Core1 Audio Manager inicializálás sikertelen!\n");
         Utils::beepError();
         // Folytatjuk anélkül is, de spectrum nem fog működni
-    } 
-    // else {
-    //     DEBUG("Core1 Audio Manager sikeresen inicializálva!\n");
-
-    //     // Beállítjuk a kezdeti módot (AM vagy FM)
-    //     bool isAM = (pSi4735Manager->getCurrentBandType() != FM_BAND_TYPE);
-    //     AudioCore1Manager::setCurrentMode(isAM);
-    // }
+    }
 
     delay(100);
 
@@ -289,20 +282,6 @@ void loop() {
         lasDebugMemoryInfo = millis();
     }
 #endif
-
-    // //------------------- Core1 Audio Manager band váltás figyelése
-    // static uint8_t lastBandType = -1;
-    // if (pSi4735Manager) {
-    //     uint8_t currentBandType = pSi4735Manager->getCurrentBandType();
-    //     if (lastBandType != -1 && lastBandType != currentBandType) {
-    //         // Band váltás történt, frissítjük a Core1 audio manager módját
-    //         bool isAM = (currentBandType != FM_BAND_TYPE);
-    //         AudioCore1Manager::setCurrentMode(isAM);
-    //         DEBUG("Core1 Audio Manager: Band váltás %s módra\n", isAM ? "AM" : "FM");
-    //     }
-    //     lastBandType = currentBandType;
-    // }
-
     //------------------- Touch esemény kezelése
     uint16_t touchX, touchY;
     bool touchedRaw = tft.getTouch(&touchX, &touchY);
@@ -369,5 +348,12 @@ void loop() {
     // SI4735 loop hívása, squelch és hardver némítás kezelése
     if (pSi4735Manager) {
         pSi4735Manager->loop();
+    }
+
+    // Core1 Audio Manager debug információk kiírása
+    static uint32_t lasAudioCore1ManagerDebugInfo = 0;
+    if (millis() - lasAudioCore1ManagerDebugInfo >= 5 * 1000) {
+        AudioCore1Manager::debugInfo(); // Core1 Audio Manager debug info kiírása
+        lasAudioCore1ManagerDebugInfo = millis();
     }
 }

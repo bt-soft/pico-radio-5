@@ -29,8 +29,8 @@ void ScreenSetupAudioProc::populateMenuItems() {
     settingItems.push_back(SettingItem("RTTY Shift", String(config.data.rttyShiftHz) + " Hz", static_cast<int>(AudioProcItemAction::RTTY_SHIFT)));
     settingItems.push_back(SettingItem("RTTY Mark Frequency", String(config.data.rttyMarkFrequencyHz) + " Hz", static_cast<int>(AudioProcItemAction::RTTY_MARK_FREQUENCY)));
 
-    settingItems.push_back(SettingItem("FFT Gain AM", decodeFFTGain(config.data.miniAudioFftConfigAm), static_cast<int>(AudioProcItemAction::FFT_GAIN_AM)));
-    settingItems.push_back(SettingItem("FFT Gain FM", decodeFFTGain(config.data.miniAudioFftConfigFm), static_cast<int>(AudioProcItemAction::FFT_GAIN_FM)));
+    settingItems.push_back(SettingItem("FFT Gain AM", decodeFFTGain(config.data.audioFftConfigAm), static_cast<int>(AudioProcItemAction::FFT_GAIN_AM)));
+    settingItems.push_back(SettingItem("FFT Gain FM", decodeFFTGain(config.data.audioFftConfigFm), static_cast<int>(AudioProcItemAction::FFT_GAIN_FM)));
 
     // Lista komponens újrarajzolásának kérése, ha létezik
     if (menuList) {
@@ -187,7 +187,8 @@ String ScreenSetupAudioProc::decodeFFTGain(float value) {
  * @param isAM true = AM mód, false = FM mód
  */
 void ScreenSetupAudioProc::handleFFTGainDialog(int index, bool isAM) {
-    float &currentConfig = isAM ? config.data.miniAudioFftConfigAm : config.data.miniAudioFftConfigFm;
+
+    float &currentConfig = isAM ? config.data.audioFftConfigAm : config.data.audioFftConfigFm;
     const char *title = isAM ? "FFT Gain AM" : "FFT Gain FM";
 
     int defaultSelection = 0; // Disabled
@@ -205,7 +206,6 @@ void ScreenSetupAudioProc::handleFFTGainDialog(int index, bool isAM) {
             switch (buttonIndex) {
                 case 0: // Disabled
                     currentConfig = -1.0f;
-                    config.checkSave();
                     settingItems[index].value = "Disabled";
                     updateListItem(index);
                     dialog->close(UIDialogBase::DialogResult::Accepted);
@@ -213,7 +213,6 @@ void ScreenSetupAudioProc::handleFFTGainDialog(int index, bool isAM) {
 
                 case 1: // Auto Gain
                     currentConfig = 0.0f;
-                    config.checkSave();
                     settingItems[index].value = "Auto Gain";
                     updateListItem(index);
                     dialog->close(UIDialogBase::DialogResult::Accepted);
@@ -230,7 +229,6 @@ void ScreenSetupAudioProc::handleFFTGainDialog(int index, bool isAM) {
                         [this, index, &currentConfig, tempGainValuePtr](UIDialogBase *sender, MessageDialog::DialogResult result) {
                             if (result == MessageDialog::DialogResult::Accepted) {
                                 currentConfig = *tempGainValuePtr;
-                                config.checkSave();
                                 populateMenuItems(); // Teljes frissítés a helyes érték megjelenítéséhez
                             }
                         },

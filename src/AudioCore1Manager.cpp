@@ -1,6 +1,8 @@
 #include "AudioCore1Manager.h"
 #include "defines.h"
 
+constexpr uint32_t DEFAULT_LOOP_INTERVAL_MSEC = 50; // 50ms = 20Hz frissítés
+
 // Statikus tagváltozók inicializálása
 AudioCore1Manager::SharedAudioData *AudioCore1Manager::pSharedData_ = nullptr;
 AudioProcessor *AudioCore1Manager::pAudioProcessor_ = nullptr;
@@ -9,8 +11,16 @@ float *AudioCore1Manager::currentGainConfigRef_ = nullptr;
 
 /**
  * @brief Core1 audio manager inicializálása
+ * @param gainConfigAmRef Referencia az AM FFT gain konfigurációra
+ * @param gainConfigFmRef Referencia az FM FFT gain konfigurációra
+ * @param audioPin Audio bemenet pin száma
+ * @param initialSamplingFrequency Kezdeti mintavételezési frekvencia
+ * @param initialFftSize Kezdeti FFT méret
+ * @return true ha sikeres, false ha hiba történt
+ *
  */
-bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int audioPin, double samplingFreq, uint16_t initialFftSize) {
+bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int audioPin, double initialSamplingFrequency, uint16_t initialFftSize) {
+
     if (initialized_) {
         DEBUG("AudioCore1Manager: Már inicializálva!\n");
         return false;
@@ -33,7 +43,8 @@ bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int
     pSharedData_->eepromWriteInProgress = false;
     pSharedData_->core1AudioPaused = false;
     pSharedData_->core1AudioPausedAck = false;
-    pSharedData_->spectrumSize = initialFftSize;
+    pSharedData_->fftSize = initialFftSize;
+    pSharedData_->samplingFrequency = initialSamplingFrequency;
     pSharedData_->fftGainConfigAm = gainConfigAmRef;
     pSharedData_->fftGainConfigFm = gainConfigFmRef;
 
@@ -99,7 +110,7 @@ void AudioCore1Manager::core1Entry() {
     DEBUG("AudioCore1Manager: Core1 audio szál elindult!\n");
 
     // AudioProcessor inicializálása core1-en
-    pAudioProcessor_ = new (std::nothrow) AudioProcessor(*currentGainConfigRef_, PIN_AUDIO_INPUT, AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY, pSharedData_->spectrumSize);
+    pAudioProcessor_ = new (std::nothrow) AudioProcessor(*currentGainConfigRef_, PIN_AUDIO_INPUT, pSharedData_->samplingFrequency, pSharedData_->fftSize);
 
     if (!pAudioProcessor_) {
         DEBUG("AudioCore1Manager: Core1 AudioProcessor inicializálás sikertelen!\n");
@@ -127,8 +138,9 @@ void AudioCore1Manager::core1Entry() {
  * @brief Core1 audio feldolgozó ciklus
  */
 void AudioCore1Manager::core1AudioLoop() {
+
     uint32_t lastProcessTime = 0;
-    const uint32_t processInterval = 50; // 50ms = 20Hz frissítés
+    const uint32_t processInterval = DEFAULT_LOOP_INTERVAL_MSEC;
 
     // Audio feldolgozási loop
     while (!pSharedData_->core1ShouldStop) {
@@ -170,7 +182,7 @@ void AudioCore1Manager::core1AudioLoop() {
                     if (magnitudeData) {
                         uint16_t fftSize = pAudioProcessor_->getFftSize();
                         memcpy(pSharedData_->spectrumBuffer, magnitudeData, fftSize * sizeof(double));
-                        pSharedData_->spectrumSize = fftSize;
+                        pSharedData_->fftSize = fftSize;
                         pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
                         pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
                         pSharedData_->spectrumDataReady = true;
@@ -198,34 +210,177 @@ void AudioCore1Manager::core1AudioLoop() {
 }
 
 /**
+ * @brief FFT mintavételezési frekvencia  váltása (core0-ból hívható)
+ * @param newFs Az új FFT mintavételezési frekvencia
+ * @return true ha sikeres, false egyébként
+ */
+bool AudioCore1Manager::setSamplingFrequency(double newFs) {
+    if (!initialized_ || !pSharedData_) {
+        return false;
+    }
+
+    if (newFs < AudioProcessorConstants::MIN_SAMPLING_FREQUENCY || newFs > AudioProcessorConstants::MAX_SAMPLING_FREQUENCY) {
+        DEBUG("AudioProcessor: Érvénytelen mintavételezési frekvencia  %d\n", (int)newFs);
+        return false;
+    }
+
+    DEBUG("AudioCore1Manager: Mintavételezési frekvencia váltása %d Hz-re\n", (int)newFs);
+
+    // Biztonságos konfiguráció váltás
+    if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+        pSharedData_->samplingFrequency = newFs;
+        pSharedData_->configChanged = true;
+        mutex_exit(&pSharedData_->dataMutex);
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * @brief FFT méret váltása (core0-ból hívható)
+ * @param newSize Az új FFT méret
+ * @return true ha sikeres, false egyébként
+ */
+bool AudioCore1Manager::setFftSize(uint16_t newSize) {
+    if (!initialized_ || !pSharedData_)
+        return false;
+
+    if (newSize < AudioProcessorConstants::MIN_FFT_SAMPLES || newSize > AudioProcessorConstants::MAX_FFT_SAMPLES) {
+        DEBUG("AudioProcessor: Érvénytelen FFT méret %d\n", (int)newSize);
+        return false;
+    }
+
+    DEBUG("AudioCore1Manager: FFT méret váltása %d-re\n", newSize);
+
+    // Biztonságos konfiguráció váltás
+    if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+        pSharedData_->fftSize = newSize;
+        pSharedData_->configChanged = true;
+        mutex_exit(&pSharedData_->dataMutex);
+        return true;
+    }
+
+    return false;
+}
+
+/**
  * @brief Audio konfiguráció frissítése
  */
 void AudioCore1Manager::updateAudioConfig() {
-    if (!pAudioProcessor_)
+
+    if (!pAudioProcessor_) {
         return;
+    }
+
+    DEBUG("AudioCore1Manager: Audio konfiguráció frissítése...\n");
 
     // FFT méret frissítése ha szükséges
-    if (pAudioProcessor_->getFftSize() != pSharedData_->spectrumSize) {
-        DEBUG("AudioCore1Manager: FFT méret váltása %d-re\n", pSharedData_->spectrumSize);
-        pAudioProcessor_->setFftSize(pSharedData_->spectrumSize);
+    // if (pAudioProcessor_->getFftSize() != pSharedData_->fftSize) {
+    DEBUG("AudioCore1Manager: FFT méret váltása %d-re\n", pSharedData_->fftSize);
+    pAudioProcessor_->setFftSize(pSharedData_->fftSize);
+    //}
+
+    // FFT mintavételezési frekvencia frissítése ha szükséges
+    if (pAudioProcessor_->getSamplingFrequency() != pSharedData_->samplingFrequency) {
+        DEBUG("AudioCore1Manager: FFT frekvencia váltása %d-re\n", pSharedData_->samplingFrequency);
+        pAudioProcessor_->setSamplingFrequency(pSharedData_->samplingFrequency);
     }
 
     pSharedData_->configChanged = false;
 }
 
 /**
+ * @brief Spektrum méret lekérése (ha nincs friss adat, cached érték)
+ * @param outSize Kimeneti FFT méret
+ * @return true ha sikeres, false ha hiba történt
+ */
+bool AudioCore1Manager::getFftSize(uint16_t *outSize) {
+    if (!initialized_ || !pSharedData_) {
+        return false;
+    }
+
+    bool dataAvailable = false;
+
+    if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+        if (pSharedData_->spectrumDataReady) {
+            *outSize = pSharedData_->fftSize;
+            pSharedData_->spectrumDataReady = false; // Adat felhasználva
+            dataAvailable = true;
+        }
+        mutex_exit(&pSharedData_->dataMutex);
+    }
+
+    return dataAvailable;
+}
+/**
+ * @brief Core1 mintavételezési frekvencia lekérése (ha nincs friss adat, cached érték)
+ * @param outSampleFrequency Kimeneti mintavételezési frekvencia
+ * @return true ha sikeres, false ha hiba történt
+ */
+bool AudioCore1Manager::getFftSampleFrequency(double *outSampleFrequency) {
+    if (!initialized_ || !pSharedData_) {
+        return false;
+    }
+
+    bool dataAvailable = false;
+
+    if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+        if (pSharedData_->spectrumDataReady) {
+            *outSampleFrequency = pSharedData_->samplingFrequency;
+            pSharedData_->spectrumDataReady = false; // Adat felhasználva
+            dataAvailable = true;
+        }
+        mutex_exit(&pSharedData_->dataMutex);
+    }
+
+    return dataAvailable;
+}
+
+/**
+ * @brief Core1 aktuális bin szélesség lekérése (ha nincs friss adat, cached érték)
+ * @param outBinWidth Kimeneti bin szélesség Hz-ben
+ * @return true ha sikeres, false ha hiba történt
+ */
+bool AudioCore1Manager::getFftCurrentBinWidth(float *outBinWidth) {
+    if (!initialized_ || !pSharedData_) {
+        return false;
+    }
+
+    bool dataAvailable = false;
+
+    if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+        if (pSharedData_->spectrumDataReady) {
+            *outBinWidth = pSharedData_->binWidthHz;
+            pSharedData_->spectrumDataReady = false; // Adat felhasználva
+            dataAvailable = true;
+        }
+        mutex_exit(&pSharedData_->dataMutex);
+    }
+
+    return dataAvailable;
+}
+
+/**
  * @brief Spektrum adatok lekérése (core0-ból hívható)
+ * @param outData Kimeneti buffer a spektrum adatoknak
+ * @param outSize Kimeneti FFT méret
+ * @param outBinWidth Kimeneti bin szélesség Hz-ben
+ * @param outAutoGain Jelenlegi auto gain faktor
+ * @return true ha friss adat érhető el, false egyébként
  */
 bool AudioCore1Manager::getSpectrumData(const double **outData, uint16_t *outSize, float *outBinWidth, float *outAutoGain) {
-    if (!initialized_ || !pSharedData_)
+
+    if (!initialized_ || !pSharedData_) {
         return false;
+    }
 
     bool dataAvailable = false;
 
     if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
         if (pSharedData_->spectrumDataReady) {
             *outData = pSharedData_->spectrumBuffer;
-            *outSize = pSharedData_->spectrumSize;
+            *outSize = pSharedData_->fftSize;
             *outBinWidth = pSharedData_->binWidthHz;
             *outAutoGain = pSharedData_->currentAutoGain;
             pSharedData_->spectrumDataReady = false; // Adat felhasználva
@@ -259,49 +414,9 @@ bool AudioCore1Manager::getOscilloscopeData(const int **outData) {
 }
 
 /**
- * @brief FFT méret váltása (core0-ból hívható)
- */
-bool AudioCore1Manager::setFftSize(uint16_t newSize) {
-    if (!initialized_ || !pSharedData_)
-        return false;
-
-    if (newSize < AudioProcessorConstants::MIN_FFT_SAMPLES || newSize > AudioProcessorConstants::MAX_FFT_SAMPLES) {
-        return false;
-    }
-
-    // Biztonságos konfiguráció váltás
-    if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
-        pSharedData_->spectrumSize = newSize;
-        pSharedData_->configChanged = true;
-        mutex_exit(&pSharedData_->dataMutex);
-        return true;
-    }
-
-    return false;
-}
-
-/**
  * @brief Core1 állapot lekérése
  */
 bool AudioCore1Manager::isRunning() { return initialized_ && pSharedData_ && pSharedData_->core1Running; }
-
-/**
- * @brief Debug információk kiírása
- */
-void AudioCore1Manager::debugInfo() {
-    if (!initialized_ || !pSharedData_) {
-        DEBUG("AudioCore1Manager: Nincs inicializálva.\n");
-        return;
-    }
-
-    DEBUG("AudioCore1Manager Debug Info:\n");
-    DEBUG("  Core1 Running: %s\n", pSharedData_->core1Running ? "YES" : "NO");
-    DEBUG("  Spectrum Ready: %s\n", pSharedData_->spectrumDataReady ? "YES" : "NO");
-    DEBUG("  Osci Ready: %s\n", pSharedData_->oscilloscopeDataReady ? "YES" : "NO");
-    DEBUG("  FFT Size: %d\n", pSharedData_->spectrumSize);
-    DEBUG("  Bin Width: %.2f Hz\n", pSharedData_->binWidthHz);
-    DEBUG("  Auto Gain: %.2f\n", pSharedData_->currentAutoGain);
-}
 
 /**
  * @brief Core1 audio feldolgozás szüneteltetése EEPROM műveletekhez
@@ -363,4 +478,26 @@ bool AudioCore1Manager::isCore1Paused() {
     mutex_exit(&pSharedData_->dataMutex);
 
     return paused;
+}
+
+/**
+ * @brief Debug információk kiírása
+ */
+void AudioCore1Manager::debugInfo() {
+    if (!initialized_ || !pSharedData_) {
+        DEBUG("AudioCore1Manager: Nincs inicializálva.\n");
+        return;
+    }
+
+    // Arduino-kompatibilis float-to-string konverzió
+    char gainStr[16], binStr[16];
+    dtostrf(pSharedData_->currentAutoGain, 8, 2, gainStr);
+    dtostrf(pSharedData_->binWidthHz, 8, 2, binStr);
+
+    DEBUG("AudioCore1Manager Debug Info:\n");
+    DEBUG("  Core1 Running: %s, Spectrum Ready: %s, Osci Ready: %s\n", pSharedData_->core1Running ? "YES" : "NO", pSharedData_->spectrumDataReady ? "YES" : "NO", pSharedData_->oscilloscopeDataReady ? "YES" : "NO");
+    DEBUG("  FFT Size: %d\n", pSharedData_->fftSize);
+    DEBUG("  FFT Sample Freq: %dHz\n", (int)pSharedData_->samplingFrequency);
+    DEBUG("  Bin Width: %s Hz\n", binStr);
+    DEBUG("  Auto Gain: %s\n", gainStr);
 }

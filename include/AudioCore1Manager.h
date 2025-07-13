@@ -22,9 +22,10 @@ class AudioCore1Manager {
 
         // Spektrum adatok
         double spectrumBuffer[2048]; // Max FFT size
-        uint16_t spectrumSize;
         float binWidthHz;
         float currentAutoGain;
+        uint16_t fftSize;         // Aktuális FFT méret
+        double samplingFrequency; // Aktuális mintavételezési frekvencia
 
         // Oszcilloszkóp adatok
         int oscilloscopeBuffer[320]; // MAX_INTERNAL_WIDTH
@@ -68,12 +69,33 @@ class AudioCore1Manager {
      * @param initialFftSize Kezdeti FFT méret
      * @return true ha sikeres, false ha hiba történt
      */
-    static bool init(float &gainConfigAmRef, float &gainConfigFmRef, int audioPin, double samplingFreq, uint16_t initialFftSize = 512);
+    static bool init(float &gainConfigAmRef, float &gainConfigFmRef, int audioPin, double samplingFreq, uint16_t initialFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
 
     /**
      * @brief Core1 audio manager leállítása
      */
     static void shutdown();
+
+    /**
+     * @brief Spektrum méret lekérése (ha nincs friss adat, cached érték)
+     * @param outSize Kimeneti FFT méret
+     * @return true ha sikeres, false ha hiba történt
+     */
+    static bool getFftSize(uint16_t *outSize);
+
+    /**
+     * @brief Core1 mintavételezési frekvencia lekérése (ha nincs friss adat, cached érték)
+     * @param outSampleFrequency Kimeneti mintavételezési frekvencia
+     * @return true ha sikeres, false ha hiba történt
+     */
+    static bool getFftSampleFrequency(double *outSampleFrequency);
+
+    /**
+     * @brief Core1 aktuális bin szélesség lekérése (ha nincs friss adat, cached érték)
+     * @param outBinWidth Kimeneti bin szélesség Hz-ben
+     * @return true ha sikeres, false ha hiba történt
+     */
+    static bool getFftCurrentBinWidth(float *outSampleFrequency);
 
     /**
      * @brief Spektrum adatok lekérése (core0-ból hívható)
@@ -98,6 +120,12 @@ class AudioCore1Manager {
      * @return true ha sikeres, false egyébként
      */
     static bool setFftSize(uint16_t newSize);
+
+    /**
+     * @brief Mintavételezési frekvencia beállítása (core0-ból hívható)
+     * @param newFs Az új mintavételezési frekvencia Hz-ben
+     */
+    static bool setSamplingFrequency(double newFs);
 
     /**
      * @brief Core1 állapot lekérése

@@ -7,7 +7,9 @@
 namespace AudioProcessorConstants {
 // CwRttyDecoder deklaráció
 // Audio input konstansok
-const double DEFAULT_SAMPLING_FREQUENCY = 30000.0; // 30kHz mintavételezés a 15kHz Nyquist limithez
+const double MAX_SAMPLING_FREQUENCY = 30000.0; // 30kHz mintavételezés a 15kHz Nyquist limithez
+const double MIN_SAMPLING_FREQUENCY = 12000.0; // 12kHz Minimum mintavételezési frekvencia -> 6kHz Nyquist limit
+const double DEFAULT_SAMPLING_FREQUENCY = MAX_SAMPLING_FREQUENCY;
 
 // FFT konstansok
 const uint16_t MIN_FFT_SAMPLES = 64;
@@ -29,6 +31,8 @@ const int OSCI_SAMPLE_DECIMATION_FACTOR = 1; // Csökkentve 2-ről 1-re több mi
 const float LOW_FREQ_ATTENUATION_THRESHOLD_HZ = 500.0f;
 const float LOW_FREQ_ATTENUATION_FACTOR = 10.0f;
 } // namespace AudioProcessorConstants
+
+class AudioCore1Manager; // Előre deklaráció
 
 /**
  * Audio feldolgozó osztály a radio-2 projekt alapján
@@ -79,11 +83,15 @@ class AudioProcessor {
     ~AudioProcessor();
 
     /**
-     * FFT méret beállítása futásidőben
-     * @param newSize Az új FFT méret
-     * @return true ha sikeres, false ha hiba történt
+     * Mintavételezési frekvencia lekérése
+     * @return A jelenlegi mintavételezési frekvencia Hz-ben
      */
-    bool setFftSize(uint16_t newSize);
+    double getSamplingFrequency() const { return targetSamplingFrequency_; }
+
+    /**
+     * FFT méret lekérése
+     */
+    uint16_t getFftSize() const { return currentFftSize_; }
 
     /**
      * Fő audio feldolgozó függvény - mintavételezés, FFT számítás és spektrum analízis
@@ -113,13 +121,23 @@ class AudioProcessor {
      */
     float getCurrentAutoGain() const { return smoothed_auto_gain_factor_; }
 
+  protected:
     /**
-     * FFT méret lekérése
+     * Mintavételezési frekvencia beállítása futási időben
+     * @param newFs Az új mintavételezési frekvencia Hz-ben
      */
-    uint16_t getFftSize() const { return currentFftSize_; }
+    bool setSamplingFrequency(double newFs);
+
+    /**
+     * FFT méret beállítása futásidőben
+     * @param newSize Az új FFT méret
+     * @return true ha sikeres, false ha hiba történt
+     */
+    bool setFftSize(uint16_t newSize);
+
+    friend class AudioCore1Manager; // <-- csak ez az osztály férhet hozzá
 
     // const double *getRvReal() const { return RvReal; }
     // int getCurrentFftSize() const { return currentFftSize_; }
     // float getBinWidthHz() const { return binWidthHz_; }
-    // float getSamplingFrequency() const { return targetSamplingFrequency_; }
 };
