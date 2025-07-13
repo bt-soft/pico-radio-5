@@ -145,12 +145,12 @@ void AudioCore1Manager::core1AudioLoop() {
 
     // Audio feldolgozási loop
     while (!pSharedData_->core1ShouldStop) {
-        // EEPROM írás esetén várakozás
+        // EEPROM írás vagy szüneteltetés esetén várakozás
         if (pSharedData_->eepromWriteInProgress || pSharedData_->core1AudioPaused) {
-            // Jelezzük vissza, hogy szüneteltettük az audio feldolgozást
-            if (!pSharedData_->core1AudioPausedAck) {
-                pSharedData_->core1AudioPausedAck = true;
-            }
+            // Mindig mutex védetten állítsuk be az ACK flag-et
+            mutex_enter_blocking(&pSharedData_->dataMutex);
+            pSharedData_->core1AudioPausedAck = true;
+            mutex_exit(&pSharedData_->dataMutex);
             delay(1); // Rövid várakozás EEPROM művelet alatt
             continue;
         }
