@@ -470,7 +470,7 @@ void ScreenAM::handleAfBWButton(const UIButton::ButtonEvent &event) {
     }
 
     // Aktuális demodulációs mód
-    uint8_t currMod = ::pSi4735Manager->getCurrentBand().currDemod;
+    uint8_t currDemodMod = ::pSi4735Manager->getCurrentBand().currDemod;
     // Jelenlegi sávszélesség felirata
     const char *currentBw = ::pSi4735Manager->getCurrentBandWidthLabel();
 
@@ -481,11 +481,11 @@ void ScreenAM::handleAfBWButton(const UIButton::ButtonEvent &event) {
     uint16_t w = 250;
     uint16_t h = 170;
 
-    if (currMod == FM_DEMOD_TYPE) {
+    if (currDemodMod == FM_DEMOD_TYPE) {
         title = "FM Filter in kHz";
         labels = ::pSi4735Manager->getBandWidthLabels(Band::bandWidthFM, labelsCount);
 
-    } else if (currMod == AM_DEMOD_TYPE) {
+    } else if (currDemodMod == AM_DEMOD_TYPE) {
         title = "AM Filter in kHz";
         w = 350;
         h = 160;
@@ -501,15 +501,15 @@ void ScreenAM::handleAfBWButton(const UIButton::ButtonEvent &event) {
     }
 
     auto afBwDialog = std::make_shared<MultiButtonDialog>(
-        this,                                                                                  // Képernyő referencia
-        title, "",                                                                             // Dialógus címe és üzenete
-        labels, labelsCount,                                                                   // Gombok feliratai és számuk
-        [this, currMod](int buttonIndex, const char *buttonLabel, MultiButtonDialog *dialog) { // Gomb kattintás kezelése
+        this,                                                                                       // Képernyő referencia
+        title, "",                                                                                  // Dialógus címe és üzenete
+        labels, labelsCount,                                                                        // Gombok feliratai és számuk
+        [this, currDemodMod](int buttonIndex, const char *buttonLabel, MultiButtonDialog *dialog) { // Gomb kattintás kezelése
             //
 
-            if (currMod == AM_DEMOD_TYPE) {
+            if (currDemodMod == AM_DEMOD_TYPE) {
                 config.data.bwIdxAM = ::pSi4735Manager->getBandWidthIndexByLabel(Band::bandWidthAM, buttonLabel);
-            } else if (currMod == FM_DEMOD_TYPE) {
+            } else if (currDemodMod == FM_DEMOD_TYPE) {
                 config.data.bwIdxFM = ::pSi4735Manager->getBandWidthIndexByLabel(Band::bandWidthFM, buttonLabel);
             } else {
                 config.data.bwIdxSSB = ::pSi4735Manager->getBandWidthIndexByLabel(Band::bandWidthSSB, buttonLabel);
@@ -517,6 +517,18 @@ void ScreenAM::handleAfBWButton(const UIButton::ButtonEvent &event) {
 
             // Beállítjuk a rádió chip-en a kiválasztott HF sávszélességet
             ::pSi4735Manager->setAfBandWidth();
+
+            double bwFreqInHz = 0.0;
+            if (currDemodMod == FM_DEMOD_TYPE) {
+                bwFreqInHz = 15000.0; // 15KHz fix FM sávszélesség
+            } else {
+                double buttonValue = (double)String(buttonLabel).toFloat() * 1000.0; // kHz to Hz konverzió
+                bwFreqInHz = max(1000.0, buttonValue);                               // Minimum 1KHz sávszélesség AM-ben
+            }
+
+            // A HF sávszélességnek megfelelően beállítjuk a mintavételezési frekvenciát
+            AudioCore1Manager::setSamplingFrequency(bwFreqInHz * 2);
+
         },
         true,              // Automatikusan bezárja-e a dialógust gomb kattintáskor
         currentBw,         // Az alapértelmezett (jelenlegi) gomb felirata

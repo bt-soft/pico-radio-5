@@ -96,19 +96,12 @@ class SpectrumVisualizationComponent : public UIComponent {
     bool isModeAvailable(DisplayMode mode) const;
 
     /**
-     * @brief Optimális FFT méret meghatározása a megjelenítési módhoz
-     * @param mode A megjelenítési mód
-     * @return Az optimális FFT méret
-     */
-    uint16_t getOptimalFftSizeForMode(DisplayMode mode) const;
-
-    /**
      * @brief Beállítja, hogy a keret rajzolása szükséges-e
      * @param drawn true ha a keretet rajzolni kell, false ha nem
      */
     inline void setBorderDrawn() { needBorderDrawn = true; }
 
-  private:
+    private:
     RadioMode radioMode_;
     DisplayMode currentMode_;
     DisplayMode lastRenderedMode_;
@@ -236,6 +229,25 @@ class SpectrumVisualizationComponent : public UIComponent {
      * @brief Spektrum mód dekódolása szöveggé
      */
     const char *decodeModeToStr();
+
+    /**
+     * @brief Optimális FFT méret meghatározása a megjelenítési módhoz
+     * @param mode A megjelenítési mód
+     * @return Az optimális FFT méret
+     */
+    uint16_t getOptimalFftSizeForMode(DisplayMode mode) const;
+
+    /**
+     * @brief Optimális FFT Mintavételezési frekvencia meghatározása a megjelenítési módhoz
+     * @param mode A megjelenítési mód
+     * @return Az optimális FFT méret
+     */
+    uint16_t getOptimalFftSampleFrequencyForAfbandwidth(DisplayMode mode) const;
+
+    /**
+     * @brief Core1 FFT paraméterek (frekvencia/méret) beállítása
+     */
+    void setFftParametersForDisplayMode();
 };
 
 #endif // SPECTRUM_VISUALIZATION_COMPONENT_H

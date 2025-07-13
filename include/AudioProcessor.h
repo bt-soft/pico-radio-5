@@ -8,7 +8,7 @@ namespace AudioProcessorConstants {
 // CwRttyDecoder deklaráció
 // Audio input konstansok
 const double MAX_SAMPLING_FREQUENCY = 30000.0; // 30kHz mintavételezés a 15kHz Nyquist limithez
-const double MIN_SAMPLING_FREQUENCY = 12000.0; // 12kHz Minimum mintavételezési frekvencia -> 6kHz Nyquist limit
+const double MIN_SAMPLING_FREQUENCY = 2000.0;  // 1kHz Minimum mintavételezési frekvencia -> 2kHz Nyquist limit
 const double DEFAULT_SAMPLING_FREQUENCY = MAX_SAMPLING_FREQUENCY;
 
 // FFT konstansok

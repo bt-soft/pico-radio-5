@@ -49,6 +49,7 @@ class AudioCore1Manager {
     static AudioProcessor *pAudioProcessor_;
     static bool initialized_;
     static float *currentGainConfigRef_;
+    static bool collectOsci_; // Oszcilloszkóp minták gyűjtése
 
     // Core1 belső függvények
     static void core1Entry();
@@ -132,6 +133,12 @@ class AudioCore1Manager {
      * @return true ha a core1 fut és működik
      */
     static bool isRunning();
+
+    /**
+     * @brief Core1 Oszcilloszkóp adatok gyűjtésének vezérlése
+     */
+    static void setCollectOsci(bool collectOsci);
+    static bool getCollectOsci();
 
     /**
      * @brief Debug információk kiírása

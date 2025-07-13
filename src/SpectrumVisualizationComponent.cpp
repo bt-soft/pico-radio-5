@@ -373,6 +373,37 @@ int SpectrumVisualizationComponent::getEffectiveHeight() const {
 }
 
 /**
+ * @brief FFT paraméterek beállítása az aktuális módhoz
+ */
+void SpectrumVisualizationComponent::setFftParametersForDisplayMode() {
+
+    // Optimális FFT méret beállítása az új módhoz
+    // Core1 AudioManager használatával FFT méret beállítása
+    if (AudioCore1Manager::isRunning()) {
+
+        { // FFT méret beállítása
+            uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
+            uint16_t currentFftSize = getCore1FftSize();
+
+            if (currentFftSize != optimalFftSize) {
+                DEBUG("SpectrumVisualizationComponent: FFT méret változtatása: %d -> %d, mód: %s\n", currentFftSize, optimalFftSize, decodeModeToStr());
+
+                if (AudioCore1Manager::setFftSize(optimalFftSize)) {
+                    DEBUG("SpectrumVisualizationComponent: Az FFT méret sikeresen megváltozott: %d\n", optimalFftSize);
+                } else {
+                    DEBUG("SpectrumVisualizationComponent: Nem sikerült megváltoztatni az FFT méretet: %d\n", optimalFftSize);
+                }
+            } else {
+                DEBUG("SpectrumVisualizationComponent: Az FFT méret már megfelelő: %d, mód: %s\n", currentFftSize, decodeModeToStr());
+            }
+        }
+
+        // Oszcilloszkóp mód esetén engedélyezzük az oszcilloszkóp minták gyűjtését
+        AudioCore1Manager::setCollectOsci(currentMode_ == DisplayMode::Oscilloscope);
+    }
+}
+
+/**
  * @brief Módok közötti váltás
  */
 void SpectrumVisualizationComponent::cycleThroughModes() {
@@ -399,24 +430,8 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
     lastRenderedMode_ = currentMode_;
     currentMode_ = static_cast<DisplayMode>(nextMode);
 
-    // Optimális FFT méret beállítása az új módhoz
-    // Core1 AudioManager használatával FFT méret beállítása
-    if (AudioCore1Manager::isRunning()) {
-        uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
-        uint16_t currentFftSize = getCore1FftSize();
-
-        if (currentFftSize != optimalFftSize) {
-            DEBUG("SpectrumVisualizationComponent: FFT méret változtatása: %d -> %d, mód: %s\n", currentFftSize, optimalFftSize, decodeModeToStr());
-
-            if (AudioCore1Manager::setFftSize(optimalFftSize)) {
-                DEBUG("SpectrumVisualizationComponent: Az FFT méret sikeresen megváltozott: %d\n", optimalFftSize);
-            } else {
-                DEBUG("SpectrumVisualizationComponent: Nem sikerült megváltoztatni az FFT méretet: %d\n", optimalFftSize);
-            }
-        } else {
-            DEBUG("SpectrumVisualizationComponent: Az FFT méret már megfelelő: %d, mód: %s\n", currentFftSize, decodeModeToStr());
-        }
-    }
+    // FFT paraméterek beállítása az új módhoz
+    setFftParametersForDisplayMode();
 
     // Mode indicator megjelenítése 20 másodpercig
     modeIndicatorVisible_ = true;
@@ -446,19 +461,8 @@ void SpectrumVisualizationComponent::loadModeFromConfig() {
 
     currentMode_ = configMode;
 
-    // Optimális FFT méret beállítása Core1-en
-    if (AudioCore1Manager::isRunning()) {
-        uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
-        uint16_t currentFftSize = getCore1FftSize();
-
-        if (currentFftSize != optimalFftSize) {
-            DEBUG("SpectrumVisualizationComponent: FFT méret betöltése a konfigurációból: %d, mód: %s\n", optimalFftSize, decodeModeToStr());
-
-            if (!AudioCore1Manager::setFftSize(optimalFftSize)) {
-                DEBUG("SpectrumVisualizationComponent: Nem sikerült betölteni az FFT méretet a konfigurációból: %d\n", optimalFftSize);
-            }
-        }
-    }
+    // FFT paraméterek beállítása az új módhoz
+    setFftParametersForDisplayMode();
 
     // Sprite előkészítése az új módhoz
     manageSpriteForMode(currentMode_);
@@ -1213,6 +1217,7 @@ uint8_t SpectrumVisualizationComponent::displayModeToConfigValue(DisplayMode mod
  *
  */
 void SpectrumVisualizationComponent::setCurrentModeToConfig() {
+
     // Config-ba mentjük az aktuális audio módot a megfelelő rádió mód alapján
     uint8_t modeValue = displayModeToConfigValue(currentMode_);
 
@@ -1221,9 +1226,6 @@ void SpectrumVisualizationComponent::setCurrentModeToConfig() {
     } else if (radioMode_ == RadioMode::FM) {
         config.data.audioModeFM = modeValue;
     }
-
-    // TODO: Itt kellene menteni az EEPROM-ba a config változásokat
-    // config.save();
 }
 
 /**

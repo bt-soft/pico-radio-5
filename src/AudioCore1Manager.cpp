@@ -8,6 +8,7 @@ AudioCore1Manager::SharedAudioData *AudioCore1Manager::pSharedData_ = nullptr;
 AudioProcessor *AudioCore1Manager::pAudioProcessor_ = nullptr;
 bool AudioCore1Manager::initialized_ = false;
 float *AudioCore1Manager::currentGainConfigRef_ = nullptr;
+bool AudioCore1Manager::collectOsci_ = false;
 
 /**
  * @brief Core1 audio manager inicializálása
@@ -168,12 +169,12 @@ void AudioCore1Manager::core1AudioLoop() {
 
         // Audio feldolgozás időzített végrehajtása
         if (now - lastProcessTime >= processInterval) {
-            // Oszcilloszkóp adatok gyűjtése minden feldolgozásnál
-            bool collectOsci = true;
 
             // Audio feldolgozás végrehajtása
             if (pAudioProcessor_) {
-                pAudioProcessor_->process(collectOsci);
+
+                // Minták gyújtése, oszcilloszkóp minták gyűjtése, ha engedélyezve van
+                pAudioProcessor_->process(collectOsci_);
 
                 // Thread-safe adatmásolás
                 if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
@@ -183,13 +184,14 @@ void AudioCore1Manager::core1AudioLoop() {
                         uint16_t fftSize = pAudioProcessor_->getFftSize();
                         memcpy(pSharedData_->spectrumBuffer, magnitudeData, fftSize * sizeof(double));
                         pSharedData_->fftSize = fftSize;
+                        pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
                         pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
                         pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
                         pSharedData_->spectrumDataReady = true;
                     }
 
-                    // Oszcilloszkóp adatok másolása
-                    if (collectOsci) {
+                    // Oszcilloszkóp adatok másolása, ha engedélyezve van
+                    if (collectOsci_) {
                         const int *osciData = pAudioProcessor_->getOscilloscopeData();
                         if (osciData) {
                             memcpy(pSharedData_->oscilloscopeBuffer, osciData, AudioProcessorConstants::MAX_INTERNAL_WIDTH * sizeof(int));
@@ -210,9 +212,34 @@ void AudioCore1Manager::core1AudioLoop() {
 }
 
 /**
+ * @brief Core1 Oszcilloszkóp adatok gyűjtésének vezérlése
+ * @param collectOsci true ha oszcilloszkóp mintákat kell gyűjteni, false ha nem
+ */
+void AudioCore1Manager::setCollectOsci(bool collectOsci) {
+    if (!initialized_) {
+        return;
+    }
+    collectOsci_ = collectOsci;
+    DEBUG("AudioCore1Manager: Oszcilloszkóp minták gyűjtése %s\n", collectOsci ? "engedélyezve" : "letiltva");
+}
+
+/**
+ * @brief  Core1 Oszcilloszkóp adatok gyűjtésének lekérése
+ * @return true ha oszcilloszkóp mintákat gyűjtünk, false ha nem
+ */
+bool AudioCore1Manager::getCollectOsci() {
+    if (!initialized_) {
+        return false;
+    }
+    return collectOsci_;
+}
+
+/**
  * @brief FFT mintavételezési frekvencia  váltása (core0-ból hívható)
  * @param newFs Az új FFT mintavételezési frekvencia
  * @return true ha sikeres, false egyébként
+ *
+ * A ScreenAM::handleAfBWButton()-ból van hívva
  */
 bool AudioCore1Manager::setSamplingFrequency(double newFs) {
     if (!initialized_ || !pSharedData_) {
@@ -396,7 +423,8 @@ bool AudioCore1Manager::getSpectrumData(const double **outData, uint16_t *outSiz
  * @brief Oszcilloszkóp adatok lekérése (core0-ból hívható)
  */
 bool AudioCore1Manager::getOscilloscopeData(const int **outData) {
-    if (!initialized_ || !pSharedData_)
+
+    if (!initialized_ || !pSharedData_ || !collectOsci_)
         return false;
 
     bool dataAvailable = false;
