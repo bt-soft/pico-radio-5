@@ -101,7 +101,7 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     inline void setBorderDrawn() { needBorderDrawn = true; }
 
-    private:
+  private:
     RadioMode radioMode_;
     DisplayMode currentMode_;
     DisplayMode lastRenderedMode_;
@@ -135,7 +135,6 @@ class SpectrumVisualizationComponent : public UIComponent {
 
     // Radio-2 alapú változók
     int currentYAnalyzer_;
-    AudioProcessor *pAudioProcessor_;
 
     // Peak detection buffer (24 bands max)
     static constexpr int MAX_SPECTRUM_BANDS = 24;

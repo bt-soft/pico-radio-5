@@ -141,11 +141,7 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
     : UIComponent(Rect(x, y, w, h)), radioMode_(radioMode), currentMode_(DisplayMode::Off), lastRenderedMode_(DisplayMode::Off), modeIndicatorVisible_(false), modeIndicatorDrawn_(false), frequencyLabelsDrawn_(false),
       modeIndicatorHideTime_(0), lastTouchTime_(0), lastFrameTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM), envelopeLastSmoothedValue_(0.0f),
       frameHistoryIndex_(0), frameHistoryFull_(false), adaptiveGainFactor_(0.02f), lastGainUpdateTime_(0), sprite_(nullptr), spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0),
-      pAudioProcessor_(nullptr), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f), isMutedDrawn(false) {
-
-    // Core1 AudioManager használata helyett a helyi AudioProcessor
-    // Az AudioProcessor most már a core1-en fut az AudioCore1Manager-en keresztül
-    pAudioProcessor_ = nullptr; // Már nem használjuk a helyi AudioProcessor-t
+      currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f), isMutedDrawn(false) {
 
     DEBUG("SpectrumVisualizationComponent: Inicializálva core1 audio feldolgozással.\n");
 
@@ -178,9 +174,6 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
         delete sprite_;
         sprite_ = nullptr;
     }
-
-    // AudioProcessor már nem itt van felszabadítva, a core1-en fut
-    pAudioProcessor_ = nullptr;
 }
 
 /**

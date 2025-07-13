@@ -165,6 +165,7 @@ void AudioCore1Manager::core1AudioLoop() {
         // Konfiguráció frissítése szükség esetén
         if (pSharedData_->configChanged) {
             updateAudioConfig();
+            continue;
         }
 
         // Audio feldolgozás időzített végrehajtása
@@ -183,11 +184,15 @@ void AudioCore1Manager::core1AudioLoop() {
                     if (magnitudeData) {
                         uint16_t fftSize = pAudioProcessor_->getFftSize();
                         memcpy(pSharedData_->spectrumBuffer, magnitudeData, fftSize * sizeof(double));
-                        pSharedData_->fftSize = fftSize;
-                        pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
                         pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
                         pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
                         pSharedData_->spectrumDataReady = true;
+
+                        // Ha nincs épp aktív konfigurációs beállítás, akkor lekérjük az aktuális beállításokat is
+                        if (!pSharedData_->configChanged) {
+                            pSharedData_->fftSize = fftSize;
+                            pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
+                        }
                     }
 
                     // Oszcilloszkóp adatok másolása, ha engedélyezve van
@@ -247,11 +252,11 @@ bool AudioCore1Manager::setSamplingFrequency(double newFs) {
     }
 
     if (newFs < AudioProcessorConstants::MIN_SAMPLING_FREQUENCY || newFs > AudioProcessorConstants::MAX_SAMPLING_FREQUENCY) {
-        DEBUG("AudioProcessor: Érvénytelen mintavételezési frekvencia  %d\n", (int)newFs);
+        DEBUG("AudioProcessor::setSamplingFrequency: Érvénytelen mintavételezési frekvencia  %d\n", (int)newFs);
         return false;
     }
 
-    DEBUG("AudioCore1Manager: Mintavételezési frekvencia váltása %d Hz-re\n", (int)newFs);
+    DEBUG("AudioCore1Manager::setSamplingFrequency: Mintavételezési frekvencia beállítása %d Hz-re\n", (int)newFs);
 
     // Biztonságos konfiguráció váltás
     if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
@@ -274,11 +279,11 @@ bool AudioCore1Manager::setFftSize(uint16_t newSize) {
         return false;
 
     if (newSize < AudioProcessorConstants::MIN_FFT_SAMPLES || newSize > AudioProcessorConstants::MAX_FFT_SAMPLES) {
-        DEBUG("AudioProcessor: Érvénytelen FFT méret %d\n", (int)newSize);
+        DEBUG("AudioProcessor::setFftSize: Érvénytelen FFT méret %d\n", (int)newSize);
         return false;
     }
 
-    DEBUG("AudioCore1Manager: FFT méret váltása %d-re\n", newSize);
+    DEBUG("AudioCore1Manager::setFftSize: FFT méret beállítása %d-re\n", newSize);
 
     // Biztonságos konfiguráció váltás
     if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
@@ -300,17 +305,17 @@ void AudioCore1Manager::updateAudioConfig() {
         return;
     }
 
-    DEBUG("AudioCore1Manager: Audio konfiguráció frissítése...\n");
+    DEBUG("AudioCore1Manager::updateAudioConfig: Audio konfiguráció frissítése...\n");
 
     // FFT méret frissítése ha szükséges
-    // if (pAudioProcessor_->getFftSize() != pSharedData_->fftSize) {
-    DEBUG("AudioCore1Manager: FFT méret váltása %d-re\n", pSharedData_->fftSize);
-    pAudioProcessor_->setFftSize(pSharedData_->fftSize);
-    //}
+    if (pAudioProcessor_->getFftSize() != pSharedData_->fftSize) {
+        DEBUG("AudioCore1Manager::updateAudioConfig: FFT méret váltása %d-re\n", pSharedData_->fftSize);
+        pAudioProcessor_->setFftSize(pSharedData_->fftSize);
+    }
 
     // FFT mintavételezési frekvencia frissítése ha szükséges
     if (pAudioProcessor_->getSamplingFrequency() != pSharedData_->samplingFrequency) {
-        DEBUG("AudioCore1Manager: FFT frekvencia váltása %d-re\n", pSharedData_->samplingFrequency);
+        DEBUG("AudioCore1Manager:updateAudioConfig: FFT frekvencia váltása %d-re\n", pSharedData_->samplingFrequency);
         pAudioProcessor_->setSamplingFrequency(pSharedData_->samplingFrequency);
     }
 
