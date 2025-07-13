@@ -308,13 +308,13 @@ void AudioCore1Manager::updateAudioConfig() {
     DEBUG("AudioCore1Manager::updateAudioConfig: Audio konfiguráció frissítése...\n");
 
     // FFT méret frissítése ha szükséges
-    if (pAudioProcessor_->getFftSize() != pSharedData_->fftSize) {
+    if (pSharedData_->fftSize != 0.0 && pAudioProcessor_->getFftSize() != pSharedData_->fftSize) {
         DEBUG("AudioCore1Manager::updateAudioConfig: FFT méret váltása %d-re\n", pSharedData_->fftSize);
         pAudioProcessor_->setFftSize(pSharedData_->fftSize);
     }
 
     // FFT mintavételezési frekvencia frissítése ha szükséges
-    if (pAudioProcessor_->getSamplingFrequency() != pSharedData_->samplingFrequency) {
+    if (pSharedData_->samplingFrequency != 0.0 && pAudioProcessor_->getSamplingFrequency() != pSharedData_->samplingFrequency) {
         DEBUG("AudioCore1Manager:updateAudioConfig: FFT frekvencia váltása %d-re\n", pSharedData_->samplingFrequency);
         pAudioProcessor_->setSamplingFrequency(pSharedData_->samplingFrequency);
     }
@@ -352,6 +352,7 @@ bool AudioCore1Manager::getFftSize(uint16_t *outSize) {
  */
 bool AudioCore1Manager::getFftSampleFrequency(double *outSampleFrequency) {
     if (!initialized_ || !pSharedData_) {
+        DEBUG("AudioCore1Manager::getFftSampleFrequency: Nem inicializálva vagy nincs megosztott adat!\n");
         return false;
     }
 
@@ -365,6 +366,7 @@ bool AudioCore1Manager::getFftSampleFrequency(double *outSampleFrequency) {
         }
         mutex_exit(&pSharedData_->dataMutex);
     }
+    // DEBUG("AudioCore1Manager::getFftSampleFrequency: Mintavételezési frekvencia lekérdezés %s, érték: %d\n", dataAvailable ? "sikeres" : "nem sikerült", (int)*outSampleFrequency);
 
     return dataAvailable;
 }

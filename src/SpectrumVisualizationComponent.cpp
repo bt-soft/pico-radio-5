@@ -139,10 +139,11 @@ const uint16_t SpectrumVisualizationComponent::WATERFALL_COLORS[16] = {0x0000, 0
  */
 SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode)
     : UIComponent(Rect(x, y, w, h)), radioMode_(radioMode), currentMode_(DisplayMode::Off), lastRenderedMode_(DisplayMode::Off), modeIndicatorVisible_(false), modeIndicatorDrawn_(false), frequencyLabelsDrawn_(false),
-      modeIndicatorHideTime_(0), lastTouchTime_(0), lastFrameTime_(0), maxDisplayFrequencyHz_(radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM), envelopeLastSmoothedValue_(0.0f),
-      frameHistoryIndex_(0), frameHistoryFull_(false), adaptiveGainFactor_(0.02f), lastGainUpdateTime_(0), sprite_(nullptr), spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0),
-      currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f), isMutedDrawn(false) {
+      modeIndicatorHideTime_(0), lastTouchTime_(0), lastFrameTime_(0), envelopeLastSmoothedValue_(0.0f), frameHistoryIndex_(0), frameHistoryFull_(false), adaptiveGainFactor_(0.02f), lastGainUpdateTime_(0),
+      sprite_(nullptr), spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f),
+      isMutedDrawn(false) {
 
+    updateMaxDisplayFrequencyHz();
     DEBUG("SpectrumVisualizationComponent: Inicializálva core1 audio feldolgozással.\n");
 
     // Peak detection buffer inicializálása
@@ -174,6 +175,26 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
         delete sprite_;
         sprite_ = nullptr;
     }
+}
+
+/**
+ * @brief Frissíti a maximális megjelenítési frekvenciát
+ * @details Ez a függvény lekéri az aktuális mintavételezési frekvenciát a core1 audio managerből,
+ *          és beállítja a maxDisplayFrequencyHz_ tagváltozót.
+ */
+void SpectrumVisualizationComponent::updateMaxDisplayFrequencyHz() {
+
+    // maxDisplayFrequencyHz_ = radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM;
+    double currentSamplingFrequencyHz = 0.0;
+    if (!AudioCore1Manager::getFftSampleFrequency(&currentSamplingFrequencyHz)) {
+        DEBUG("SpectrumVisualizationComponent::updateMaxDisplayFrequencyHz: Nem sikerült lekérni a mintavételezési frekvenciát, alapértelmezett érték használata lesz.\n");
+        maxDisplayFrequencyHz_ = (radioMode_ == RadioMode::AM) ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM;
+    } else {
+        // A mintavételezési frekvencia fele a maximális megjelenítési frekvencia
+        maxDisplayFrequencyHz_ = currentSamplingFrequencyHz / 2.0f;
+    }
+
+    DEBUG("SpectrumVisualizationComponent::updateMaxDisplayFrequencyHz: maxDisplayFrequencyHz_ frissítve: %d kHz\n", (int)maxDisplayFrequencyHz_ / 1000);
 }
 
 /**
@@ -1107,7 +1128,9 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
     tft.setTextDatum(BC_DATUM);              // Bottom-center alignment
 
     // Mode szöveggé dekódolása
-    String modeText = String(decodeModeToStr()) + isAutoGainMode() ? " (Auto)" : " (Manual)";
+
+    String modeText = decodeModeToStr();
+    modeText += isAutoGainMode() ? " (Auto)" : " (Manual)";
 
     // Clear mode indicator area explicitly before text drawing - KERET ALATT
     int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik

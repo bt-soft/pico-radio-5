@@ -101,6 +101,8 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     inline void setBorderDrawn() { needBorderDrawn = true; }
 
+    void updateMaxDisplayFrequencyHz();
+
   private:
     RadioMode radioMode_;
     DisplayMode currentMode_;
@@ -112,7 +114,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     uint32_t modeIndicatorHideTime_;
     uint32_t lastTouchTime_;
     uint32_t lastFrameTime_; // FPS limitáláshoz
-    float maxDisplayFrequencyHz_;
+    double maxDisplayFrequencyHz_;
     float envelopeLastSmoothedValue_;
 
     // Frame-alapú adaptív autogain rendszer

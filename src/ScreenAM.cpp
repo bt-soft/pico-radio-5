@@ -529,6 +529,11 @@ void ScreenAM::handleAfBWButton(const UIButton::ButtonEvent &event) {
             // A HF sávszélességnek megfelelően beállítjuk a mintavételezési frekvenciát
             AudioCore1Manager::setSamplingFrequency(bwFreqInHz * 2);
 
+            // A spektrum kijelzőn is frissítjük a sávszélességet
+            if (spectrumComp) {
+                spectrumComp->updateMaxDisplayFrequencyHz();
+            }
+
         },
         true,              // Automatikusan bezárja-e a dialógust gomb kattintáskor
         currentBw,         // Az alapértelmezett (jelenlegi) gomb felirata
