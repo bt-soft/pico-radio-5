@@ -26,7 +26,7 @@ constexpr float OSCI_SENSITIVITY_FACTOR = 25.0f; // Oszcilloszkóp jel erősít�
 constexpr float ENVELOPE_INPUT_GAIN = 0.15f; // Envelope amplitúdó erősítése (eredeti nagyítás visszaállítása)
 
 // Waterfall mód - nagyobb érték = élénkebb színek
-constexpr float WATERFALL_INPUT_SCALE = 2.0f; // Waterfall intenzitás skálázása (növelve az érzékenységért)
+constexpr float WATERFALL_INPUT_SCALE = 8.0f; // Waterfall intenzitás skálázása (növelve az érzékenységért)
 
 // CW/RTTY hangolási segéd - nagyobb érték = élénkebb színek
 constexpr float TUNING_AID_INPUT_SCALE = 3.0f; // Hangolási segéd intenzitás skálázása
@@ -1130,7 +1130,8 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
     // Mode szöveggé dekódolása
 
     String modeText = decodeModeToStr();
-    modeText += isAutoGainMode() ? " (Auto)" : " (Manual)";
+    modeText += isAutoGainMode() ? " (Auto" : " (Manual";
+    modeText += " Gain)";
 
     // Clear mode indicator area explicitly before text drawing - KERET ALATT
     int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
