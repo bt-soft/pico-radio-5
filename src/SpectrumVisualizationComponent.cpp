@@ -1135,7 +1135,7 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
 
     // Clear mode indicator area explicitly before text drawing - KERET ALATT
     int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
-    tft.fillRect(bounds.x, indicatorY, bounds.width, indicatorH, TFT_BLACK);
+    tft.fillRect(bounds.x - 4, indicatorY, bounds.width + 8, indicatorH, TFT_BLACK);
 
     // Draw text at component bottom + indicator area, center
     // Y coordinate will be the text baseline (bottom of the indicator area)
@@ -1378,12 +1378,13 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     // Adaptív autogain frissítése
     updateFrameBasedGain(maxMagnitude);
 
+    // Színek
+    constexpr uint16_t TUNING_AID_TARGET_LINE_COLOR = TFT_GREEN;
+    constexpr uint16_t TUNING_AID_RTTY_SPACE_LINE_COLOR = TFT_CYAN;
+    constexpr uint16_t TUNING_AID_RTTY_MARK_LINE_COLOR = TFT_YELLOW;
+
     // 4. Célfrekvencia vonalának kirajzolása a sprite-ra
     if (currentTuningAidType_ != TuningAidType::OFF_DECODER) {
-        // Színek
-        constexpr uint16_t TUNING_AID_TARGET_LINE_COLOR = TFT_GREEN;
-        constexpr uint16_t TUNING_AID_RTTY_SPACE_LINE_COLOR = TFT_CYAN;
-        constexpr uint16_t TUNING_AID_RTTY_MARK_LINE_COLOR = TFT_MAGENTA;
 
         float min_freq_displayed = currentTuningAidMinFreqHz_;
         float max_freq_displayed = currentTuningAidMaxFreqHz_;
@@ -1431,7 +1432,7 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         if (displayed_span_hz > 0) {
             if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
                 int line_x = bounds.width / 2;
-                int label_y = graphH - 5;
+                int label_y = graphH;
                 sprite_->fillRect(line_x - 25, label_y - 8, 50, 10, TFT_BLACK);
                 sprite_->drawString(String(static_cast<int>(config.data.cwReceiverOffsetHz)) + "Hz", line_x, label_y);
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
@@ -1442,9 +1443,9 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                     float ratio_space = (f_space - min_freq_displayed) / displayed_span_hz;
                     int line_x_space = static_cast<int>(std::round(ratio_space * (bounds.width - 1)));
                     line_x_space = constrain(line_x_space, 0, bounds.width - 1);
-                    int label_y = graphH - 5;
+                    int label_y = graphH;
                     sprite_->fillRect(line_x_space - 25, label_y - 8, 50, 10, TFT_BLACK);
-                    sprite_->setTextColor(TFT_CYAN, TFT_BLACK);
+                    sprite_->setTextColor(TUNING_AID_RTTY_SPACE_LINE_COLOR, TFT_BLACK);
                     sprite_->drawString(String(static_cast<int>(round(f_space))) + "Hz", line_x_space, label_y);
                 }
                 // Mark címke
@@ -1452,9 +1453,9 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                     float ratio_mark = (f_mark - min_freq_displayed) / displayed_span_hz;
                     int line_x_mark = static_cast<int>(std::round(ratio_mark * (bounds.width - 1)));
                     line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
-                    int label_y = graphH - 5;
+                    int label_y = graphH;
                     sprite_->fillRect(line_x_mark - 25, label_y - 8, 50, 10, TFT_BLACK);
-                    sprite_->setTextColor(TFT_MAGENTA, TFT_BLACK);
+                    sprite_->setTextColor(TUNING_AID_RTTY_MARK_LINE_COLOR, TFT_BLACK);
                     sprite_->drawString(String(static_cast<int>(round(f_mark))) + "Hz", line_x_mark, label_y);
                 }
             }

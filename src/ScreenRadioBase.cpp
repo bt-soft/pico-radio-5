@@ -469,7 +469,8 @@ void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
             DEBUG("ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency: Setting FFT sampling frequency for CW/SSB: %s\n", bw);
         }
 
-        fftSamplingFrequency = (double)String(bw).toFloat() * 2.0 * 1000; // kétszeres mintavételezési frekvencia +  KHz -> Hz konverzió
+        //fftSamplingFrequency = (double)String(bw).toFloat() * 2.0 * 1000; // kétszeres mintavételezési frekvencia +  KHz -> Hz konverzió
+        fftSamplingFrequency = 15000.0; 
     }
 
     // Beállítjuk az AudioCore1Manager sampling frekvenciáját
