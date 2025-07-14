@@ -1265,13 +1265,27 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
         float oldMinFreq = currentTuningAidMinFreqHz_;
         float oldMaxFreq = currentTuningAidMaxFreqHz_;
 
-        // Mindig a teljes spektrumot jelenítjük meg
-        currentTuningAidMinFreqHz_ = 0.0f;
-        currentTuningAidMaxFreqHz_ = maxDisplayFrequencyHz_;
+        if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
+            // CW: 600 Hz span a CW offset frekvencia körül
+            float centerFreq = config.data.cwReceiverOffsetHz;
+            currentTuningAidMinFreqHz_ = centerFreq - CW_TUNING_AID_SPAN_HZ / 2.0f;
+            currentTuningAidMaxFreqHz_ = centerFreq + CW_TUNING_AID_SPAN_HZ / 2.0f;
+        } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
+            // RTTY: Mark és Space frekvenciák közötti terület + margó
+            float f_mark = config.data.rttyMarkFrequencyHz;
+            float f_space = f_mark - config.data.rttyShiftHz;
+            float min_freq = std::min(f_mark, f_space) - RTTY_TUNING_AID_SPAN_HZ;
+            float max_freq = std::max(f_mark, f_space) + RTTY_TUNING_AID_SPAN_HZ;
+            currentTuningAidMinFreqHz_ = min_freq;
+            currentTuningAidMaxFreqHz_ = max_freq;
+        } else {
+            // OFF_DECODER: alapértelmezett tartomány
+            currentTuningAidMinFreqHz_ = 0.0f;
+            currentTuningAidMaxFreqHz_ = maxDisplayFrequencyHz_;
+        }
 
         // Ha változott a frekvencia tartomány, invalidáljuk a buffert
         if (typeChanged || oldMinFreq != currentTuningAidMinFreqHz_ || oldMaxFreq != currentTuningAidMaxFreqHz_) {
-            // Waterfall buffer törlése
             for (auto &row : wabuf) {
                 std::fill(row.begin(), row.end(), 0);
             }
