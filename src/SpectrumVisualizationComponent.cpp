@@ -756,17 +756,18 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
         return;
     }
 
-    // Sprite törlése
-    sprite_->fillSprite(TFT_BLACK);
-
     // Core1 oszcilloszkóp adatok lekérése
     const int *osciData = nullptr;
     bool dataAvailable = getCore1OscilloscopeData(&osciData);
 
     if (!dataAvailable || !osciData) {
+        // Ha nincs új adat, a korábbi tartalmat rajzoljuk ki újra a villogás elkerülése érdekében.
         sprite_->pushSprite(bounds.x, bounds.y);
         return;
     }
+
+    // Sprite törlése - csak akkor, ha van új adat
+    sprite_->fillSprite(TFT_BLACK);
 
     // DC komponens számítása
     double sum_samples = 0.0;
