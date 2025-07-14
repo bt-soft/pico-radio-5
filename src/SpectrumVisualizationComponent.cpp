@@ -1265,30 +1265,9 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
         float oldMinFreq = currentTuningAidMinFreqHz_;
         float oldMaxFreq = currentTuningAidMaxFreqHz_;
 
-        if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
-
-            // CW: 600 Hz span a CW offset frekvencia körül
-            float centerFreq = config.data.cwReceiverOffsetHz;
-            currentTuningAidMinFreqHz_ = centerFreq - CW_TUNING_AID_SPAN_HZ / 2.0f;
-            currentTuningAidMaxFreqHz_ = centerFreq + CW_TUNING_AID_SPAN_HZ / 2.0f;
-
-        } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
-            // RTTY: Mark és Space frekvenciák közötti terület + margó
-            float f_mark = config.data.rttyMarkFrequencyHz;
-            float f_space = f_mark - config.data.rttyShiftHz;
-
-            // Bal/jobb margó
-            float min_freq = std::min(f_mark, f_space) - RTTY_TUNING_AID_SPAN_HZ;
-            float max_freq = std::max(f_mark, f_space) + RTTY_TUNING_AID_SPAN_HZ;
-
-            currentTuningAidMinFreqHz_ = min_freq;
-            currentTuningAidMaxFreqHz_ = max_freq;
-
-        } else {
-            // OFF_DECODER: alapértelmezett tartomány
-            currentTuningAidMinFreqHz_ = 0.0f;
-            currentTuningAidMaxFreqHz_ = maxDisplayFrequencyHz_;
-        }
+        // Mindig a teljes spektrumot jelenítjük meg
+        currentTuningAidMinFreqHz_ = 0.0f;
+        currentTuningAidMaxFreqHz_ = maxDisplayFrequencyHz_;
 
         // Ha változott a frekvencia tartomány, invalidáljuk a buffert
         if (typeChanged || oldMinFreq != currentTuningAidMinFreqHz_ || oldMaxFreq != currentTuningAidMaxFreqHz_) {
@@ -1338,52 +1317,52 @@ void SpectrumVisualizationComponent::renderTuningAid() {
 
     bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
 
-    if (!dataAvailable || currentBinWidthHz == 0)
-        currentBinWidthHz = (AudioProcessorConstants::MAX_SAMPLING_FREQUENCY / AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+    if (!dataAvailable || !magnitudeData || currentBinWidthHz == 0) {
+        sprite_->pushSprite(bounds.x, bounds.y);
+        return;
+    }
 
-    // 1. Adatok eltolása "lefelé" a wabuf-ban (időbeli léptetés)
-    // Csak a grafikon magasságáig (graphH) használjuk a wabuf sorait.
-    // A wabuf mérete (bounds.height x bounds.width), de itt csak graphH sort használunk fel a vízeséshez.
-    for (int r = graphH - 1; r > 0; --r) {
-        for (int c = 0; c < bounds.width; ++c) { // Minden oszlop (frekvencia bin)
+    // 1. Adatok eltolása lefelé a wabuf-ban (időbeli léptetés)
+    for (int c = 0; c < bounds.width; ++c) {
+        for (int r = bounds.height - 1; r > 0; --r) {
             wabuf[r][c] = wabuf[r - 1][c];
         }
     }
 
-    const int min_fft_bin_for_tuning = std::max(1, static_cast<int>(std::round(currentTuningAidMinFreqHz_ / currentBinWidthHz)));
-    const int max_fft_bin_for_tuning = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(currentTuningAidMaxFreqHz_ / currentBinWidthHz)));
-    const int num_bins_in_tuning_range = std::max(1, max_fft_bin_for_tuning - min_fft_bin_for_tuning + 1);
+    // Waterfall paraméterek (mint a sima waterfallban)
+    const int min_bin_for_wf = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
+    const int max_bin_for_wf = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
+    const int num_bins_in_wf_range = std::max(1, max_bin_for_wf - min_bin_for_wf + 1);
 
-    // Adaptív autogain használata hangolási segédhez
-    float adaptiveScale = getAdaptiveScale(SensitivityConstants::TUNING_AID_INPUT_SCALE);
+    // Adaptív autogain használata waterfall-hoz
+    float adaptiveScale = getAdaptiveScale(SensitivityConstants::WATERFALL_INPUT_SCALE);
     float maxMagnitude = 0.0f;
 
-    // 2. Új adatok betöltése a wabuf tetejére (első sor)
+    // 2. Új adatok betöltése a wabuf tetejére (a legfrissebb sor)
     for (int c = 0; c < bounds.width; ++c) {
-        // Képernyő pixel X koordinátájának (c) leképezése FFT bin indexre
         float ratio_in_display_width = (bounds.width <= 1) ? 0.0f : (static_cast<float>(c) / (bounds.width - 1));
-        int fft_bin_index = min_fft_bin_for_tuning + static_cast<int>(std::round(ratio_in_display_width * (num_bins_in_tuning_range - 1)));
-        fft_bin_index = constrain(fft_bin_index, min_fft_bin_for_tuning, max_fft_bin_for_tuning);
-        fft_bin_index = constrain(fft_bin_index, 2, static_cast<int>(actualFftSize / 2 - 1));
-
-        // Hangolási segéd input scale - adaptív autogain-nel
+        int fft_bin_index = min_bin_for_wf + static_cast<int>(std::round(ratio_in_display_width * (num_bins_in_wf_range - 1)));
+        fft_bin_index = constrain(fft_bin_index, min_bin_for_wf, max_bin_for_wf);
         double rawMagnitude = magnitudeData[fft_bin_index];
         maxMagnitude = std::max(maxMagnitude, static_cast<float>(rawMagnitude));
         double scaledMagnitude = rawMagnitude * adaptiveScale;
-        wabuf[0][c] = static_cast<uint8_t>(constrain(scaledMagnitude, 0.0, 255.0));
+        uint8_t finalValue = static_cast<uint8_t>(constrain(scaledMagnitude, 0.0, 255.0));
+        wabuf[0][c] = finalValue;
     }
 
-    // 3. Sprite törlése és waterfall kirajzolása
-    sprite_->fillSprite(TFT_BLACK); // Sprite törlése
-
-    // Waterfall kirajzolása csak a graphH magasságig
-    for (int r = 0; r < graphH; ++r) {
-        for (int c = 0; c < bounds.width; ++c) {
+    // 3. Sprite törlése és új időoszlop kirajzolása (X: idő, Y: frekvencia)
+    sprite_->fillSprite(TFT_BLACK);
+    for (int c = 0; c < bounds.width; ++c) {
+        for (int r = 0; r < graphH; ++r) {
+            int r_wabuf = (r * (bounds.height - 1)) / std::max(1, (graphH - 1));
             constexpr int WF_GRADIENT = 100;
-            uint16_t color = valueToWaterfallColor(WF_GRADIENT * wabuf[r][c], 0.0f, 255.0f * WF_GRADIENT, 0);
+            uint16_t color = valueToWaterfallColor(WF_GRADIENT * wabuf[r_wabuf][c], 0.0f, 255.0f * WF_GRADIENT, 0);
             sprite_->drawPixel(c, r, color);
         }
     }
+
+    // Adaptív autogain frissítése
+    updateFrameBasedGain(maxMagnitude);
 
     // 4. Célfrekvencia vonalának kirajzolása a sprite-ra
     if (currentTuningAidType_ != TuningAidType::OFF_DECODER) {
