@@ -1343,10 +1343,10 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         }
     }
 
-    // Waterfall paraméterek (mint a sima waterfallban)
-    const int min_bin_for_wf = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
-    const int max_bin_for_wf = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
-    const int num_bins_in_wf_range = std::max(1, max_bin_for_wf - min_bin_for_wf + 1);
+    // Waterfall paraméterek: tuning aid-hez a min-max frekvenciahatárok alapján
+    const int min_bin_for_tuning = std::max(2, static_cast<int>(std::round(currentTuningAidMinFreqHz_ / currentBinWidthHz)));
+    const int max_bin_for_tuning = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(currentTuningAidMaxFreqHz_ / currentBinWidthHz)));
+    const int num_bins_in_tuning_range = std::max(1, max_bin_for_tuning - min_bin_for_tuning + 1);
 
     // Adaptív autogain használata waterfall-hoz
     float adaptiveScale = getAdaptiveScale(SensitivityConstants::WATERFALL_INPUT_SCALE);
@@ -1355,8 +1355,8 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     // 2. Új adatok betöltése a wabuf tetejére (a legfrissebb sor)
     for (int c = 0; c < bounds.width; ++c) {
         float ratio_in_display_width = (bounds.width <= 1) ? 0.0f : (static_cast<float>(c) / (bounds.width - 1));
-        int fft_bin_index = min_bin_for_wf + static_cast<int>(std::round(ratio_in_display_width * (num_bins_in_wf_range - 1)));
-        fft_bin_index = constrain(fft_bin_index, min_bin_for_wf, max_bin_for_wf);
+        int fft_bin_index = min_bin_for_tuning + static_cast<int>(std::round(ratio_in_display_width * (num_bins_in_tuning_range - 1)));
+        fft_bin_index = constrain(fft_bin_index, min_bin_for_tuning, max_bin_for_tuning);
         double rawMagnitude = magnitudeData[fft_bin_index];
         maxMagnitude = std::max(maxMagnitude, static_cast<float>(rawMagnitude));
         double scaledMagnitude = rawMagnitude * adaptiveScale;
@@ -1418,65 +1418,51 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         }
     }
 
-    // Sprite kirakása a képernyőre
-    sprite_->pushSprite(bounds.x, bounds.y);
-
-    // Frekvencia címkék kirajzolása közvetlenül a TFT-re (sprite kívül) - minden rendereléskor
+    // Frekvencia címkék kirajzolása a sprite-ba, így nem villog
     if (currentTuningAidType_ != TuningAidType::OFF_DECODER) {
         float min_freq_displayed = currentTuningAidMinFreqHz_;
         float max_freq_displayed = currentTuningAidMaxFreqHz_;
         float displayed_span_hz = max_freq_displayed - min_freq_displayed;
 
-        tft.setFreeFont();
-        tft.setTextSize(1);
-        tft.setTextDatum(BC_DATUM);
+        sprite_->setTextDatum(BC_DATUM);
+        sprite_->setTextSize(1);
+        sprite_->setTextColor(TFT_GREEN, TFT_BLACK);
 
         if (displayed_span_hz > 0) {
             if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
-                // CW frekvencia címke - törli a területet és biztosan látható pozícióban
-                int line_x = bounds.x + bounds.width / 2;
-                int label_y = bounds.y + bounds.height + 5;
-
-                // Terület törlése a felirat körül
-                tft.fillRect(line_x - 25, label_y - 8, 50, 10, TFT_BLACK);
-
-                tft.setTextColor(TFT_GREEN, TFT_BLACK);
-                tft.drawString(String(static_cast<int>(config.data.cwReceiverOffsetHz)) + "Hz", line_x, label_y);
-
+                int line_x = bounds.width / 2;
+                int label_y = graphH - 5;
+                sprite_->fillRect(line_x - 25, label_y - 8, 50, 10, TFT_BLACK);
+                sprite_->drawString(String(static_cast<int>(config.data.cwReceiverOffsetHz)) + "Hz", line_x, label_y);
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
                 float f_mark = config.data.rttyMarkFrequencyHz;
                 float f_space = f_mark - config.data.rttyShiftHz;
-
                 // Space címke
                 if (f_space >= min_freq_displayed && f_space <= max_freq_displayed) {
                     float ratio_space = (f_space - min_freq_displayed) / displayed_span_hz;
-                    int line_x_space = bounds.x + static_cast<int>(std::round(ratio_space * (bounds.width - 1)));
-                    line_x_space = constrain(line_x_space, bounds.x, bounds.x + bounds.width - 1);
-                    int label_y = bounds.y + bounds.height + 5;
-
-                    // Terület törlése a felirat körül
-                    tft.fillRect(line_x_space - 25, label_y - 8, 50, 10, TFT_BLACK);
-
-                    tft.setTextColor(TFT_CYAN, TFT_BLACK);
-                    tft.drawString(String(static_cast<int>(round(f_space))) + "Hz", line_x_space, label_y);
+                    int line_x_space = static_cast<int>(std::round(ratio_space * (bounds.width - 1)));
+                    line_x_space = constrain(line_x_space, 0, bounds.width - 1);
+                    int label_y = graphH - 5;
+                    sprite_->fillRect(line_x_space - 25, label_y - 8, 50, 10, TFT_BLACK);
+                    sprite_->setTextColor(TFT_CYAN, TFT_BLACK);
+                    sprite_->drawString(String(static_cast<int>(round(f_space))) + "Hz", line_x_space, label_y);
                 }
-
                 // Mark címke
                 if (f_mark >= min_freq_displayed && f_mark <= max_freq_displayed) {
                     float ratio_mark = (f_mark - min_freq_displayed) / displayed_span_hz;
-                    int line_x_mark = bounds.x + static_cast<int>(std::round(ratio_mark * (bounds.width - 1)));
-                    line_x_mark = constrain(line_x_mark, bounds.x, bounds.x + bounds.width - 1);
-                    int label_y = bounds.y + bounds.height + 5;
-
-                    // Terület törlése a felirat körül
-                    tft.fillRect(line_x_mark - 25, label_y - 8, 50, 10, TFT_BLACK);
-
-                    tft.setTextColor(TFT_MAGENTA, TFT_BLACK);
-                    tft.drawString(String(static_cast<int>(round(f_mark))) + "Hz", line_x_mark, label_y);
+                    int line_x_mark = static_cast<int>(std::round(ratio_mark * (bounds.width - 1)));
+                    line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
+                    int label_y = graphH - 5;
+                    sprite_->fillRect(line_x_mark - 25, label_y - 8, 50, 10, TFT_BLACK);
+                    sprite_->setTextColor(TFT_MAGENTA, TFT_BLACK);
+                    sprite_->drawString(String(static_cast<int>(round(f_mark))) + "Hz", line_x_mark, label_y);
                 }
             }
         }
     }
+
+    // Sprite kirakása a képernyőre
+    sprite_->pushSprite(bounds.x, bounds.y);
 
     // Adaptív autogain frissítése
     updateFrameBasedGain(maxMagnitude);
