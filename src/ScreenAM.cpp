@@ -510,10 +510,10 @@ void ScreenAM::handleAfBWButton(const UIButton::ButtonEvent &event) {
         [this, currDemodMod](int buttonIndex, const char *buttonLabel, MultiButtonDialog *dialog) { // Gomb kattintás kezelése
             //
 
-            if (currDemodMod == AM_DEMOD_TYPE) {
-                config.data.bwIdxAM = ::pSi4735Manager->getBandWidthIndexByLabel(Band::bandWidthAM, buttonLabel);
-            } else if (currDemodMod == FM_DEMOD_TYPE) {
+            if (currDemodMod == FM_DEMOD_TYPE) {
                 config.data.bwIdxFM = ::pSi4735Manager->getBandWidthIndexByLabel(Band::bandWidthFM, buttonLabel);
+            } else if (currDemodMod == AM_DEMOD_TYPE) {
+                config.data.bwIdxAM = ::pSi4735Manager->getBandWidthIndexByLabel(Band::bandWidthAM, buttonLabel);
             } else {
                 config.data.bwIdxSSB = ::pSi4735Manager->getBandWidthIndexByLabel(Band::bandWidthSSB, buttonLabel);
             }
