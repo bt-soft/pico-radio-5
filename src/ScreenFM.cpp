@@ -96,11 +96,12 @@ void ScreenFM::layoutComponents() {
     // ===================================================================
     // Spektrum vizualizáció komponens létrehozása
     // ===================================================================
-    AudioCore1Manager::setSamplingFrequency(AudioProcessorConstants::DEFAULT_FM_SAMPLING_FREQUENCY); // Alapértelmezett FM mintavételezési frekvencia
-    AudioCore1Manager::setFftSize(AudioProcessorConstants::DEFAULT_FFT_SAMPLES);                     // Alapértelmezett FFT méret beállítása
+
+    AudioCore1Manager::setFftSize(AudioProcessorConstants::DEFAULT_FFT_SAMPLES); // Alapértelmezett FFT méret beállítása
 
     Rect spectrumBounds(255, 80, 150, 80);
     createSpectrumComponent(spectrumBounds, RadioMode::FM);
+    ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency();
 
     // ===================================================================
     // Gombsorok létrehozása - Event-driven architektúra

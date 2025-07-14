@@ -145,19 +145,21 @@ void AudioCore1Manager::core1AudioLoop() {
 
     // Audio feldolgozási loop
     while (!pSharedData_->core1ShouldStop) {
-        // EEPROM írás vagy szüneteltetés esetén várakozás
-        if (pSharedData_->eepromWriteInProgress || pSharedData_->core1AudioPaused) {
-            // Mindig mutex védetten állítsuk be az ACK flag-et
+        // EEPROM írás esetén szüneteltetés
+        if (pSharedData_->eepromWriteInProgress) {
             mutex_enter_blocking(&pSharedData_->dataMutex);
+            pSharedData_->core1AudioPaused = true;
             pSharedData_->core1AudioPausedAck = true;
             mutex_exit(&pSharedData_->dataMutex);
-            delay(1); // Rövid várakozás EEPROM művelet alatt
+            delay(1);
             continue;
         }
-
-        // Ha kilépünk a pause állapotból, töröljük az ACK flag-et
-        if (pSharedData_->core1AudioPausedAck) {
+        // Ha kilépünk a pause állapotból, töröljük az ACK flag-et és a paused flag-et
+        if (pSharedData_->core1AudioPaused || pSharedData_->core1AudioPausedAck) {
+            mutex_enter_blocking(&pSharedData_->dataMutex);
+            pSharedData_->core1AudioPaused = false;
             pSharedData_->core1AudioPausedAck = false;
+            mutex_exit(&pSharedData_->dataMutex);
         }
 
         uint32_t now = millis();
@@ -315,7 +317,7 @@ void AudioCore1Manager::updateAudioConfig() {
 
     // FFT mintavételezési frekvencia frissítése ha szükséges
     if (pSharedData_->samplingFrequency != 0.0 && pAudioProcessor_->getSamplingFrequency() != pSharedData_->samplingFrequency) {
-        DEBUG("AudioCore1Manager:updateAudioConfig: FFT frekvencia váltása %d-re\n", pSharedData_->samplingFrequency);
+        DEBUG("AudioCore1Manager:updateAudioConfig: FFT frekvencia váltása %d-re\n", (int)pSharedData_->samplingFrequency);
         pAudioProcessor_->setSamplingFrequency(pSharedData_->samplingFrequency);
     }
 
@@ -462,14 +464,14 @@ void AudioCore1Manager::pauseCore1Audio() {
 
     DEBUG("AudioCore1Manager: Core1 audio szüneteltetése EEPROM íráshoz...\n");
 
+    // Csak az eepromWriteInProgress flag-et állítsuk itt, a többit Core1 állítja be
     mutex_enter_blocking(&pSharedData_->dataMutex);
     pSharedData_->eepromWriteInProgress = true;
-    pSharedData_->core1AudioPaused = true;
     pSharedData_->core1AudioPausedAck = false; // Töröljük az ACK flag-et
     mutex_exit(&pSharedData_->dataMutex);
 
     // Várjuk meg, hogy a Core1 ténylegesen szüneteltesse az audio feldolgozást
-    uint32_t timeout = millis() + 100; // 100ms timeout
+    uint32_t timeout = millis() + 200; // 200ms timeout
     while (millis() < timeout) {
         mutex_enter_blocking(&pSharedData_->dataMutex);
         bool ack = pSharedData_->core1AudioPausedAck;

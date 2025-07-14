@@ -309,11 +309,11 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     // Spektrum vizualizáció komponens létrehozása
     // ===================================================================
-    AudioCore1Manager::setSamplingFrequency(AudioProcessorConstants::DEFAULT_AM_SAMPLING_FREQUENCY); // Alapértelmezett AM mintavételezési frekvencia
-    AudioCore1Manager::setFftSize(AudioProcessorConstants::DEFAULT_FFT_SAMPLES);                     // Alapértelmezett FFT méret beállítása
+    AudioCore1Manager::setFftSize(AudioProcessorConstants::DEFAULT_FFT_SAMPLES); // Alapértelmezett FFT méret beállítása
 
     Rect spectrumBounds(255, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT - 10, 150, 80);
     createSpectrumComponent(spectrumBounds, RadioMode::AM);
+    ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency();
 
     // ===================================================================
     // Függőleges gombok létrehozása - CommonVerticalButtons mixin használata
@@ -521,22 +521,7 @@ void ScreenAM::handleAfBWButton(const UIButton::ButtonEvent &event) {
             // Beállítjuk a rádió chip-en a kiválasztott HF sávszélességet
             ::pSi4735Manager->setAfBandWidth();
 
-            double bwFreqInHz = 0.0;
-            if (currDemodMod == FM_DEMOD_TYPE) {
-                bwFreqInHz = 15000.0; // 15KHz fix FM sávszélesség
-            } else {
-                double buttonValue = (double)String(buttonLabel).toFloat() * 1000.0; // kHz to Hz konverzió
-                bwFreqInHz = max(1000.0, buttonValue);                               // Minimum 1KHz sávszélesség AM-ben
-            }
-
-            // A HF sávszélességnek megfelelően beállítjuk a mintavételezési frekvenciát
-            AudioCore1Manager::setSamplingFrequency(bwFreqInHz * 2);
-
-            // A spektrum kijelzőn is frissítjük a sávszélességet
-            if (spectrumComp) {
-                spectrumComp->updateMaxDisplayFrequencyHz();
-            }
-
+            ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency();
         },
         true,              // Automatikusan bezárja-e a dialógust gomb kattintáskor
         currentBw,         // Az alapértelmezett (jelenlegi) gomb felirata

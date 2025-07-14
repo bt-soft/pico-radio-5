@@ -12,7 +12,6 @@ const Config_t DEFAULT_CONFIG = {
     // BandWidht
     .bwIdxAM = 0,  // BandWidth AM - Band::bandWidthAM index szerint -> "6.0" kHz
     .bwIdxFM = 0,  // BandWidth FM - Band::bandWidthFM[] index szerint -> "AUTO"
-    .bwIdxMW = 0,  // BandWidth MW - Band::bandWidthAM index szerint -> "6.0" kHz
     .bwIdxSSB = 0, // BandWidth SSB - Band::bandWidthSSB[] index szerint ->
                    // "1.2" kHz  (the valid values are 0, 1, 2, 3, 4 or 5)
 

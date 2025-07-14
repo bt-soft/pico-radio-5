@@ -21,10 +21,9 @@ enum class AudioComponentType : uint8_t {
 struct Config_t {
     uint8_t currentBandIdx; // Aktuális sáv indexe
 
-    // BandWidht
+    // Hangfrekvenciás sávszélesség indexek
     uint8_t bwIdxAM;
     uint8_t bwIdxFM;
-    uint8_t bwIdxMW;
     uint8_t bwIdxSSB;
 
     // Step

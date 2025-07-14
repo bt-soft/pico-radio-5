@@ -272,6 +272,11 @@ class ScreenRadioBase : public ScreenFrequDisplayBase {
      */
     void refreshScreenComponents();
 
+    /**
+     * @brief Beállítja az audio spektrum és az audio processzor hangfrekvenciás sávszélességét
+     */
+    void setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency();
+
   private:
     // ===================================================================
     // Dialog cleanup helper methods

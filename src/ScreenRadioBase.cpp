@@ -442,3 +442,40 @@ void ScreenRadioBase::onDialogClosed(UIDialogBase *closedDialog) {
         ScreenFrequDisplayBase::onDialogClosed(closedDialog);
     }
 }
+
+/**
+ * @brief Beállítja az audio spektrum és az audio processzor hangfrekvenciás sávszélességét
+ *
+ */
+void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
+
+    double fftSamplingFrequency = 0.0;
+
+    // Aktuális demodulációs mód
+    uint8_t currDemodMod = ::pSi4735Manager->getCurrentBand().currDemod;
+
+    if (currDemodMod == FM_DEMOD_TYPE) {
+        fftSamplingFrequency = AudioProcessorConstants::DEFAULT_FM_SAMPLING_FREQUENCY;
+
+    } else {
+        const char *bw;
+        if (currDemodMod == AM_DEMOD_TYPE) {
+            // AM mód esetén
+            bw = ::pSi4735Manager->getCurrentBandWidthLabelByIndex(Band::bandWidthAM, config.data.bwIdxAM);
+            DEBUG("ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency: Setting FFT sampling frequency for AM: %s\n", bw);
+        } else {
+            // CW SSB módok esetén
+            bw = ::pSi4735Manager->getCurrentBandWidthLabelByIndex(Band::bandWidthSSB, config.data.bwIdxSSB);
+            DEBUG("ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency: Setting FFT sampling frequency for CW/SSB: %s\n", bw);
+        }
+
+        fftSamplingFrequency = (double)String(bw).toFloat() * 2.0 * 1000; // kétszeres mintavételezési frekvencia +  KHz -> Hz konverzió
+    }
+
+    // Beállítjuk az AudioCore1Manager sampling frekvenciáját
+    AudioCore1Manager::setSamplingFrequency(fftSamplingFrequency);
+    if (spectrumComp) {
+        // A spektrum komponens frissítése a megfelelő sávszélességgel, amit az előbb beállított AudioCore1Manager-ből olvas ki
+        spectrumComp->updateMaxDisplayFrequencyHz();
+    }
+}
