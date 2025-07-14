@@ -43,6 +43,72 @@ ScreenAM::ScreenAM() : ScreenRadioBase(SCREEN_NAME_AM) {
  */
 ScreenAM::~ScreenAM() { DEBUG("ScreenAM::~ScreenAM() - Destruktor hívása\n"); }
 
+/**
+ * @brief Statikus képernyő tartalom kirajzolása - AM képernyő specifikus elemek
+ * @details Csak a statikus UI elemeket rajzolja ki (nem változó tartalom):
+ * - S-Meter skála vonalak és számok (AM módhoz optimalizálva)
+ * - Band információs terület (AM/MW/LW/SW jelzők)
+ * - Statikus címkék és szövegek
+ *
+ * A dinamikus tartalom (pl. S-Meter érték, frekvencia) a loop()-ban frissül.
+ *
+ * **TODO implementációk**:
+ * - S-Meter skála: RSSI alapú AM skála (0-60 dB tartomány)
+ * - Band indikátor: Aktuális band típus megjelenítése
+ * - Frekvencia egység: kHz/MHz megfelelő formátumban
+ */
+void ScreenAM::drawContent() {
+    // TODO: S-Meter statikus skála kirajzolása AM módban
+    // if (smeterComp) {
+    //     smeterComp->drawAmeterScale(); // AM-specifikus skála
+    // }
+
+    // TODO: Band információs terület kirajzolása
+    // drawBandInfoArea();
+
+    // TODO: Statikus címkék és UI elemek
+    // drawStaticLabels();
+
+    // Spektrum vizualizáció komponens border frissítése
+    if (spectrumComp) {
+        spectrumComp->setBorderDrawn();
+    }
+}
+
+/**
+ * @brief Képernyő aktiválása - Event-driven gombállapot szinkronizálás
+ * @details Meghívódik, amikor a felhasználó erre a képernyőre vált.
+ *
+ * Ez az EGYETLEN hely, ahol a gombállapotokat szinkronizáljuk a rendszer állapotával:
+ * - Függőleges gombok: Mute, AGC, Attenuator állapotok
+ * - Vízszintes gombok: Navigációs gombok állapotai
+ *
+ * **Event-driven előnyök**:
+ * - NINCS folyamatos polling a loop()-ban
+ * - Csak aktiváláskor történik szinkronizálás
+ * - Jelentős teljesítményjavulás
+ * - Univerzális gombkezelés (CommonVerticalButtons)
+ *
+ * **Szinkronizált állapotok**:
+ * - MUTE gomb ↔ rtv::muteStat
+ * - AGC gomb ↔ Si4735 AGC állapot (TODO)
+ * - ATTENUATOR gomb ↔ Si4735 attenuator állapot (TODO)
+ */
+void ScreenAM::activate() {
+    DEBUG("ScreenAM::activate() - Képernyő aktiválása\n");
+
+    // Szülő osztály aktiválása (ScreenRadioBase -> ScreenFrequDisplayBase -> UIScreen)
+    ScreenRadioBase::activate();
+
+    // ===================================================================
+    // *** EGYETLEN GOMBÁLLAPOT SZINKRONIZÁLÁSI PONT - Event-driven ***
+    // ===================================================================
+    updateAllVerticalButtonStates();      // Univerzális funkcionális gombok (mixin method)
+    updateCommonHorizontalButtonStates(); // Közös gombok szinkronizálása
+    updateHorizontalButtonStates();       // AM-specifikus gombok szinkronizálása
+    updateFreqDisplayWidth();             // FreqDisplay szélességének frissítése
+}
+
 // =====================================================================
 // UIScreen interface megvalósítás
 // =====================================================================
@@ -183,72 +249,6 @@ void ScreenAM::handleOwnLoop() {
 }
 
 /**
- * @brief Statikus képernyő tartalom kirajzolása - AM képernyő specifikus elemek
- * @details Csak a statikus UI elemeket rajzolja ki (nem változó tartalom):
- * - S-Meter skála vonalak és számok (AM módhoz optimalizálva)
- * - Band információs terület (AM/MW/LW/SW jelzők)
- * - Statikus címkék és szövegek
- *
- * A dinamikus tartalom (pl. S-Meter érték, frekvencia) a loop()-ban frissül.
- *
- * **TODO implementációk**:
- * - S-Meter skála: RSSI alapú AM skála (0-60 dB tartomány)
- * - Band indikátor: Aktuális band típus megjelenítése
- * - Frekvencia egység: kHz/MHz megfelelő formátumban
- */
-void ScreenAM::drawContent() {
-    // TODO: S-Meter statikus skála kirajzolása AM módban
-    // if (smeterComp) {
-    //     smeterComp->drawAmeterScale(); // AM-specifikus skála
-    // }
-
-    // TODO: Band információs terület kirajzolása
-    // drawBandInfoArea();
-
-    // TODO: Statikus címkék és UI elemek
-    // drawStaticLabels();
-
-    // Spektrum vizualizáció komponens border frissítése
-    if (spectrumComp) {
-        spectrumComp->setBorderDrawn();
-    }
-}
-
-/**
- * @brief Képernyő aktiválása - Event-driven gombállapot szinkronizálás
- * @details Meghívódik, amikor a felhasználó erre a képernyőre vált.
- *
- * Ez az EGYETLEN hely, ahol a gombállapotokat szinkronizáljuk a rendszer állapotával:
- * - Függőleges gombok: Mute, AGC, Attenuator állapotok
- * - Vízszintes gombok: Navigációs gombok állapotai
- *
- * **Event-driven előnyök**:
- * - NINCS folyamatos polling a loop()-ban
- * - Csak aktiváláskor történik szinkronizálás
- * - Jelentős teljesítményjavulás
- * - Univerzális gombkezelés (CommonVerticalButtons)
- *
- * **Szinkronizált állapotok**:
- * - MUTE gomb ↔ rtv::muteStat
- * - AGC gomb ↔ Si4735 AGC állapot (TODO)
- * - ATTENUATOR gomb ↔ Si4735 attenuator állapot (TODO)
- */
-void ScreenAM::activate() {
-    DEBUG("ScreenAM::activate() - Képernyő aktiválása\n");
-
-    // Szülő osztály aktiválása (ScreenRadioBase -> ScreenFrequDisplayBase -> UIScreen)
-    ScreenRadioBase::activate();
-
-    // ===================================================================
-    // *** EGYETLEN GOMBÁLLAPOT SZINKRONIZÁLÁSI PONT - Event-driven ***
-    // ===================================================================
-    updateAllVerticalButtonStates();      // Univerzális funkcionális gombok (mixin method)
-    updateCommonHorizontalButtonStates(); // Közös gombok szinkronizálása
-    updateHorizontalButtonStates();       // AM-specifikus gombok szinkronizálása
-    updateFreqDisplayWidth();             // FreqDisplay szélességének frissítése
-}
-
-/**
  * @brief Dialógus bezárásának kezelése - Gombállapot szinkronizálás
  * @details Az utolsó dialógus bezárásakor frissíti a gombállapotokat
  *
@@ -309,6 +309,9 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     // Spektrum vizualizáció komponens létrehozása
     // ===================================================================
+    AudioCore1Manager::setSamplingFrequency(AudioProcessorConstants::DEFAULT_AM_SAMPLING_FREQUENCY); // Alapértelmezett AM mintavételezési frekvencia
+    AudioCore1Manager::setFftSize(AudioProcessorConstants::DEFAULT_FFT_SAMPLES);                     // Alapértelmezett FFT méret beállítása
+
     Rect spectrumBounds(255, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT - 10, 150, 80);
     createSpectrumComponent(spectrumBounds, RadioMode::AM);
 

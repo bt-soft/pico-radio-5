@@ -218,11 +218,11 @@ void setup() {
     splash.updateProgress(7, 9, "Starting Core1 audio processor...");
 
     // Core1 Audio Manager inicializálása a megfelelő FFT gain referenciákkal
-    bool core1InitSuccess = AudioCore1Manager::init(config.data.audioFftConfigAm,                        // AM FFT gain referencia
-                                                    config.data.audioFftConfigFm,                        // FM FFT gain referencia
-                                                    PIN_AUDIO_INPUT,                                     // Audio bemenet pin
-                                                    AudioProcessorConstants::DEFAULT_SAMPLING_FREQUENCY, // Mintavételezési frekvencia
-                                                    AudioProcessorConstants::DEFAULT_FFT_SAMPLES         // Kezdeti FFT méret
+    bool core1InitSuccess = AudioCore1Manager::init(config.data.audioFftConfigAm,                           // AM FFT gain referencia
+                                                    config.data.audioFftConfigFm,                           // FM FFT gain referencia
+                                                    PIN_AUDIO_INPUT,                                        // Audio bemenet pin
+                                                    AudioProcessorConstants::DEFAULT_FM_SAMPLING_FREQUENCY, // Mintavételezési frekvencia, FM -> 30kHz
+                                                    AudioProcessorConstants::DEFAULT_FFT_SAMPLES            // Kezdeti FFT méret -> 512
     );
 
     if (!core1InitSuccess) {
