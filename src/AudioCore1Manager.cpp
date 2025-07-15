@@ -323,6 +323,8 @@ void AudioCore1Manager::updateAudioConfig() {
     }
 
     pSharedData_->configChanged = false;
+
+    DEBUG("AudioCore1Manager::updateAudioConfig: Audio konfiguráció frissítése OK\n");
 }
 
 /**

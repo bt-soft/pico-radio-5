@@ -181,7 +181,7 @@ String ScreenSetupAudioProc::decodeFFTGain(float value) {
 }
 
 /**
- * @brief FFT gain dialógus kezelése AM vagy FM módhoz
+ * @brief FFT manuális gain dialógus kezelése AM vagy FM módhoz
  *
  * @param index A menüpont indexe a lista frissítéséhez
  * @param isAM true = AM mód, false = FM mód
@@ -225,8 +225,11 @@ void ScreenSetupAudioProc::handleFFTGainDialog(int index, bool isAM) {
                     auto tempGainValuePtr = std::make_shared<float>((currentConfig > 0.0f) ? currentConfig : 1.0f);
 
                     auto gainDialog = std::make_shared<ValueChangeDialog>(
-                        this, (String(title) + " - Manual Gain").c_str(), "Set gain factor (0.1 - 10.0):", tempGainValuePtr.get(), 0.1f, 10.0f, 0.1f, nullptr,
-                        [this, index, &currentConfig, tempGainValuePtr](UIDialogBase *sender, MessageDialog::DialogResult result) {
+                        this, (String(title) + " - Manual Gain").c_str(), "Set gain factor (0.001 - 1.0):",                         //
+                        tempGainValuePtr.get(),                                                                                     // Pointer a temp értékhez
+                        0.01f, 1.0f, 0.01f,                                                                                         // Min, Max, Step
+                        nullptr,                                                                                                    // Élő előnézet callback (nem szükséges)
+                        [this, index, &currentConfig, tempGainValuePtr](UIDialogBase *sender, MessageDialog::DialogResult result) { // Eredmény kezelése
                             if (result == MessageDialog::DialogResult::Accepted) {
                                 currentConfig = *tempGainValuePtr;
                                 populateMenuItems(); // Teljes frissítés a helyes érték megjelenítéséhez

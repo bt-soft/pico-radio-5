@@ -450,14 +450,19 @@ void ScreenRadioBase::onDialogClosed(UIDialogBase *closedDialog) {
 void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
 
     uint16_t fftSamplingFrequency = 0;
+    uint16_t spectrumCompMaxFrequency = 0;
 
     // Aktuális demodulációs mód
     uint8_t currDemodMod = ::pSi4735Manager->getCurrentBand().currDemod;
 
     if (currDemodMod == FM_DEMOD_TYPE) {
         fftSamplingFrequency = AudioProcessorConstants::DEFAULT_FM_SAMPLING_FREQUENCY;
+        spectrumCompMaxFrequency = fftSamplingFrequency / 2;
 
     } else {
+
+        fftSamplingFrequency = 15000;
+
         const char *bw;
         if (currDemodMod == AM_DEMOD_TYPE) {
             // AM mód esetén
@@ -469,8 +474,10 @@ void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
             DEBUG("ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency: Setting FFT sampling frequency for CW/SSB: %s\n", bw);
         }
 
-        // fftSamplingFrequency = String(bw).toInt() * 2 * 1000; // kétszeres mintavételezési frekvencia +  KHz -> Hz konverzió
-        fftSamplingFrequency = 15000;
+        spectrumCompMaxFrequency = String(bw).toInt() * 1000; // Hangfrekvenciás sávszélesség KHz -> Hz konverzió
+        if (spectrumCompMaxFrequency < 1000) {
+            spectrumCompMaxFrequency = 1000; // Minimum 1000 Hz (1 kHz) sávszélesség
+        }
     }
 
     // Beállítjuk az AudioCore1Manager sampling frekvenciáját
@@ -478,6 +485,6 @@ void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
 
     // A spektrum komponens frissítése a megfelelő sávszélességgel
     if (spectrumComp) {
-        spectrumComp->setMaxDisplayFrequencyHz(fftSamplingFrequency / 2);
+        spectrumComp->setMaxDisplayFrequencyHz(spectrumCompMaxFrequency);
     }
 }
