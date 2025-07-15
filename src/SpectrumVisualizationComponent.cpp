@@ -1179,15 +1179,36 @@ void SpectrumVisualizationComponent::renderFrequencyLabels(uint16_t minDisplayFr
 
     // Balra igazított min frekvencia
     tft.setTextDatum(BL_DATUM);
-    float freqKHz = minDisplayFrequencyHz >= 1000 ? minDisplayFrequencyHz / 1000.0 : minDisplayFrequencyHz;
-    String str = String(freqKHz) + (minDisplayFrequencyHz >= 1000 ? "kHz" : "Hz");
+    String str;
+    if (minDisplayFrequencyHz >= 1000) {
+        float freqKHz = minDisplayFrequencyHz / 1000.0f;
+        int freqInt = static_cast<int>(freqKHz);
+        float frac = freqKHz - freqInt;
+        if (fabs(frac) < 0.05f) {
+            str = String(freqInt) + "kHz";
+        } else {
+            str = String(freqKHz, 1) + "kHz";
+        }
+    } else {
+        str = String(minDisplayFrequencyHz) + "Hz";
+    }
     tft.drawString(str, bounds.x, indicatorY + indicatorH);
     DEBUG("SpectrumVisualizationComponent::renderFrequencyLabels - min: %s\n", str.c_str());
 
     // Jobbra igazított max frekvencia
     tft.setTextDatum(BR_DATUM);
-    freqKHz = maxDisplayFrequencyHz >= 1000 ? maxDisplayFrequencyHz / 1000.0 : maxDisplayFrequencyHz;
-    str = String(freqKHz) + (maxDisplayFrequencyHz >= 1000 ? "kHz" : "Hz");
+    if (maxDisplayFrequencyHz >= 1000) {
+        float freqKHz = maxDisplayFrequencyHz / 1000.0f;
+        int freqInt = static_cast<int>(freqKHz);
+        float frac = freqKHz - freqInt;
+        if (fabs(frac) < 0.05f) {
+            str = String(freqInt) + "kHz";
+        } else {
+            str = String(freqKHz, 1) + "kHz";
+        }
+    } else {
+        str = String(maxDisplayFrequencyHz) + "Hz";
+    }
     tft.drawString(str, bounds.x + bounds.width, indicatorY + indicatorH);
     DEBUG("SpectrumVisualizationComponent::renderFrequencyLabels - max: %s\n", str.c_str());
 
