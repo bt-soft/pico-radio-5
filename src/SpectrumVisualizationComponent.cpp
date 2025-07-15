@@ -1606,7 +1606,7 @@ uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mo
             return 1024; // Maximum felbontás a spektrum analizáláshoz
         case DisplayMode::CWWaterfall:
         case DisplayMode::RTTYWaterfall:
-            return 1024; //  felbontás a hangolási segédhez
+            return 2048; //  felbontás a hangolási segédhez
 
         case DisplayMode::SpectrumHighRes:
             return 1024; // Maximum felbontás a spektrum analizáláshoz
