@@ -274,7 +274,7 @@ void SpectrumVisualizationComponent::draw() {
         // Töröljük a területet ahol az indicator volt - KERET ALATT
         int indicatorH = 20;                       // fix magasság az indicator számára
         int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt
-        tft.fillRect(bounds.x, indicatorY, bounds.width, indicatorH, TFT_BLACK);
+        tft.fillRect(bounds.x-3, indicatorY, bounds.width+3, indicatorH, TFT_BLACK);
     }
 
     // Only draw mode indicator once when it becomes visible
