@@ -12,7 +12,7 @@ const uint16_t colors0[16] = {0x0000, 0x000F, 0x001F, 0x081F, 0x0810, 0x0800, 0x
 const uint16_t colors1[16] = {0x0000, 0x1000, 0x2000, 0x4000, 0x8000, 0xC000, 0xF800, 0xF8A0, 0xF9C0, 0xFD20, 0xFFE0, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF}; // Hot
 
 constexpr uint16_t MODE_INDICATOR_VISIBLE_TIMEOUT_MS = 10 * 1000; // x másodperc láthatóság
-constexpr uint8_t SPECTRUM_FPS = 25;                              // FPS limitálás konstans
+constexpr uint8_t SPECTRUM_FPS = 20;                              // FPS limitálás konstans, ez még élvezhető fizualizációt ad, maradjon így 20 FPS-en
 
 }; // namespace FftDisplayConstants
 
@@ -40,6 +40,78 @@ constexpr float TUNING_AID_INPUT_SCALE = 3.0f; // Hangolási segéd intenzitás 
 namespace AnalyzerConstants {
 constexpr uint16_t ANALYZER_MIN_FREQ_HZ = 300;
 }; // namespace AnalyzerConstants
+
+/**
+ * @brief Konstruktor
+ */
+SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode)
+    : UIComponent(Rect(x, y, w, h)),                   //
+      radioMode_(radioMode),                           //
+      currentMode_(DisplayMode::Off),                  //
+      lastRenderedMode_(DisplayMode::Off),             //
+      modeIndicatorVisible_(false),                    //
+      modeIndicatorDrawn_(false),                      //
+      frequencyLabelsDrawn_(false),                    //
+      modeIndicatorHideTime_(0),                       //
+      lastTouchTime_(0),                               //
+      lastFrameTime_(0),                               //
+      envelopeLastSmoothedValue_(0.0f),                //
+      frameHistoryIndex_(0),                           //
+      frameHistoryFull_(false),                        //
+      adaptiveGainFactor_(0.02f),                      //
+      lastGainUpdateTime_(0),                          //
+      sprite_(nullptr),                                //
+      spriteCreated_(false),                           //
+      indicatorFontHeight_(0),                         //
+      currentTuningAidType_(TuningAidType::CW_TUNING), //
+      currentTuningAidMinFreqHz_(0.0f),                //
+      currentTuningAidMaxFreqHz_(0.0f),                //
+      isMutedDrawn(false) {
+
+    maxDisplayFrequencyHz_ = radioMode_ == RadioMode::AM ? SpectrumVisualizationComponent::MAX_DISPLAY_FREQUENCY_AM : SpectrumVisualizationComponent::MAX_DISPLAY_FREQUENCY_FM;
+
+    // Peak detection buffer inicializálása
+    memset(Rpeak_, 0, sizeof(Rpeak_));
+
+    // Frame history buffer inicializálása
+    for (int i = 0; i < FRAME_HISTORY_SIZE; i++) {
+        frameMaxHistory_[i] = 0.0f;
+    }
+
+    // Waterfall buffer inicializálása
+    if (bounds.height > 0 && bounds.width > 0) {
+        wabuf.resize(bounds.height, std::vector<uint8_t>(bounds.width, 0));
+    }
+
+    // Sprite inicializálása
+    sprite_ = new TFT_eSprite(&tft);
+
+    // Sprite előkészítése a kezdeti módhoz
+    manageSpriteForMode(currentMode_);
+
+    // Indítsuk el a módok megjelenítését
+    startShowModeIndicator();
+
+    decoderManager = new DigitalDecoderManager(AudioProcessorConstants::DEFAULT_AM_SAMPLING_FREQUENCY, 2048);
+    decoderManager->setMode(DigitalDecoderManager::Mode::CW);
+    decoderManager->setCwParams(config.data.cwReceiverOffsetHz);
+}
+
+/**
+ * @brief Destruktor
+ */
+SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
+    if (sprite_) {
+        sprite_->deleteSprite();
+        delete sprite_;
+        sprite_ = nullptr;
+    }
+
+    if (decoderManager) {
+        delete decoderManager;
+        decoderManager = nullptr;
+    }
+}
 
 /**
  * @brief Frame-alapú adaptív autogain frissítése
@@ -134,94 +206,56 @@ bool SpectrumVisualizationComponent::isAutoGainMode() {
 }
 
 /**
+ * @brief Config értékek konvertálása
+ */
+SpectrumVisualizationComponent::DisplayMode SpectrumVisualizationComponent::configValueToDisplayMode(uint8_t configValue) {
+    if (configValue <= static_cast<uint8_t>(DisplayMode::RTTYWaterfall)) {
+        return static_cast<DisplayMode>(configValue);
+    }
+    return DisplayMode::Off;
+}
+
+/**
+ * @brief DisplayMode konvertálása config értékre
+ */
+uint8_t SpectrumVisualizationComponent::displayModeToConfigValue(DisplayMode mode) {
+    //
+    return static_cast<uint8_t>(mode);
+}
+
+/**
+ * @brief Beállítja az aktuális audio módot a megfelelő rádió mód alapján.
+ *
+ */
+void SpectrumVisualizationComponent::setCurrentModeToConfig() {
+
+    // Config-ba mentjük az aktuális audio módot a megfelelő rádió mód alapján
+    uint8_t modeValue = displayModeToConfigValue(currentMode_);
+
+    if (radioMode_ == RadioMode::AM) {
+        config.data.audioModeAM = modeValue;
+    } else if (radioMode_ == RadioMode::FM) {
+        config.data.audioModeFM = modeValue;
+    }
+}
+
+/**
  * Waterfall színpaletta RGB565 formátumban
  */
 const uint16_t SpectrumVisualizationComponent::WATERFALL_COLORS[16] = {0x0000, 0x000F, 0x001F, 0x081F, 0x0810, 0x0800, 0x0C00, 0x1C00, 0xFC00, 0xFDE0, 0xFFE0, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF};
-
-/**
- * @brief Konstruktor
- */
-SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode)
-    : UIComponent(Rect(x, y, w, h)),                   //
-      radioMode_(radioMode),                           //
-      currentMode_(DisplayMode::Off),                  //
-      lastRenderedMode_(DisplayMode::Off),             //
-      modeIndicatorVisible_(false),                    //
-      modeIndicatorDrawn_(false),                      //
-      frequencyLabelsDrawn_(false),                    //
-      modeIndicatorHideTime_(0),                       //
-      lastTouchTime_(0),                               //
-      lastFrameTime_(0),                               //
-      envelopeLastSmoothedValue_(0.0f),                //
-      frameHistoryIndex_(0),                           //
-      frameHistoryFull_(false),                        //
-      adaptiveGainFactor_(0.02f),                      //
-      lastGainUpdateTime_(0),                          //
-      sprite_(nullptr),                                //
-      spriteCreated_(false),                           //
-      indicatorFontHeight_(0),                         //
-      currentTuningAidType_(TuningAidType::CW_TUNING), //
-      currentTuningAidMinFreqHz_(0.0f),                //
-      currentTuningAidMaxFreqHz_(0.0f),                //
-      isMutedDrawn(false) {
-
-    maxDisplayFrequencyHz_ = radioMode_ == RadioMode::AM ? SpectrumVisualizationComponent::MAX_DISPLAY_FREQUENCY_AM : SpectrumVisualizationComponent::MAX_DISPLAY_FREQUENCY_FM;
-
-    // Peak detection buffer inicializálása
-    memset(Rpeak_, 0, sizeof(Rpeak_));
-
-    // Frame history buffer inicializálása
-    for (int i = 0; i < FRAME_HISTORY_SIZE; i++) {
-        frameMaxHistory_[i] = 0.0f;
-    }
-
-    // Waterfall buffer inicializálása
-    if (bounds.height > 0 && bounds.width > 0) {
-        wabuf.resize(bounds.height, std::vector<uint8_t>(bounds.width, 0));
-    }
-
-    // Sprite inicializálása
-    sprite_ = new TFT_eSprite(&tft);
-
-    // Sprite előkészítése a kezdeti módhoz
-    manageSpriteForMode(currentMode_);
-
-    // Indítsuk el a módok megjelenítését
-    startShowModeIndicator();
-
-    decoderManager = new DigitalDecoderManager(AudioProcessorConstants::DEFAULT_AM_SAMPLING_FREQUENCY, 2048);
-    decoderManager->setMode(DigitalDecoderManager::Mode::CW);
-    decoderManager->setCwParams(config.data.cwReceiverOffsetHz);
-}
-
-/**
- * @brief Destruktor
- */
-SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
-    if (sprite_) {
-        sprite_->deleteSprite();
-        delete sprite_;
-        sprite_ = nullptr;
-    }
-
-    if (decoderManager) {
-        delete decoderManager;
-        decoderManager = nullptr;
-    }
-}
 
 /**
  * @brief UIComponent draw implementáció
  */
 void SpectrumVisualizationComponent::draw() {
 
-    // // FPS limitálás - az FPS értéke makróval állítható
-    // constexpr uint32_t FRAME_TIME_MS = 1000 / FftDisplayConstants::SPECTRUM_FPS;
-    // uint32_t currentTime = millis();
-    // if (currentTime - lastFrameTime_ < FRAME_TIME_MS) { // FPS limit
-    //     return;
-    // }
-    // lastFrameTime_ = currentTime;
+    // FPS limitálás - az FPS értéke makróval állítható
+    constexpr uint32_t FRAME_TIME_MS = 1000 / FftDisplayConstants::SPECTRUM_FPS;
+    uint32_t currentTime = millis();
+    if (currentTime - lastFrameTime_ < FRAME_TIME_MS) { // FPS limit
+        return;
+    }
+    lastFrameTime_ = currentTime;
 
     // Ha Mute állapotban vagyunk
     if (rtv::muteStat) {
@@ -254,29 +288,34 @@ void SpectrumVisualizationComponent::draw() {
 
     // Renderelés módjának megfelelően
     switch (currentMode_) {
+
         case DisplayMode::Off:
             renderOffMode();
             break;
+
         case DisplayMode::SpectrumLowRes:
             renderSpectrumLowRes();
             break;
+
         case DisplayMode::SpectrumHighRes:
             renderSpectrumHighRes();
             break;
+
         case DisplayMode::Oscilloscope:
             renderOscilloscope();
             break;
+
         case DisplayMode::Envelope:
             renderEnvelope();
             break;
+
         case DisplayMode::Waterfall:
             renderWaterfall();
             break;
+
         case DisplayMode::CWWaterfall:
-            renderCWWaterfall();
-            break;
         case DisplayMode::RTTYWaterfall:
-            renderRTTYWaterfall();
+            renderCwOrRttyTuningAid();
             break;
     }
 
@@ -426,6 +465,14 @@ void SpectrumVisualizationComponent::setFftParametersForDisplayMode() {
 
         // Oszcilloszkóp mód esetén engedélyezzük az oszcilloszkóp minták gyűjtését
         AudioCore1Manager::setCollectOsci(currentMode_ == DisplayMode::Oscilloscope);
+
+        if (currentMode_ == DisplayMode::CWWaterfall) {
+            // Alapértelmezett módok esetén a CW dekóder használata
+            setTuningAidType(TuningAidType::CW_TUNING);
+        } else if (currentMode_ == DisplayMode::RTTYWaterfall) {
+            // RTTY waterfall esetén a CW dekóder nem szükséges
+            setTuningAidType(TuningAidType::RTTY_TUNING);
+        }
     }
 }
 
@@ -1101,129 +1148,6 @@ void SpectrumVisualizationComponent::renderWaterfall() {
 }
 
 /**
- * @brief Spektrum mód dekódolása szöveggé
- */
-const char *SpectrumVisualizationComponent::decodeModeToStr() {
-
-    const char *modeText = "";
-
-    switch (currentMode_) {
-        case DisplayMode::Off:
-            modeText = "Off";
-            break;
-        case DisplayMode::SpectrumLowRes:
-            modeText = "FFT lowres";
-            break;
-        case DisplayMode::SpectrumHighRes:
-            modeText = "FFT highres";
-            break;
-        case DisplayMode::Oscilloscope:
-            modeText = "Oscilloscope";
-            break;
-        case DisplayMode::Waterfall:
-            modeText = "Waterfall";
-            break;
-        case DisplayMode::Envelope:
-            modeText = "Envelope";
-            break;
-        case DisplayMode::CWWaterfall:
-            modeText = "CW Waterfall";
-            break;
-        case DisplayMode::RTTYWaterfall:
-            modeText = "RTTY Waterfall";
-            break;
-        default:
-            modeText = "Unknown";
-            break;
-    }
-    return modeText;
-}
-
-/**
- * @brief Mode indicator renderelése
- */
-void SpectrumVisualizationComponent::renderModeIndicator() {
-    if (!modeIndicatorVisible_)
-        return;
-
-    int indicatorH = getIndicatorHeight();
-    if (indicatorH < 8)
-        return;
-
-    tft.setFreeFont();
-    tft.setTextSize(1);
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK); // Background black, this clears the previous
-    tft.setTextDatum(BC_DATUM);              // Bottom-center alignment
-
-    // Mode szöveggé dekódolása
-
-    String modeText = decodeModeToStr();
-    if (currentMode_ != DisplayMode::Off) {
-        modeText += isAutoGainMode() ? " (Auto" : " (Manu";
-        modeText += " gain)";
-    }
-
-    // Clear mode indicator area explicitly before text drawing - KERET ALATT
-    int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
-    tft.fillRect(bounds.x - 4, indicatorY, bounds.width + 8, indicatorH, TFT_BLACK);
-
-    // Draw text at component bottom + indicator area, center
-    // Y coordinate will be the text baseline (bottom of the indicator area)
-    tft.drawString(modeText, bounds.x + bounds.width / 2, indicatorY + indicatorH);
-}
-
-/**
- * @brief Frekvencia címkék renderelése a mode indikátor helyére
- */
-void SpectrumVisualizationComponent::renderFrequencyLabels(uint16_t minDisplayFrequencyHz, uint16_t maxDisplayFrequencyHz) {
-
-    if (!frequencyLabelsDrawn_) {
-        return;
-    }
-
-    uint16_t indicatorH = 10;
-    uint16_t indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
-
-    tft.setFreeFont();
-    tft.setTextSize(1);
-    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-
-    // Balra igazított min frekvencia
-    tft.setTextDatum(BL_DATUM);
-    tft.drawString(Utils::formatFrequencyString(minDisplayFrequencyHz), bounds.x, indicatorY + indicatorH);
-
-    // Jobbra igazított max frekvencia
-    tft.setTextDatum(BR_DATUM);
-    tft.drawString(Utils::formatFrequencyString(maxDisplayFrequencyHz), bounds.x + bounds.width, indicatorY + indicatorH);
-
-    frequencyLabelsDrawn_ = false;
-}
-
-/**
- * @brief Gradient oszlop rajzolása
- */
-void SpectrumVisualizationComponent::drawGradientBar(int x, int y, int w, int h, float intensity) {
-    uint16_t color = getSpectrumColor(intensity);
-    tft.fillRect(x, y, w, h, color);
-}
-
-/**
- * @brief Spektrum szín meghatározása
- */
-uint16_t SpectrumVisualizationComponent::getSpectrumColor(float intensity) {
-    // Egyszerű színskála: kék -> zöld -> sárga -> piros
-    if (intensity < 0.25f) {
-        return interpolateColor(TFT_BLUE, TFT_CYAN, intensity * 4.0f);
-    } else if (intensity < 0.5f) {
-        return interpolateColor(TFT_CYAN, TFT_GREEN, (intensity - 0.25f) * 4.0f);
-    } else if (intensity < 0.75f) {
-        return interpolateColor(TFT_GREEN, TFT_YELLOW, (intensity - 0.5f) * 4.0f);
-    } else {
-        return interpolateColor(TFT_YELLOW, TFT_RED, (intensity - 0.75f) * 4.0f);
-    }
-}
-
-/**
  * @brief Waterfall szín meghatározása
  */
 uint16_t SpectrumVisualizationComponent::valueToWaterfallColor(float val, float min_val, float max_val, byte colorProfileIndex) {
@@ -1245,69 +1169,9 @@ uint16_t SpectrumVisualizationComponent::valueToWaterfallColor(float val, float 
 }
 
 /**
- * @brief Színek interpolációja
- */
-uint16_t SpectrumVisualizationComponent::interpolateColor(uint16_t color1, uint16_t color2, float ratio) {
-    if (ratio <= 0.0f)
-        return color1;
-    if (ratio >= 1.0f)
-        return color2;
-
-    // RGB565 felbontása
-    uint8_t r1 = (color1 >> 11) & 0x1F;
-    uint8_t g1 = (color1 >> 5) & 0x3F;
-    uint8_t b1 = color1 & 0x1F;
-
-    uint8_t r2 = (color2 >> 11) & 0x1F;
-    uint8_t g2 = (color2 >> 5) & 0x3F;
-    uint8_t b2 = color2 & 0x1F;
-
-    // Interpoláció
-    uint8_t r = r1 + (uint8_t)((r2 - r1) * ratio);
-    uint8_t g = g1 + (uint8_t)((g2 - g1) * ratio);
-    uint8_t b = b1 + (uint8_t)((b2 - b1) * ratio);
-
-    // RGB565 összeállítása
-    return (r << 11) | (g << 5) | b;
-}
-
-/**
- * @brief Config értékek konvertálása
- */
-SpectrumVisualizationComponent::DisplayMode SpectrumVisualizationComponent::configValueToDisplayMode(uint8_t configValue) {
-    if (configValue <= static_cast<uint8_t>(DisplayMode::RTTYWaterfall)) {
-        return static_cast<DisplayMode>(configValue);
-    }
-    return DisplayMode::Off;
-}
-
-/**
- * @brief DisplayMode konvertálása config értékre
- */
-uint8_t SpectrumVisualizationComponent::displayModeToConfigValue(DisplayMode mode) {
-    //
-    return static_cast<uint8_t>(mode);
-}
-
-/**
- * @brief Beállítja az aktuális audio módot a megfelelő rádió mód alapján.
- *
- */
-void SpectrumVisualizationComponent::setCurrentModeToConfig() {
-
-    // Config-ba mentjük az aktuális audio módot a megfelelő rádió mód alapján
-    uint8_t modeValue = displayModeToConfigValue(currentMode_);
-
-    if (radioMode_ == RadioMode::AM) {
-        config.data.audioModeAM = modeValue;
-    } else if (radioMode_ == RadioMode::FM) {
-        config.data.audioModeFM = modeValue;
-    }
-}
-
-/**
  * @brief Beállítja a hangolási segéd típusát (CW vagy RTTY).
  * @param type A beállítandó TuningAidType.
+ * @note A setFftParametersForDisplayMode() hívja meg ezt a függvényt a hangolási segéd típusának beállítására.
  */
 void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
 
@@ -1354,25 +1218,9 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
 }
 
 /**
- * @brief CW Waterfall renderelése
- */
-void SpectrumVisualizationComponent::renderCWWaterfall() {
-    setTuningAidType(TuningAidType::CW_TUNING);
-    renderTuningAid();
-}
-
-/**
- * @brief RTTY Waterfall renderelése
- */
-void SpectrumVisualizationComponent::renderRTTYWaterfall() {
-    setTuningAidType(TuningAidType::RTTY_TUNING);
-    renderTuningAid();
-}
-
-/**
  * @brief Hangolási segéd renderelése (CW/RTTY waterfall)
  */
-void SpectrumVisualizationComponent::renderTuningAid() {
+void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
     // Audio feldolgozás Core1-en történik, AudioCore1Manager-en keresztül
 
     int graphH = getGraphHeight();
@@ -1389,10 +1237,10 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     float currentBinWidthHz = 0.0f;
     float currentAutoGain = 1.0f;
 
+    // Lekérjük az adatokat a Core1-ről
     bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
-
     if (!dataAvailable || !magnitudeData || currentBinWidthHz == 0) {
-        sprite_->pushSprite(bounds.x, bounds.y);
+        // sprite_->pushSprite(bounds.x, bounds.y); // Sprite kirakása a képernyőre
         return;
     }
 
@@ -1517,7 +1365,6 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     renderFrequencyLabels(min_freq_displayed, max_freq_displayed);
 
     decoderManager->processBlock(magnitudeData, actualFftSize);
-
     std::string text = decoderManager->getDecodedText();
     DEBUG("SpectrumVisualizationComponent::renderTuningAid - Decoded text: %s\n", text.c_str());
 }
@@ -1657,12 +1504,8 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
  */
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
     switch (mode) {
-        case DisplayMode::Waterfall:
-            return 1024; // Maximum felbontás a spektrum analizáláshoz
         case DisplayMode::CWWaterfall:
         case DisplayMode::RTTYWaterfall:
-            return 2048; //  felbontás a hangolási segédhez
-
         case DisplayMode::SpectrumHighRes:
             return 1024; // Maximum felbontás a spektrum analizáláshoz
 
@@ -1673,4 +1516,103 @@ uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mo
         default:
             return 512; // Alapértelmezett - gyorsabb
     }
+}
+
+/**
+ * @brief Spektrum mód dekódolása szöveggé
+ */
+const char *SpectrumVisualizationComponent::decodeModeToStr() {
+
+    const char *modeText = "";
+
+    switch (currentMode_) {
+        case DisplayMode::Off:
+            modeText = "Off";
+            break;
+        case DisplayMode::SpectrumLowRes:
+            modeText = "FFT lowres";
+            break;
+        case DisplayMode::SpectrumHighRes:
+            modeText = "FFT highres";
+            break;
+        case DisplayMode::Oscilloscope:
+            modeText = "Oscilloscope";
+            break;
+        case DisplayMode::Waterfall:
+            modeText = "Waterfall";
+            break;
+        case DisplayMode::Envelope:
+            modeText = "Envelope";
+            break;
+        case DisplayMode::CWWaterfall:
+            modeText = "CW Waterfall";
+            break;
+        case DisplayMode::RTTYWaterfall:
+            modeText = "RTTY Waterfall";
+            break;
+        default:
+            modeText = "Unknown";
+            break;
+    }
+    return modeText;
+}
+
+/**
+ * @brief Mode indicator renderelése
+ */
+void SpectrumVisualizationComponent::renderModeIndicator() {
+    if (!modeIndicatorVisible_)
+        return;
+
+    int indicatorH = getIndicatorHeight();
+    if (indicatorH < 8)
+        return;
+
+    tft.setFreeFont();
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK); // Background black, this clears the previous
+    tft.setTextDatum(BC_DATUM);              // Bottom-center alignment
+
+    // Mode szöveggé dekódolása
+
+    String modeText = decodeModeToStr();
+    if (currentMode_ != DisplayMode::Off) {
+        modeText += isAutoGainMode() ? " (Auto" : " (Manu";
+        modeText += " gain)";
+    }
+
+    // Clear mode indicator area explicitly before text drawing - KERET ALATT
+    int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
+    tft.fillRect(bounds.x - 4, indicatorY, bounds.width + 8, indicatorH, TFT_BLACK);
+
+    // Draw text at component bottom + indicator area, center
+    // Y coordinate will be the text baseline (bottom of the indicator area)
+    tft.drawString(modeText, bounds.x + bounds.width / 2, indicatorY + indicatorH);
+}
+
+/**
+ * @brief Frekvencia címkék renderelése a mode indikátor helyére
+ */
+void SpectrumVisualizationComponent::renderFrequencyLabels(uint16_t minDisplayFrequencyHz, uint16_t maxDisplayFrequencyHz) {
+
+    if (!frequencyLabelsDrawn_) {
+        return;
+    }
+
+    uint16_t indicatorH = 10;
+    uint16_t indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
+
+    tft.setFreeFont();
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+
+    // Balra igazított min frekvencia
+    tft.setTextDatum(BL_DATUM);
+    tft.drawString(Utils::formatFrequencyString(minDisplayFrequencyHz), bounds.x, indicatorY + indicatorH);
+
+    // Jobbra igazított max frekvencia
+    tft.setTextDatum(BR_DATUM);
+    tft.drawString(Utils::formatFrequencyString(maxDisplayFrequencyHz), bounds.x + bounds.width, indicatorY + indicatorH);
+
+    frequencyLabelsDrawn_ = false;
 }

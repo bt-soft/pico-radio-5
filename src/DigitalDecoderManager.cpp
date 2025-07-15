@@ -1,3 +1,5 @@
+#include <Arduino.h>
+
 #include "DigitalDecoderManager.h"
 
 DigitalDecoderManager::DigitalDecoderManager(float sampleRate, int blockSize) : mode_(Mode::NONE), cwDecoder_(sampleRate, blockSize, 800.0f), rttyDecoder_(sampleRate, blockSize, 2125.0f, 2295.0f) {}
@@ -13,7 +15,7 @@ void DigitalDecoderManager::setRttyParams(float mark, float space) { rttyDecoder
 
 void DigitalDecoderManager::processBlock(const double *samples, int numSamples) {
     if (mode_ == Mode::CW) {
-        cwDecoder_.processBlock(samples, numSamples);
+        cwDecoder_.processBlock(samples, numSamples, millis());
     } else if (mode_ == Mode::RTTY) {
         rttyDecoder_.processBlock(samples, numSamples);
     }

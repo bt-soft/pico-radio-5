@@ -186,16 +186,11 @@ class SpectrumVisualizationComponent : public UIComponent {
      * @brief CW/RTTY hangolási segéd függvények
      */
     void setTuningAidType(TuningAidType type);
-    void renderCWWaterfall();
-    void renderRTTYWaterfall();
-    void renderTuningAid();
+    void renderCwOrRttyTuningAid();
 
     /**
      * @brief Segéd függvények
      */
-    uint16_t getSpectrumColor(float intensity);
-    void drawGradientBar(int x, int y, int w, int h, float intensity);
-    uint16_t interpolateColor(uint16_t color1, uint16_t color2, float ratio);
     uint16_t valueToWaterfallColor(float val, float min_val, float max_val, byte colorProfileIndex);
     int getGraphHeight() const;
     int getIndicatorHeight() const;

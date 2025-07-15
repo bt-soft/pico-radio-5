@@ -1,8 +1,6 @@
 #include "AudioCore1Manager.h"
 #include "defines.h"
 
-constexpr uint32_t DEFAULT_LOOP_INTERVAL_MSEC = 50; // 50ms = 20Hz frissítés
-
 // Statikus tagváltozók inicializálása
 AudioCore1Manager::SharedAudioData *AudioCore1Manager::pSharedData_ = nullptr;
 AudioProcessor *AudioCore1Manager::pAudioProcessor_ = nullptr;
@@ -142,7 +140,6 @@ void AudioCore1Manager::core1Entry() {
 void AudioCore1Manager::core1AudioLoop() {
 
     uint32_t lastProcessTime = 0;
-    const uint32_t processInterval = DEFAULT_LOOP_INTERVAL_MSEC;
 
     // Audio feldolgozási loop
     while (!pSharedData_->core1ShouldStop) {
@@ -173,7 +170,8 @@ void AudioCore1Manager::core1AudioLoop() {
         }
 
         // Audio feldolgozás időzített végrehajtása
-        if (now - lastProcessTime >= processInterval) {
+        constexpr uint32_t DEFAULT_LOOP_INTERVAL_MSEC = 100; // core1 túlterhelés megfékezése
+        if (now - lastProcessTime >= DEFAULT_LOOP_INTERVAL_MSEC) {
 
             // Audio feldolgozás végrehajtása
             if (pAudioProcessor_) {
@@ -229,7 +227,6 @@ void AudioCore1Manager::setCollectOsci(bool collectOsci) {
         return;
     }
     collectOsci_ = collectOsci;
-    DEBUG("AudioCore1Manager: Oszcilloszkóp minták gyűjtése %s\n", collectOsci ? "engedélyezve" : "letiltva");
 }
 
 /**
@@ -260,7 +257,7 @@ bool AudioCore1Manager::setSamplingFrequency(uint16_t newSamplingFrequency) {
         return false;
     }
 
-    DEBUG("AudioCore1Manager::setSamplingFrequency: Mintavételezési frekvencia beállítása %d Hz-re\n", newSamplingFrequency);
+    // DEBUG("AudioCore1Manager::setSamplingFrequency: Mintavételezési frekvencia beállítása %d Hz-re\n", newSamplingFrequency);
 
     // Biztonságos konfiguráció váltás
     if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
@@ -287,7 +284,7 @@ bool AudioCore1Manager::setFftSize(uint16_t newSize) {
         return false;
     }
 
-    DEBUG("AudioCore1Manager::setFftSize: FFT méret beállítása %d-re\n", newSize);
+    // DEBUG("AudioCore1Manager::setFftSize: FFT méret beállítása %d-re\n", newSize);
 
     // Biztonságos konfiguráció váltás
     if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
@@ -309,7 +306,7 @@ void AudioCore1Manager::updateAudioConfig() {
         return;
     }
 
-    DEBUG("AudioCore1Manager::updateAudioConfig: Audio konfiguráció frissítése...\n");
+    // DEBUG("AudioCore1Manager::updateAudioConfig: Audio konfiguráció frissítése...\n");
 
     // FFT méret frissítése ha szükséges
     if (pSharedData_->fftSize != 0 && pAudioProcessor_->getFftSize() != pSharedData_->fftSize) {
@@ -325,7 +322,7 @@ void AudioCore1Manager::updateAudioConfig() {
 
     pSharedData_->configChanged = false;
 
-    DEBUG("AudioCore1Manager::updateAudioConfig: Audio konfiguráció frissítése OK\n");
+    // DEBUG("AudioCore1Manager::updateAudioConfig: Audio konfiguráció frissítése OK\n");
 }
 
 /**
