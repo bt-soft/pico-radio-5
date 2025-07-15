@@ -27,7 +27,7 @@ constexpr float AMPLITUDE_SCALE = 0.8f; // Spektrum bar-ok amplitúdó skáláz�
 constexpr float OSCI_SENSITIVITY_FACTOR = 25.0f; // Oszcilloszkóp jel erősítése
 
 // Envelope mód - nagyobb érték = nagyobb amplitúdó
-constexpr float ENVELOPE_INPUT_GAIN = 4.0f; // 0.15f; // Envelope amplitúdó erősítése
+constexpr float ENVELOPE_INPUT_GAIN = 0.15f; // Envelope amplitúdó erősítése
 
 // Waterfall mód - nagyobb érték = élénkebb színek
 constexpr float WATERFALL_INPUT_SCALE = 8.0f; // Waterfall intenzitás skálázása
