@@ -7,6 +7,27 @@
 namespace Utils {
 
 /**
+ * @brief Frekvencia formázása: ha egész, akkor csak egész, ha van tizedes, akkor max 1 tizedesjegy (ha nem nulla)
+ * @param freqHz frekvencia Hz-ben
+ */
+String formatFrequencyString(float freqHz) {
+    String str;
+    if (freqHz >= 1000.0f) {
+        float freqKHz = freqHz / 1000.0f;
+        int freqInt = static_cast<int>(freqKHz);
+        float frac = freqKHz - freqInt;
+        if (fabs(frac) < 0.05f) {
+            str = String(freqInt) + "kHz";
+        } else {
+            str = String(freqKHz, 1) + "kHz";
+        }
+    } else {
+        str = String(static_cast<int>(freqHz + 0.5f)) + "Hz";
+    }
+    return str;
+}
+
+/**
  * Várakozás a soros port megnyitására
  * @param tft a TFT kijelző példánya
  */

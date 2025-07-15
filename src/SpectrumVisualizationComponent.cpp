@@ -1168,8 +1168,6 @@ void SpectrumVisualizationComponent::renderFrequencyLabels(uint16_t minDisplayFr
         return;
     }
 
-    DEBUG("SpectrumVisualizationComponent::renderFrequencyLabels - min: %d Hz, max: %d Hz\n", minDisplayFrequencyHz, maxDisplayFrequencyHz);
-
     uint16_t indicatorH = 10;
     uint16_t indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
 
@@ -1179,38 +1177,11 @@ void SpectrumVisualizationComponent::renderFrequencyLabels(uint16_t minDisplayFr
 
     // Balra igazított min frekvencia
     tft.setTextDatum(BL_DATUM);
-    String str;
-    if (minDisplayFrequencyHz >= 1000) {
-        float freqKHz = minDisplayFrequencyHz / 1000.0f;
-        int freqInt = static_cast<int>(freqKHz);
-        float frac = freqKHz - freqInt;
-        if (fabs(frac) < 0.05f) {
-            str = String(freqInt) + "kHz";
-        } else {
-            str = String(freqKHz, 1) + "kHz";
-        }
-    } else {
-        str = String(minDisplayFrequencyHz) + "Hz";
-    }
-    tft.drawString(str, bounds.x, indicatorY + indicatorH);
-    DEBUG("SpectrumVisualizationComponent::renderFrequencyLabels - min: %s\n", str.c_str());
+    tft.drawString(Utils::formatFrequencyString(minDisplayFrequencyHz), bounds.x, indicatorY + indicatorH);
 
     // Jobbra igazított max frekvencia
     tft.setTextDatum(BR_DATUM);
-    if (maxDisplayFrequencyHz >= 1000) {
-        float freqKHz = maxDisplayFrequencyHz / 1000.0f;
-        int freqInt = static_cast<int>(freqKHz);
-        float frac = freqKHz - freqInt;
-        if (fabs(frac) < 0.05f) {
-            str = String(freqInt) + "kHz";
-        } else {
-            str = String(freqKHz, 1) + "kHz";
-        }
-    } else {
-        str = String(maxDisplayFrequencyHz) + "Hz";
-    }
-    tft.drawString(str, bounds.x + bounds.width, indicatorY + indicatorH);
-    DEBUG("SpectrumVisualizationComponent::renderFrequencyLabels - max: %s\n", str.c_str());
+    tft.drawString(Utils::formatFrequencyString(maxDisplayFrequencyHz), bounds.x + bounds.width, indicatorY + indicatorH);
 
     frequencyLabelsDrawn_ = false;
 }

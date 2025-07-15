@@ -7,6 +7,13 @@
 
 //--- Utils ---
 namespace Utils {
+
+/**
+ * Frekvencia formázása: ha egész, akkor csak egész, ha van tizedes, akkor max 1 tizedesjegy (ha nem nulla)
+ * @param freqHz frekvencia Hz-ben
+ * @return String, pl. "10kHz", "10.5kHz", "950Hz"
+ */
+String formatFrequencyString(float freqHz);
 /**
  * Biztonságos string másolás
  * @param dest cél string
