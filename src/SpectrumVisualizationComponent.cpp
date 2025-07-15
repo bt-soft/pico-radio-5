@@ -10,7 +10,10 @@
 namespace FftDisplayConstants {
 const uint16_t colors0[16] = {0x0000, 0x000F, 0x001F, 0x081F, 0x0810, 0x0800, 0x0C00, 0x1C00, 0xFC00, 0xFDE0, 0xFFE0, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF}; // Cold
 const uint16_t colors1[16] = {0x0000, 0x1000, 0x2000, 0x4000, 0x8000, 0xC000, 0xF800, 0xF8A0, 0xF9C0, 0xFD20, 0xFFE0, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF}; // Hot
-constexpr uint16_t MODE_INDICATOR_VISIBLE_TIMEOUT_MS = 20000;                                                                                                  // 20 másodperc láthatóság
+
+constexpr uint16_t MODE_INDICATOR_VISIBLE_TIMEOUT_MS = 10 * 1000; // x másodperc láthatóság
+constexpr uint8_t SPECTRUM_FPS = 25;                              // FPS limitálás konstans
+
 }; // namespace FftDisplayConstants
 
 // ===== ÉRZÉKENYSÉGI / AMPLITÚDÓ SKÁLÁZÁSI KONSTANSOK =====
@@ -18,16 +21,16 @@ constexpr uint16_t MODE_INDICATOR_VISIBLE_TIMEOUT_MS = 20000;                   
 // EGYSÉGES LOGIKA: nagyobb érték = nagyobb érzékenység (minden módnál)
 namespace SensitivityConstants {
 // Spektrum módok (LowRes és HighRes) - nagyobb érték = nagyobb érzékenység
-constexpr float AMPLITUDE_SCALE = 0.8f; // Spektrum bar-ok amplitúdó skálázása (csökkentve a túlvezérlés ellen)
+constexpr float AMPLITUDE_SCALE = 0.8f; // Spektrum bar-ok amplitúdó skálázása
 
 // Oszcilloszkóp mód - nagyobb érték = nagyobb érzékenység
 constexpr float OSCI_SENSITIVITY_FACTOR = 25.0f; // Oszcilloszkóp jel erősítése
 
 // Envelope mód - nagyobb érték = nagyobb amplitúdó
-constexpr float ENVELOPE_INPUT_GAIN = 0.15f; // Envelope amplitúdó erősítése (eredeti nagyítás visszaállítása)
+constexpr float ENVELOPE_INPUT_GAIN = 4.0f; // 0.15f; // Envelope amplitúdó erősítése
 
 // Waterfall mód - nagyobb érték = élénkebb színek
-constexpr float WATERFALL_INPUT_SCALE = 8.0f; // Waterfall intenzitás skálázása (növelve az érzékenységért)
+constexpr float WATERFALL_INPUT_SCALE = 8.0f; // Waterfall intenzitás skálázása
 
 // CW/RTTY hangolási segéd - nagyobb érték = élénkebb színek
 constexpr float TUNING_AID_INPUT_SCALE = 3.0f; // Hangolási segéd intenzitás skálázása
@@ -203,9 +206,10 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
  */
 void SpectrumVisualizationComponent::draw() {
 
-    // FPS limitálás - maximum ~30 FPS a villogás csökkentéséhez
+    // FPS limitálás - az FPS értéke makróval állítható
+    constexpr uint32_t FRAME_TIME_MS = 1000 / FftDisplayConstants::SPECTRUM_FPS;
     uint32_t currentTime = millis();
-    if (currentTime - lastFrameTime_ < 33) { // 33ms = ~30 FPS
+    if (currentTime - lastFrameTime_ < FRAME_TIME_MS) { // FPS limit
         return;
     }
     lastFrameTime_ = currentTime;
@@ -1383,12 +1387,8 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         return;
     }
 
-    // 1. Adatok eltolása lefelé a wabuf-ban (időbeli léptetés)
-    for (int c = 0; c < bounds.width; ++c) {
-        for (int r = bounds.height - 1; r > 0; --r) {
-            wabuf[r][c] = wabuf[r - 1][c];
-        }
-    }
+    // 1. Sprite scroll lefelé (1 pixel)
+    sprite_->scroll(0, 1);
 
     // Waterfall paraméterek: tuning aid-hez a min-max frekvenciahatárok alapján
     const int min_bin_for_tuning = std::max(2, static_cast<int>(std::round(currentTuningAidMinFreqHz_ / currentBinWidthHz)));
@@ -1399,7 +1399,7 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     float adaptiveScale = getAdaptiveScale(SensitivityConstants::WATERFALL_INPUT_SCALE);
     float maxMagnitude = 0.0f;
 
-    // 2. Új adatok betöltése a wabuf tetejére (a legfrissebb sor)
+    // 2. Új adatok betöltése a legfelső sorba és csak azt rajzoljuk ki
     for (int c = 0; c < bounds.width; ++c) {
         float ratio_in_display_width = (bounds.width <= 1) ? 0.0f : (static_cast<float>(c) / (bounds.width - 1));
         int fft_bin_index = min_bin_for_tuning + static_cast<int>(std::round(ratio_in_display_width * (num_bins_in_tuning_range - 1)));
@@ -1409,17 +1409,11 @@ void SpectrumVisualizationComponent::renderTuningAid() {
         double scaledMagnitude = rawMagnitude * adaptiveScale;
         uint8_t finalValue = static_cast<uint8_t>(constrain(scaledMagnitude, 0.0, 255.0));
         wabuf[0][c] = finalValue;
-    }
 
-    // 3. Sprite törlése és új időoszlop kirajzolása (X: idő, Y: frekvencia)
-    sprite_->fillSprite(TFT_BLACK);
-    for (int c = 0; c < bounds.width; ++c) {
-        for (int r = 0; r < graphH; ++r) {
-            int r_wabuf = (r * (bounds.height - 1)) / std::max(1, (graphH - 1));
-            constexpr int WF_GRADIENT = 100;
-            uint16_t color = valueToWaterfallColor(WF_GRADIENT * wabuf[r_wabuf][c], 0.0f, 255.0f * WF_GRADIENT, 0);
-            sprite_->drawPixel(c, r, color);
-        }
+        // Csak a legfelső sort rajzoljuk ki (y=0)
+        constexpr int WF_GRADIENT = 100;
+        uint16_t color = valueToWaterfallColor(WF_GRADIENT * finalValue, 0.0f, 255.0f * WF_GRADIENT, 0);
+        sprite_->drawPixel(c, 0, color);
     }
 
     // Adaptív autogain frissítése
