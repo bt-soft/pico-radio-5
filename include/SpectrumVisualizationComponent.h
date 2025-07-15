@@ -105,7 +105,10 @@ class SpectrumVisualizationComponent : public UIComponent {
      * @brief Frissíti a maximális megjelenítési frekvenciát
      * @param maxDisplayFrequencyHz Az FFT mintavételezési frekvenciája
      */
-    inline void setMaxDisplayFrequencyHz(uint16_t maxDisplayFrequencyHz) { maxDisplayFrequencyHz_ = maxDisplayFrequencyHz; }
+    inline void setMaxDisplayFrequencyHz(uint16_t maxDisplayFrequencyHz) {
+        maxDisplayFrequencyHz_ = maxDisplayFrequencyHz;
+        frequencyLabelsDrawn_ = true;
+    }
 
   private:
     RadioMode radioMode_;
@@ -166,6 +169,9 @@ class SpectrumVisualizationComponent : public UIComponent {
     void renderWaterfall();
     void renderEnvelope();
     void renderModeIndicator();
+    void renderFrequencyLabels(uint16_t minDisplayFrequencyHz, uint16_t maxDisplayFrequencyHz);
+
+    void startShowModeIndicator();
 
     /**
      * @brief Spectrum bar függvények (radio-2 alapján)

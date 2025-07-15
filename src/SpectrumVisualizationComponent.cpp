@@ -10,6 +10,7 @@
 namespace FftDisplayConstants {
 const uint16_t colors0[16] = {0x0000, 0x000F, 0x001F, 0x081F, 0x0810, 0x0800, 0x0C00, 0x1C00, 0xFC00, 0xFDE0, 0xFFE0, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF}; // Cold
 const uint16_t colors1[16] = {0x0000, 0x1000, 0x2000, 0x4000, 0x8000, 0xC000, 0xF800, 0xF8A0, 0xF9C0, 0xFD20, 0xFFE0, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF}; // Hot
+constexpr uint16_t MODE_INDICATOR_VISIBLE_TIMEOUT_MS = 20000;                                                                                                  // 20 másodperc láthatóság
 }; // namespace FftDisplayConstants
 
 // ===== ÉRZÉKENYSÉGI / AMPLITÚDÓ SKÁLÁZÁSI KONSTANSOK =====
@@ -34,7 +35,7 @@ constexpr float TUNING_AID_INPUT_SCALE = 3.0f; // Hangolási segéd intenzitás 
 
 // Analizátor konstansok
 namespace AnalyzerConstants {
-constexpr float ANALYZER_MIN_FREQ_HZ = 300.0f;
+constexpr uint16_t ANALYZER_MIN_FREQ_HZ = 300;
 }; // namespace AnalyzerConstants
 
 /**
@@ -181,6 +182,9 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
 
     // Sprite előkészítése a kezdeti módhoz
     manageSpriteForMode(currentMode_);
+
+    // Indítsuk el a módok megjelenítését
+    startShowModeIndicator();
 }
 
 /**
@@ -209,13 +213,12 @@ void SpectrumVisualizationComponent::draw() {
     // Ha Mute állapotban vagyunk
     if (rtv::muteStat) {
         if (!isMutedDrawn) {
-            DEBUG("SpectrumVisualizationComponent: Mute állapotban vagyunk\n");
             drawFrame();
             drawMutedMessage();
         }
         return;
+
     } else if (!rtv::muteStat && isMutedDrawn) {
-        DEBUG("SpectrumVisualizationComponent: Mute állapot megszűnt, kirajzoljuk a keretet\n");
         isMutedDrawn = false;
         needBorderDrawn = true; // Muted állapot megszűnt, rajzoljuk újra a keretet
     }
@@ -230,9 +233,6 @@ void SpectrumVisualizationComponent::draw() {
         drawFrame();             // Rajzoljuk meg a keretet, ha szükséges
         needBorderDrawn = false; // Reset the flag after drawing
     }
-
-    // Audio adatok már a core1-en feldolgozás alatt vannak
-    // Itt csak lekérjük a feldolgozott adatokat
 
     // Biztonsági ellenőrzés: FM módban CW/RTTY módok nem engedélyezettek
     if (radioMode_ == RadioMode::FM && (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall)) {
@@ -268,19 +268,23 @@ void SpectrumVisualizationComponent::draw() {
     }
 
     // Mode indicator megjelenítése ha szükséges
+    if (modeIndicatorVisible_ && !modeIndicatorDrawn_) {
+        renderModeIndicator();
+        modeIndicatorDrawn_ = true; // Mark as drawn
+    }
+
+    // A mode indicator időzített eltüntetése
     if (modeIndicatorVisible_ && millis() > modeIndicatorHideTime_) {
         modeIndicatorVisible_ = false;
-        modeIndicatorDrawn_ = false; // Reset flag when hiding
+        modeIndicatorDrawn_ = false;
+
         // Töröljük a területet ahol az indicator volt - KERET ALATT
         int indicatorH = 20;                       // fix magasság az indicator számára
         int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt
         tft.fillRect(bounds.x - 3, indicatorY, bounds.width + 3, indicatorH, TFT_BLACK);
-    }
 
-    // Only draw mode indicator once when it becomes visible
-    if (modeIndicatorVisible_ && !modeIndicatorDrawn_) {
-        renderModeIndicator();
-        modeIndicatorDrawn_ = true; // Mark as drawn
+        // Frekvencia feliratok kirajzolásának engedélyezése
+        frequencyLabelsDrawn_ = true;
     }
 
     lastRenderedMode_ = currentMode_;
@@ -350,8 +354,6 @@ void SpectrumVisualizationComponent::manageSpriteForMode(DisplayMode modeToPrepa
         if (spriteCreated_) {
             sprite_->fillSprite(TFT_BLACK);
         }
-        // Flag resetelése mód váltáskor
-        frequencyLabelsDrawn_ = false;
 
         // Envelope reset mód váltáskor
         if (modeToPrepareFor == DisplayMode::Envelope) {
@@ -444,17 +446,27 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
     // FFT paraméterek beállítása az új módhoz
     setFftParametersForDisplayMode();
 
-    // Mode indicator megjelenítése 20 másodpercig
-    modeIndicatorVisible_ = true;
-    modeIndicatorDrawn_ = false;               // Reset a flag-et hogy azonnal megjelenjen
-    needBorderDrawn = true;                    // Kényszerítjük a keret újrarajzolását
-    modeIndicatorHideTime_ = millis() + 20000; // 20 másodpercig látható
+    // Mód indikátor indítása
+    startShowModeIndicator();
 
     // Sprite előkészítése az új módhoz
     manageSpriteForMode(currentMode_);
 
     // Config mentése
     setCurrentModeToConfig();
+}
+
+/**
+ * @brief Módok megjelenítésének indítása
+ */
+void SpectrumVisualizationComponent::startShowModeIndicator() {
+    // Mode indicator megjelenítése 20 másodpercig
+    modeIndicatorVisible_ = true;
+    modeIndicatorDrawn_ = false; // Reset a flag-et hogy azonnal megjelenjen
+    needBorderDrawn = true;      // Kényszerítjük a keret újrarajzolását
+
+    // Indikátor eltüntetésének időzítése
+    modeIndicatorHideTime_ = millis() + FftDisplayConstants::MODE_INDICATOR_VISIBLE_TIMEOUT_MS; // 20 másodpercig látható
 }
 
 /**
@@ -658,6 +670,9 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
+
+    // Frekvencia feliratok rajzolása, ha még nem történt meg
+    renderFrequencyLabels(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ, maxDisplayFrequencyHz_);
 }
 
 /**
@@ -737,6 +752,9 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
+
+    // Frekvencia feliratok rajzolása, ha még nem történt meg
+    renderFrequencyLabels(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ, maxDisplayFrequencyHz_);
 }
 
 /**
@@ -980,7 +998,6 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         }
     }
 
-    // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
 }
 
@@ -1082,28 +1099,28 @@ const char *SpectrumVisualizationComponent::decodeModeToStr() {
             modeText = "Off";
             break;
         case DisplayMode::SpectrumLowRes:
-            modeText = "FFT LowRes";
+            modeText = "FFT lowres";
             break;
         case DisplayMode::SpectrumHighRes:
-            modeText = "FFT HighRes";
+            modeText = "FFT highres";
             break;
         case DisplayMode::Oscilloscope:
-            modeText = "Scope";
+            modeText = "Oscilloscope";
             break;
         case DisplayMode::Waterfall:
-            modeText = "WaterFall";
+            modeText = "Waterfall";
             break;
         case DisplayMode::Envelope:
-            modeText = "Envelope";
+            modeText = "Burkológörbe";
             break;
         case DisplayMode::CWWaterfall:
-            modeText = "CW WaterFall";
+            modeText = "CW Waterfall";
             break;
         case DisplayMode::RTTYWaterfall:
-            modeText = "RTTY WaterFall";
+            modeText = "RTTY Waterfall";
             break;
         default:
-            modeText = "Unknown";
+            modeText = "Ismeretlen";
             break;
     }
     return modeText;
@@ -1128,8 +1145,10 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
     // Mode szöveggé dekódolása
 
     String modeText = decodeModeToStr();
-    modeText += isAutoGainMode() ? " (Auto" : " (Manual";
-    modeText += " Gain)";
+    if (currentMode_ != DisplayMode::Off) {
+        modeText += isAutoGainMode() ? " (Auto" : " (Manual";
+        modeText += " gain)";
+    }
 
     // Clear mode indicator area explicitly before text drawing - KERET ALATT
     int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
@@ -1138,6 +1157,41 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
     // Draw text at component bottom + indicator area, center
     // Y coordinate will be the text baseline (bottom of the indicator area)
     tft.drawString(modeText, bounds.x + bounds.width / 2, indicatorY + indicatorH);
+}
+
+/**
+ * @brief Frekvencia címkék renderelése a mode indikátor helyére
+ */
+void SpectrumVisualizationComponent::renderFrequencyLabels(uint16_t minDisplayFrequencyHz, uint16_t maxDisplayFrequencyHz) {
+
+    if (!frequencyLabelsDrawn_) {
+        return;
+    }
+
+    DEBUG("SpectrumVisualizationComponent::renderFrequencyLabels - min: %d Hz, max: %d Hz\n", minDisplayFrequencyHz, maxDisplayFrequencyHz);
+
+    uint16_t indicatorH = 10;
+    uint16_t indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
+
+    tft.setFreeFont();
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_YELLOW, TFT_BLACK);
+
+    // Balra igazított min frekvencia
+    tft.setTextDatum(BL_DATUM);
+    float freqKHz = minDisplayFrequencyHz >= 1000 ? minDisplayFrequencyHz / 1000.0 : minDisplayFrequencyHz;
+    String str = String(freqKHz) + (minDisplayFrequencyHz >= 1000 ? "kHz" : "Hz");
+    tft.drawString(str, bounds.x, indicatorY + indicatorH);
+    DEBUG("SpectrumVisualizationComponent::renderFrequencyLabels - min: %s\n", str.c_str());
+
+    // Jobbra igazított max frekvencia
+    tft.setTextDatum(BR_DATUM);
+    freqKHz = maxDisplayFrequencyHz >= 1000 ? maxDisplayFrequencyHz / 1000.0 : maxDisplayFrequencyHz;
+    str = String(freqKHz) + (maxDisplayFrequencyHz >= 1000 ? "kHz" : "Hz");
+    tft.drawString(str, bounds.x + bounds.width, indicatorY + indicatorH);
+    DEBUG("SpectrumVisualizationComponent::renderFrequencyLabels - max: %s\n", str.c_str());
+
+    frequencyLabelsDrawn_ = false;
 }
 
 /**
@@ -1225,7 +1279,10 @@ SpectrumVisualizationComponent::DisplayMode SpectrumVisualizationComponent::conf
 /**
  * @brief DisplayMode konvertálása config értékre
  */
-uint8_t SpectrumVisualizationComponent::displayModeToConfigValue(DisplayMode mode) { return static_cast<uint8_t>(mode); }
+uint8_t SpectrumVisualizationComponent::displayModeToConfigValue(DisplayMode mode) {
+    //
+    return static_cast<uint8_t>(mode);
+}
 
 /**
  * @brief Beállítja az aktuális audio módot a megfelelő rádió mód alapján.
@@ -1381,12 +1438,12 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     constexpr uint16_t TUNING_AID_RTTY_SPACE_COLOR = TFT_CYAN;
     constexpr uint16_t TUNING_AID_RTTY_MARK_COLOR = TFT_YELLOW;
 
+    uint16_t min_freq_displayed = currentTuningAidMinFreqHz_;
+    uint16_t max_freq_displayed = currentTuningAidMaxFreqHz_;
+    uint16_t displayed_span_hz = max_freq_displayed - min_freq_displayed;
+
     // 4. Célfrekvencia vonalának kirajzolása a sprite-ra
     if (currentTuningAidType_ == TuningAidType::CW_TUNING || currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
-
-        uint16_t min_freq_displayed = currentTuningAidMinFreqHz_;
-        uint16_t max_freq_displayed = currentTuningAidMaxFreqHz_;
-        uint16_t displayed_span_hz = max_freq_displayed - min_freq_displayed;
 
         // Hangolási csík kirajzolása
         if (displayed_span_hz > 0) {
@@ -1460,6 +1517,9 @@ void SpectrumVisualizationComponent::renderTuningAid() {
 
     // Adaptív autogain frissítése
     updateFrameBasedGain(maxMagnitude);
+
+    // Frekvencia feliratok rajzolása, ha még nem történt meg
+    renderFrequencyLabels(min_freq_displayed, max_freq_displayed);
 }
 
 /**
