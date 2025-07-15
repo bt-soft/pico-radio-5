@@ -91,10 +91,6 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
 
     // Indítsuk el a módok megjelenítését
     startShowModeIndicator();
-
-    decoderManager = new DigitalDecoderManager(AudioProcessorConstants::DEFAULT_AM_SAMPLING_FREQUENCY, 2048);
-    decoderManager->setMode(DigitalDecoderManager::Mode::CW);
-    decoderManager->setCwParams(config.data.cwReceiverOffsetHz);
 }
 
 /**
@@ -105,11 +101,6 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
         sprite_->deleteSprite();
         delete sprite_;
         sprite_ = nullptr;
-    }
-
-    if (decoderManager) {
-        delete decoderManager;
-        decoderManager = nullptr;
     }
 }
 
@@ -1363,10 +1354,6 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
 
     // Frekvencia feliratok rajzolása, ha még nem történt meg
     renderFrequencyLabels(min_freq_displayed, max_freq_displayed);
-
-    decoderManager->processBlock(magnitudeData, actualFftSize);
-    std::string text = decoderManager->getDecodedText();
-    DEBUG("SpectrumVisualizationComponent::renderTuningAid - Decoded text: %s\n", text.c_str());
 }
 
 /**
