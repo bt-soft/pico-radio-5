@@ -7,6 +7,7 @@
 #include "AudioProcessor.h"
 #include "Band.h"
 #include "ConfigData.h"
+#include "DigitalDecoderManager.h"
 #include "UIComponent.h"
 
 /**
@@ -153,6 +154,8 @@ class SpectrumVisualizationComponent : public UIComponent {
 
     // Waterfall buffer - egyszerűsített 2D vektor
     std::vector<std::vector<uint8_t>> wabuf;
+
+    DigitalDecoderManager *decoderManager;
 
     /**
      * @brief Sprite kezelő függvények (radio-2 alapján)

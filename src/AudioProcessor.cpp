@@ -231,6 +231,7 @@ void AudioProcessor::process(bool collectOsciSamples) {
     for (uint16_t i = 0; i < currentFftSize_; i++) {
         loopStartTimeMicros = micros();
         uint32_t sum = 0;
+
         // NOISE_REDUCTION_ANALOG_SAMPLES_COUNT minta átlagolása a zajcsökkentés érdekében
         for (uint16_t j = 0; j < NOISE_REDUCTION_ANALOG_SAMPLES_COUNT; j++) {
             sum += analogRead(audioInputPin);

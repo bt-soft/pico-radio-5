@@ -188,6 +188,10 @@ SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int
 
     // Indítsuk el a módok megjelenítését
     startShowModeIndicator();
+
+    decoderManager = new DigitalDecoderManager(AudioProcessorConstants::DEFAULT_AM_SAMPLING_FREQUENCY, 2048);
+    decoderManager->setMode(DigitalDecoderManager::Mode::CW);
+    decoderManager->setCwParams(config.data.cwReceiverOffsetHz);
 }
 
 /**
@@ -199,6 +203,11 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
         delete sprite_;
         sprite_ = nullptr;
     }
+
+    if (decoderManager) {
+        delete decoderManager;
+        decoderManager = nullptr;
+    }
 }
 
 /**
@@ -206,13 +215,13 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
  */
 void SpectrumVisualizationComponent::draw() {
 
-    // FPS limitálás - az FPS értéke makróval állítható
-    constexpr uint32_t FRAME_TIME_MS = 1000 / FftDisplayConstants::SPECTRUM_FPS;
-    uint32_t currentTime = millis();
-    if (currentTime - lastFrameTime_ < FRAME_TIME_MS) { // FPS limit
-        return;
-    }
-    lastFrameTime_ = currentTime;
+    // // FPS limitálás - az FPS értéke makróval állítható
+    // constexpr uint32_t FRAME_TIME_MS = 1000 / FftDisplayConstants::SPECTRUM_FPS;
+    // uint32_t currentTime = millis();
+    // if (currentTime - lastFrameTime_ < FRAME_TIME_MS) { // FPS limit
+    //     return;
+    // }
+    // lastFrameTime_ = currentTime;
 
     // Ha Mute állapotban vagyunk
     if (rtv::muteStat) {
@@ -474,7 +483,7 @@ void SpectrumVisualizationComponent::startShowModeIndicator() {
 }
 
 /**
- * @brief Mód betöltése config-ból
+ * @brief AM/FM Mód betöltése config-ból
  */
 void SpectrumVisualizationComponent::loadModeFromConfig() {
     // Config-ból betöltjük az aktuális rádió módnak megfelelő audio módot
@@ -1506,6 +1515,11 @@ void SpectrumVisualizationComponent::renderTuningAid() {
 
     // Frekvencia feliratok rajzolása, ha még nem történt meg
     renderFrequencyLabels(min_freq_displayed, max_freq_displayed);
+
+    decoderManager->processBlock(magnitudeData, actualFftSize);
+
+    std::string text = decoderManager->getDecodedText();
+    DEBUG("SpectrumVisualizationComponent::renderTuningAid - Decoded text: %s\n", text.c_str());
 }
 
 /**

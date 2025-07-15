@@ -254,7 +254,7 @@ class ScreenManager : public IScreenManager {
         if (currentScreen) {
 
             // Képernyővédő időzítő ellenőrzése
-            uint32_t screenSaverTimeoutMs = config.data.screenSaverTimeoutMinutes * 60000UL;
+            uint32_t screenSaverTimeoutMs = config.data.screenSaverTimeoutMinutes * 60 * 1000; // Percek milliszekundumra konvertálva
 
             if (screenSaverTimeoutMs > 0 &&                                  // Ha a képernyővédő engedélyezve van (idő > 0)
                 !STREQ(currentScreen->getName(), SCREEN_NAME_SCREENSAVER) && // És nem a képernyővédőn vagyunk

@@ -155,6 +155,7 @@ void AudioCore1Manager::core1AudioLoop() {
             delay(1);
             continue;
         }
+
         // Ha kilépünk a pause állapotból, töröljük az ACK flag-et és a paused flag-et
         if (pSharedData_->core1AudioPaused || pSharedData_->core1AudioPausedAck) {
             mutex_enter_blocking(&pSharedData_->dataMutex);

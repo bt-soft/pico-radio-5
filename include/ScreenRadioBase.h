@@ -202,10 +202,8 @@ class ScreenRadioBase : public ScreenFrequDisplayBase {
      */
     inline void createSpectrumComponent(const Rect &spectrumBounds, RadioMode radioMode) {
         spectrumComp = std::make_shared<SpectrumVisualizationComponent>(spectrumBounds.x, spectrumBounds.y, spectrumBounds.width, spectrumBounds.height, radioMode);
+        spectrumComp->loadModeFromConfig(); // AM/FM mód betöltése config-ból
         addChild(spectrumComp);
-
-        // Mód betöltése config-ból
-        spectrumComp->loadModeFromConfig();
     }
 
     // ===================================================================
