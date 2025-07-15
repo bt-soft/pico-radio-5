@@ -461,20 +461,16 @@ void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
 
     } else {
 
-        fftSamplingFrequency = 15000;
+        fftSamplingFrequency = AudioProcessorConstants::DEFAULT_AM_SAMPLING_FREQUENCY;
 
-        const char *bw;
-        if (currDemodMod == AM_DEMOD_TYPE) {
-            // AM mód esetén
-            bw = ::pSi4735Manager->getCurrentBandWidthLabelByIndex(Band::bandWidthAM, config.data.bwIdxAM);
-            DEBUG("ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency: Setting FFT sampling frequency for AM: %s\n", bw);
-        } else {
-            // CW SSB módok esetén
-            bw = ::pSi4735Manager->getCurrentBandWidthLabelByIndex(Band::bandWidthSSB, config.data.bwIdxSSB);
-            DEBUG("ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency: Setting FFT sampling frequency for CW/SSB: %s\n", bw);
+        const char *bwStr;
+        if (currDemodMod == AM_DEMOD_TYPE) { // AM mód esetén
+            bwStr = ::pSi4735Manager->getCurrentBandWidthLabelByIndex(Band::bandWidthAM, config.data.bwIdxAM);
+        } else { // CW SSB módok esetén
+            bwStr = ::pSi4735Manager->getCurrentBandWidthLabelByIndex(Band::bandWidthSSB, config.data.bwIdxSSB);
         }
 
-        spectrumCompMaxFrequency = String(bw).toInt() * 1000; // Hangfrekvenciás sávszélesség KHz -> Hz konverzió
+        spectrumCompMaxFrequency = String(bwStr).toInt() * 1000; // Hangfrekvenciás sávszélesség KHz -> Hz konverzió
         if (spectrumCompMaxFrequency < 1000) {
             spectrumCompMaxFrequency = 1000; // Minimum 1000 Hz (1 kHz) sávszélesség
         }

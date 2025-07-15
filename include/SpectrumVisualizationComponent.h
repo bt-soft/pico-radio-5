@@ -105,10 +105,7 @@ class SpectrumVisualizationComponent : public UIComponent {
      * @brief Frissíti a maximális megjelenítési frekvenciát
      * @param maxDisplayFrequencyHz Az FFT mintavételezési frekvenciája
      */
-    void setMaxDisplayFrequencyHz(uint16_t maxDisplayFrequencyHz) {
-        maxDisplayFrequencyHz_ = maxDisplayFrequencyHz;
-        DEBUG("SpectrumVisualizationComponent::setMaxDisplayFrequencyHz: maxDisplayFrequencyHz_ frissítve: %d kHz\n", maxDisplayFrequencyHz_ / 1000);
-    }
+    inline void setMaxDisplayFrequencyHz(uint16_t maxDisplayFrequencyHz) { maxDisplayFrequencyHz_ = maxDisplayFrequencyHz; }
 
   private:
     RadioMode radioMode_;
