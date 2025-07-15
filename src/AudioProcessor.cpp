@@ -13,10 +13,16 @@ constexpr float ONE_SECOND_IN_MICROS = 1000000.0f;          // Egy másodperc mi
  * @param targetSamplingFrequency Cél mintavételezési frekvencia Hz-ben
  * @param fftSize FFT méret (alapértelmezett: DEFAULT_FFT_SAMPLES)
  */
-AudioProcessor::AudioProcessor(float &gainConfigRef, int audioPin, double targetSamplingFrequency, uint16_t fftSize)
-    : FFT(), activeFftGainConfigRef(gainConfigRef), audioInputPin(audioPin), targetSamplingFrequency_(targetSamplingFrequency), binWidthHz_(0.0f),
-      smoothed_auto_gain_factor_(1.0f), // Simított erősítési faktor inicializálása
-      currentFftSize_(0), vReal(nullptr), vImag(nullptr), RvReal(nullptr) {
+AudioProcessor::AudioProcessor(float &gainConfigRef, uint8_t audioPin, uint16_t targetSamplingFrequency, uint16_t fftSize)
+    : FFT(), activeFftGainConfigRef(gainConfigRef),      //
+      audioInputPin(audioPin),                           //
+      targetSamplingFrequency_(targetSamplingFrequency), //
+      binWidthHz_(0.0f),                                 //
+      smoothed_auto_gain_factor_(1.0f),                  // Simított erősítési faktor inicializálása
+      currentFftSize_(0),                                //
+      vReal(nullptr),                                    //
+      vImag(nullptr),                                    //
+      RvReal(nullptr) {
 
     // FFT méret érvényesítése és beállítása
     if (!validateFftSize(fftSize)) {
@@ -32,15 +38,7 @@ AudioProcessor::AudioProcessor(float &gainConfigRef, int audioPin, double target
         }
     }
 
-    // Mintavételezési frekvencia és bin szélesség beállítása
-    if (targetSamplingFrequency_ > 0) {
-        sampleIntervalMicros_ = static_cast<uint32_t>(ONE_SECOND_IN_MICROS / targetSamplingFrequency_);
-        binWidthHz_ = static_cast<float>(targetSamplingFrequency_) / currentFftSize_;
-    } else {
-        sampleIntervalMicros_ = 25; // Tartalék: 40kHz
-        binWidthHz_ = (ONE_SECOND_IN_MICROS / sampleIntervalMicros_) / currentFftSize_;
-        DEBUG("AudioProcessor: Figyelmeztetés - targetSamplingFrequency nulla, tartalék használata.");
-    }
+    calculateBinWidthHz(); // Bin szélesség számítása
 
     // Arduino-kompatibilis float-to-string konverzió
     char fsStr[16], binStr[16];
@@ -49,7 +47,7 @@ AudioProcessor::AudioProcessor(float &gainConfigRef, int audioPin, double target
     DEBUG("AudioProcessor: FFT Méret: %d, Cél Fs: %s Hz, Minta Intervallum: %lu us, Bin Szélesség: %s Hz\n", currentFftSize_, fsStr, sampleIntervalMicros_, binStr);
 
     // Oszcilloszkóp minták inicializálása középpontra (ADC nyers érték)
-    for (int i = 0; i < AudioProcessorConstants::MAX_INTERNAL_WIDTH; ++i) {
+    for (uint16_t i = 0; i < AudioProcessorConstants::MAX_INTERNAL_WIDTH; ++i) {
         osciSamples[i] = 2048;
     }
 }
@@ -58,6 +56,23 @@ AudioProcessor::AudioProcessor(float &gainConfigRef, int audioPin, double target
  * @brief AudioProcessor destruktor - felszabadítja az allokált memóriát
  */
 AudioProcessor::~AudioProcessor() { deallocateFftArrays(); }
+
+/**
+ * @brief Bin szélesség Hz-ben
+ * @return A kiszámított bin szélesség
+ */
+void AudioProcessor::calculateBinWidthHz() {
+
+    // Mintavételezési frekvencia és bin szélesség beállítása
+    if (targetSamplingFrequency_ > 0) {
+        sampleIntervalMicros_ = static_cast<uint32_t>(ONE_SECOND_IN_MICROS / targetSamplingFrequency_);
+        binWidthHz_ = static_cast<float>(targetSamplingFrequency_) / static_cast<float>(currentFftSize_);
+    } else {
+        DEBUG("AudioProcessor: Figyelmeztetés - targetSamplingFrequency nulla, tartalék használata.");
+        sampleIntervalMicros_ = 25; // Tartalék: 40kHz
+        binWidthHz_ = static_cast<float>((ONE_SECOND_IN_MICROS / static_cast<float>(currentFftSize_)) / static_cast<float>(sampleIntervalMicros_) / static_cast<float>(currentFftSize_));
+    }
+}
 
 /**
  * @brief FFT tömbök allokálása a megadott mérettel
@@ -117,27 +132,20 @@ void AudioProcessor::deallocateFftArrays() {
  * @param newFs Az új mintavételezési frekvencia Hz-ben
  * @return true ha sikeres, false ha hiba történt
  */
-bool AudioProcessor::setSamplingFrequency(double newFs) {
+bool AudioProcessor::setSamplingFrequency(uint16_t newFs) {
 
     if (newFs < AudioProcessorConstants::MIN_SAMPLING_FREQUENCY || newFs > AudioProcessorConstants::MAX_SAMPLING_FREQUENCY) {
-        DEBUG("AudioProcessor: Érvénytelen mintavételezési frekvencia: %d Hz, tartomány: [%d, %d] Hz\n", (int)newFs, (int)AudioProcessorConstants::MIN_SAMPLING_FREQUENCY,
-              (int)AudioProcessorConstants::MAX_SAMPLING_FREQUENCY);
+        DEBUG("AudioProcessor: Érvénytelen mintavételezési frekvencia: %d Hz, tartomány: [%d, %d] Hz\n", newFs, AudioProcessorConstants::MIN_SAMPLING_FREQUENCY, AudioProcessorConstants::MAX_SAMPLING_FREQUENCY);
         return false; // Érvénytelen frekvencia, nem állítjuk be
     }
 
     if (newFs == targetSamplingFrequency_) {
-        DEBUG("AudioProcessor: Nincs változtatásra szükség, a mintavételezési frekvencia már %d Hz\n", (int)newFs);
+        DEBUG("AudioProcessor: Nincs változtatásra szükség, a mintavételezési frekvencia már %d Hz\n", newFs);
         return false; // Nincs változtatás -> sikeres a méret beállítása
     }
 
     targetSamplingFrequency_ = newFs;
-    if (targetSamplingFrequency_ > 0) {
-        sampleIntervalMicros_ = static_cast<uint32_t>(ONE_SECOND_IN_MICROS / targetSamplingFrequency_);
-        binWidthHz_ = static_cast<float>(targetSamplingFrequency_) / currentFftSize_;
-    } else {
-        sampleIntervalMicros_ = 25;
-        binWidthHz_ = (ONE_SECOND_IN_MICROS / sampleIntervalMicros_) / currentFftSize_;
-    }
+    calculateBinWidthHz(); // Frissítjük a bin szélességet az új mintavételezési frekvenciával
 
     DEBUG("AudioProcessor: Mintavételezési frekvencia beállítva %d Hz-re\n", (int)targetSamplingFrequency_);
 
@@ -188,12 +196,7 @@ bool AudioProcessor::setFftSize(uint16_t newSize) {
     currentFftSize_ = newSize;
 
     // Bin szélesség frissítése az új FFT mérettel
-    if (targetSamplingFrequency_ > 0) {
-        binWidthHz_ = static_cast<float>(targetSamplingFrequency_) / currentFftSize_;
-    } else {
-        DEBUG("AudioProcessor: Figyelmeztetés - targetSamplingFrequency nulla!");
-        binWidthHz_ = (ONE_SECOND_IN_MICROS / sampleIntervalMicros_) / currentFftSize_;
-    }
+    calculateBinWidthHz();
 
     // Arduino-kompatibilis float-to-string konverzió
     char binWidthStr[16];
@@ -208,6 +211,7 @@ bool AudioProcessor::setFftSize(uint16_t newSize) {
  * @param collectOsciSamples true ha oszcilloszkóp mintákat is gyűjteni kell
  */
 void AudioProcessor::process(bool collectOsciSamples) {
+
     int osci_sample_idx = 0;
     uint32_t loopStartTimeMicros;
     double max_abs_sample_for_auto_gain = 0.0;
@@ -224,11 +228,11 @@ void AudioProcessor::process(bool collectOsciSamples) {
 
     // 1. Mintavételezés és középre igazítás, opcionális oszcilloszkóp mintagyűjtés
     // A teljes mintavételezési ciklus idejét is mérhetnénk, de az egyes minták időzítése fontosabb.
-    for (int i = 0; i < currentFftSize_; i++) {
+    for (uint16_t i = 0; i < currentFftSize_; i++) {
         loopStartTimeMicros = micros();
         uint32_t sum = 0;
         // NOISE_REDUCTION_ANALOG_SAMPLES_COUNT minta átlagolása a zajcsökkentés érdekében
-        for (int j = 0; j < NOISE_REDUCTION_ANALOG_SAMPLES_COUNT; j++) {
+        for (uint16_t j = 0; j < NOISE_REDUCTION_ANALOG_SAMPLES_COUNT; j++) {
             sum += analogRead(audioInputPin);
         }
         double averaged_sample = sum / (double)NOISE_REDUCTION_ANALOG_SAMPLES_COUNT;
@@ -243,7 +247,8 @@ void AudioProcessor::process(bool collectOsciSamples) {
             }
         }
 
-        vReal[i] = averaged_sample - 2048.0; // Középre igazítás (2048 a nulla szint 12 bites ADC-nél)
+        // Középre igazítás (2048 a nulla szint 12 bites ADC-nél)
+        vReal[i] = averaged_sample - 2048.0;
         vImag[i] = 0.0;
 
         // Auto Gain mód esetén a legnagyobb minta keresése
@@ -262,7 +267,7 @@ void AudioProcessor::process(bool collectOsciSamples) {
 
     // 2. Erősítés alkalmazása (manuális vagy automatikus)
     if (activeFftGainConfigRef > 0.0f) { // Manuális erősítés
-        for (int i = 0; i < currentFftSize_; i++) {
+        for (uint16_t i = 0; i < currentFftSize_; i++) {
             vReal[i] *= activeFftGainConfigRef;
         }
 
@@ -286,7 +291,7 @@ void AudioProcessor::process(bool collectOsciSamples) {
         smoothed_auto_gain_factor_ = constrain(smoothed_auto_gain_factor_, AudioProcessorConstants::FFT_AUTO_GAIN_MIN_FACTOR, AudioProcessorConstants::FFT_AUTO_GAIN_MAX_FACTOR);
 
         // Erősítés alkalmazása a mintákra
-        for (int i = 0; i < currentFftSize_; i++) {
+        for (uint16_t i = 0; i < currentFftSize_; i++) {
             vReal[i] *= smoothed_auto_gain_factor_;
         }
     }
@@ -297,15 +302,16 @@ void AudioProcessor::process(bool collectOsciSamples) {
     FFT.complexToMagnitude(vReal, vImag, currentFftSize_); // Az eredmény a vReal-be kerül
 
     // Magnitúdók átmásolása az RvReal tömbbe
-    for (int i = 0; i < currentFftSize_; ++i) {
+    for (uint16_t i = 0; i < currentFftSize_; ++i) {
         RvReal[i] = vReal[i];
     }
 
     // 4. Alacsony frekvenciák csillapítása az RvReal tömbben
     // A binWidthHz_ már tagváltozóként rendelkezésre áll
-    const int attenuation_cutoff_bin = static_cast<int>(AudioProcessorConstants::LOW_FREQ_ATTENUATION_THRESHOLD_HZ / binWidthHz_);
+    const uint16_t attenuation_cutoff_bin = static_cast<int>(AudioProcessorConstants::LOW_FREQ_ATTENUATION_THRESHOLD_HZ / binWidthHz_);
 
-    for (int i = 0; i < (currentFftSize_ / 2); ++i) { // Csak a releváns (nem tükrözött) frekvencia bin-eken iterálunk
+    // Csak a releváns (nem tükrözött) frekvencia bin-eken iterálunk
+    for (uint16_t i = 0; i < (currentFftSize_ / 2); ++i) {
         if (i < attenuation_cutoff_bin) {
             RvReal[i] /= AudioProcessorConstants::LOW_FREQ_ATTENUATION_FACTOR;
         }

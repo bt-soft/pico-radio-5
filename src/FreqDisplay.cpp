@@ -182,7 +182,7 @@ FreqDisplay::FrequencyDisplayData FreqDisplay::getFrequencyDisplayData(uint16_t 
             } else {
                 // Normál mód: tizedesjegyekkel
                 data.mask = "88 888.88";
-                int hz_tens_part = abs((int)(displayFreqHz % 1000)) / 10;
+                int hz_tens_part = abs(static_cast<int>(displayFreqHz % 1000)) / 10;
                 char buffer[32];
                 memset(buffer, 0, sizeof(buffer));
 
@@ -679,10 +679,10 @@ void FreqDisplay::handleBfoAnimation() {
         float progress = (float)i / 3.0f;
 
         // Pozíció interpoláció
-        int animX = startX + (int)((endX - startX) * progress);
+        int animX = startX + static_cast<int>((endX - startX) * progress);
 
         // Méret interpoláció
-        int textSize = startSize + (int)((endSize - startSize) * progress);
+        int textSize = startSize + static_cast<int>((endSize - startSize) * progress);
         if (textSize < 1)
             textSize = 1;
 
@@ -716,7 +716,7 @@ void FreqDisplay::calculateBfoFrequency(char *buffer, size_t bufferSize) {
     uint32_t bfoOffset = rtv::lastBFO;
     uint32_t displayFreqHz = (uint32_t)currentDisplayFrequency * 1000 - bfoOffset;
     long khz_part = displayFreqHz / 1000;
-    int hz_tens_part = abs((int)(displayFreqHz % 1000)) / 10;
+    int hz_tens_part = abs((static_cast<int>(displayFreqHz) % 1000)) / 10;
 
     snprintf(buffer, bufferSize, "%ld.%02d", khz_part, hz_tens_part);
 }

@@ -75,7 +75,7 @@ class ScreenManager : public IScreenManager {
         while (!deferredActions.empty()) {
             const DeferredAction &action = deferredActions.front();
 
-            DEBUG("ScreenManager: Processing deferred action type=%d\n", (int)action.type);
+            DEBUG("ScreenManager: Processing deferred action type=%d\n", static_cast<int>(action.type));
 
             if (action.type == DeferredAction::SwitchScreen) {
                 immediateSwitch(action.screenName, action.params);

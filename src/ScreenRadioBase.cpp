@@ -449,7 +449,7 @@ void ScreenRadioBase::onDialogClosed(UIDialogBase *closedDialog) {
  */
 void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
 
-    double fftSamplingFrequency = 0.0;
+    uint16_t fftSamplingFrequency = 0;
 
     // Aktuális demodulációs mód
     uint8_t currDemodMod = ::pSi4735Manager->getCurrentBand().currDemod;
@@ -469,14 +469,15 @@ void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
             DEBUG("ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency: Setting FFT sampling frequency for CW/SSB: %s\n", bw);
         }
 
-        //fftSamplingFrequency = (double)String(bw).toFloat() * 2.0 * 1000; // kétszeres mintavételezési frekvencia +  KHz -> Hz konverzió
-        fftSamplingFrequency = 15000.0; 
+        // fftSamplingFrequency = String(bw).toInt() * 2 * 1000; // kétszeres mintavételezési frekvencia +  KHz -> Hz konverzió
+        fftSamplingFrequency = 15000;
     }
 
     // Beállítjuk az AudioCore1Manager sampling frekvenciáját
     AudioCore1Manager::setSamplingFrequency(fftSamplingFrequency);
+
+    // A spektrum komponens frissítése a megfelelő sávszélességgel
     if (spectrumComp) {
-        // A spektrum komponens frissítése a megfelelő sávszélességgel, amit az előbb beállított AudioCore1Manager-ből olvas ki
-        spectrumComp->updateMaxDisplayFrequencyHz();
+        spectrumComp->setMaxDisplayFrequencyHz(fftSamplingFrequency / 2);
     }
 }

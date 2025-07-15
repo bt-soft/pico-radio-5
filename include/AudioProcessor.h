@@ -7,10 +7,10 @@
 namespace AudioProcessorConstants {
 // CwRttyDecoder deklaráció
 // Audio input konstansok
-const double MAX_SAMPLING_FREQUENCY = 30000.0;                       // 30kHz mintavételezés a 15kHz Nyquist limithez
-const double MIN_SAMPLING_FREQUENCY = 2000.0;                        // 1kHz Minimum mintavételezési frekvencia -> 2kHz Nyquist limit
-const double DEFAULT_AM_SAMPLING_FREQUENCY = 12000.0;                // 12kHz AM mintavételezés, 6kHZ AH sávszélességhez
-const double DEFAULT_FM_SAMPLING_FREQUENCY = MAX_SAMPLING_FREQUENCY; // 30kHz FM mintavételezés
+const uint16_t MAX_SAMPLING_FREQUENCY = 30000;                         // 30kHz mintavételezés a 15kHz Nyquist limithez
+const uint16_t MIN_SAMPLING_FREQUENCY = 2000;                          // 1kHz Minimum mintavételezési frekvencia -> 2kHz Nyquist limit
+const uint16_t DEFAULT_AM_SAMPLING_FREQUENCY = 12000;                  // 12kHz AM mintavételezés, 6kHZ AH sávszélességhez
+const uint16_t DEFAULT_FM_SAMPLING_FREQUENCY = MAX_SAMPLING_FREQUENCY; // 30kHz FM mintavételezés
 
 // FFT konstansok
 const uint16_t MIN_FFT_SAMPLES = 64;
@@ -25,8 +25,8 @@ const float AUTO_GAIN_ATTACK_COEFF = 0.3f;   // Gyors attack
 const float AUTO_GAIN_RELEASE_COEFF = 0.01f; // Lassú release
 
 // Oszcilloszkóp konstansok
-const int MAX_INTERNAL_WIDTH = 320;
-const int OSCI_SAMPLE_DECIMATION_FACTOR = 1; // Csökkentve 2-ről 1-re több minta gyűjtéséhez
+const uint16_t MAX_INTERNAL_WIDTH = 320;
+const uint8_t OSCI_SAMPLE_DECIMATION_FACTOR = 1; // Csökkentve 2-ről 1-re több minta gyűjtéséhez
 
 // Spektrum konstansok
 const float LOW_FREQ_ATTENUATION_THRESHOLD_HZ = 500.0f;
@@ -46,8 +46,8 @@ class AudioProcessor {
 
     // Konfigurációs referenciák
     float &activeFftGainConfigRef;
-    int audioInputPin;
-    double targetSamplingFrequency_;
+    uint8_t audioInputPin;
+    uint16_t targetSamplingFrequency_;
 
     // FFT paraméterek
     float binWidthHz_;
@@ -67,6 +67,7 @@ class AudioProcessor {
     bool allocateFftArrays(uint16_t size);
     void deallocateFftArrays();
     bool validateFftSize(uint16_t size) const;
+    void calculateBinWidthHz();
 
   public:
     /**
@@ -76,7 +77,7 @@ class AudioProcessor {
      * @param targetSamplingFrequency Cél mintavételezési frekvencia Hz-ben
      * @param fftSize FFT méret (alapértelmezett: DEFAULT_FFT_SAMPLES)
      */
-    AudioProcessor(float &gainConfigRef, int audioPin, double targetSamplingFrequency, uint16_t fftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+    AudioProcessor(float &gainConfigRef, uint8_t audioPin, uint16_t targetSamplingFrequency, uint16_t fftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
 
     /**
      * AudioProcessor destruktor
@@ -87,10 +88,12 @@ class AudioProcessor {
      * Mintavételezési frekvencia lekérése
      * @return A jelenlegi mintavételezési frekvencia Hz-ben
      */
-    double getSamplingFrequency() const { return targetSamplingFrequency_; }
+    uint16_t getSamplingFrequency() const { return targetSamplingFrequency_; }
 
     /**
      * FFT méret lekérése
+     * @return A jelenlegi FFT méret
+     * @note A méret mindig 2 hatványa, pl. 64,
      */
     uint16_t getFftSize() const { return currentFftSize_; }
 
@@ -127,7 +130,7 @@ class AudioProcessor {
      * Mintavételezési frekvencia beállítása futási időben
      * @param newFs Az új mintavételezési frekvencia Hz-ben
      */
-    bool setSamplingFrequency(double newFs);
+    bool setSamplingFrequency(uint16_t newFs);
 
     /**
      * FFT méret beállítása futásidőben
@@ -136,7 +139,7 @@ class AudioProcessor {
      */
     bool setFftSize(uint16_t newSize);
 
-    friend class AudioCore1Manager; // <-- csak ez az osztály férhet hozzá
+    friend class AudioCore1Manager; // <-- csak ez az osztály férhet hozzá a protected és a private memberekhez
 
     // const double *getRvReal() const { return RvReal; }
     // int getCurrentFftSize() const { return currentFftSize_; }

@@ -1246,7 +1246,7 @@ void ScanScreen::handleZoom(float newZoomLevel) {
                 if (targetFreq >= oldScanStartFreq && targetFreq <= oldScanEndFreq) {
                     // Pontosabb mapping: nem csak kerekítünk, hanem ellenőrizzük a frekvencia távolságokat is
                     float oldPosFloat = (float)(targetFreq - oldScanStartFreq) / oldScanStep;
-                    int oldPos = (int)(oldPosFloat + 0.5f); // Kerekítés
+                    int oldPos = static_cast<int>(oldPosFloat + 0.5f); // Kerekítés
 
                     // Dupla ellenőrzés: az oldPos pozíció frekvenciája közel van-e a target frekvenciához?
                     if (oldPos >= 0 && oldPos < SCAN_RESOLUTION) {

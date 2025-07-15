@@ -21,11 +21,11 @@ class AudioCore1Manager {
         volatile bool core1ShouldStop;
 
         // Spektrum adatok
-        double spectrumBuffer[2048]; // Max FFT size
-        float binWidthHz;
-        float currentAutoGain;
-        uint16_t fftSize;         // Aktuális FFT méret
-        double samplingFrequency; // Aktuális mintavételezési frekvencia
+        double spectrumBuffer[2048];         // Max FFT size
+        volatile uint16_t samplingFrequency; // Aktuális mintavételezési frekvencia
+        volatile uint16_t fftSize;           // Aktuális FFT méret
+        volatile float binWidthHz;
+        volatile float currentAutoGain;
 
         // Oszcilloszkóp adatok
         int oscilloscopeBuffer[320]; // MAX_INTERNAL_WIDTH
@@ -70,7 +70,7 @@ class AudioCore1Manager {
      * @param initialFftSize Kezdeti FFT méret
      * @return true ha sikeres, false ha hiba történt
      */
-    static bool init(float &gainConfigAmRef, float &gainConfigFmRef, int audioPin, double samplingFreq, uint16_t initialFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
+    static bool init(float &gainConfigAmRef, float &gainConfigFmRef, int audioPin, uint16_t samplingFreq, uint16_t initialFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES);
 
     /**
      * @brief Core1 audio manager leállítása
@@ -79,34 +79,34 @@ class AudioCore1Manager {
 
     /**
      * @brief Spektrum méret lekérése (ha nincs friss adat, cached érték)
-     * @param outSize Kimeneti FFT méret
+     * @param outFftSize Kimeneti FFT méret
      * @return true ha sikeres, false ha hiba történt
      */
-    static bool getFftSize(uint16_t *outSize);
+    static bool getFftSize(uint16_t *outFftSize);
 
     /**
      * @brief Core1 mintavételezési frekvencia lekérése (ha nincs friss adat, cached érték)
      * @param outSampleFrequency Kimeneti mintavételezési frekvencia
      * @return true ha sikeres, false ha hiba történt
      */
-    static bool getFftSampleFrequency(double *outSampleFrequency);
+    static bool getFftSampleFrequency(uint16_t *outSampleFrequency);
 
     /**
      * @brief Core1 aktuális bin szélesség lekérése (ha nincs friss adat, cached érték)
      * @param outBinWidth Kimeneti bin szélesség Hz-ben
      * @return true ha sikeres, false ha hiba történt
      */
-    static bool getFftCurrentBinWidth(float *outSampleFrequency);
+    static bool getFftCurrentBinWidth(float *outBinWidth);
 
     /**
      * @brief Spektrum adatok lekérése (core0-ból hívható)
      * @param outData Kimeneti buffer a spektrum adatoknak
-     * @param outSize Kimeneti FFT méret
+     * @param outFftSize Kimeneti FFT méret
      * @param outBinWidth Kimeneti bin szélesség Hz-ben
      * @param outAutoGain Jelenlegi auto gain faktor
      * @return true ha friss adat érhető el, false egyébként
      */
-    static bool getSpectrumData(const double **outData, uint16_t *outSize, float *outBinWidth, float *outAutoGain);
+    static bool getSpectrumData(const double **outData, uint16_t *outFftSize, float *outBinWidth, float *outAutoGain);
 
     /**
      * @brief Oszcilloszkóp adatok lekérése (core0-ból hívható)
@@ -124,9 +124,9 @@ class AudioCore1Manager {
 
     /**
      * @brief Mintavételezési frekvencia beállítása (core0-ból hívható)
-     * @param newFs Az új mintavételezési frekvencia Hz-ben
+     * @param newSamplingFrequency Az új mintavételezési frekvencia Hz-ben
      */
-    static bool setSamplingFrequency(double newFs);
+    static bool setSamplingFrequency(uint16_t newSamplingFrequency);
 
     /**
      * @brief Core1 állapot lekérése

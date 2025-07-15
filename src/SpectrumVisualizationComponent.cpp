@@ -138,13 +138,30 @@ const uint16_t SpectrumVisualizationComponent::WATERFALL_COLORS[16] = {0x0000, 0
  * @brief Konstruktor
  */
 SpectrumVisualizationComponent::SpectrumVisualizationComponent(int x, int y, int w, int h, RadioMode radioMode)
-    : UIComponent(Rect(x, y, w, h)), radioMode_(radioMode), currentMode_(DisplayMode::Off), lastRenderedMode_(DisplayMode::Off), modeIndicatorVisible_(false), modeIndicatorDrawn_(false), frequencyLabelsDrawn_(false),
-      modeIndicatorHideTime_(0), lastTouchTime_(0), lastFrameTime_(0), envelopeLastSmoothedValue_(0.0f), frameHistoryIndex_(0), frameHistoryFull_(false), adaptiveGainFactor_(0.02f), lastGainUpdateTime_(0),
-      sprite_(nullptr), spriteCreated_(false), indicatorFontHeight_(0), currentYAnalyzer_(0), currentTuningAidType_(TuningAidType::CW_TUNING), currentTuningAidMinFreqHz_(0.0f), currentTuningAidMaxFreqHz_(0.0f),
+    : UIComponent(Rect(x, y, w, h)),                   //
+      radioMode_(radioMode),                           //
+      currentMode_(DisplayMode::Off),                  //
+      lastRenderedMode_(DisplayMode::Off),             //
+      modeIndicatorVisible_(false),                    //
+      modeIndicatorDrawn_(false),                      //
+      frequencyLabelsDrawn_(false),                    //
+      modeIndicatorHideTime_(0),                       //
+      lastTouchTime_(0),                               //
+      lastFrameTime_(0),                               //
+      envelopeLastSmoothedValue_(0.0f),                //
+      frameHistoryIndex_(0),                           //
+      frameHistoryFull_(false),                        //
+      adaptiveGainFactor_(0.02f),                      //
+      lastGainUpdateTime_(0),                          //
+      sprite_(nullptr),                                //
+      spriteCreated_(false),                           //
+      indicatorFontHeight_(0),                         //
+      currentTuningAidType_(TuningAidType::CW_TUNING), //
+      currentTuningAidMinFreqHz_(0.0f),                //
+      currentTuningAidMaxFreqHz_(0.0f),                //
       isMutedDrawn(false) {
 
-    updateMaxDisplayFrequencyHz();
-    DEBUG("SpectrumVisualizationComponent: Inicializálva core1 audio feldolgozással.\n");
+    maxDisplayFrequencyHz_ = radioMode_ == RadioMode::AM ? SpectrumVisualizationComponent::MAX_DISPLAY_FREQUENCY_AM : SpectrumVisualizationComponent::MAX_DISPLAY_FREQUENCY_FM;
 
     // Peak detection buffer inicializálása
     memset(Rpeak_, 0, sizeof(Rpeak_));
@@ -175,26 +192,6 @@ SpectrumVisualizationComponent::~SpectrumVisualizationComponent() {
         delete sprite_;
         sprite_ = nullptr;
     }
-}
-
-/**
- * @brief Frissíti a maximális megjelenítési frekvenciát
- * @details Ez a függvény lekéri az aktuális mintavételezési frekvenciát a core1 audio managerből,
- *          és beállítja a maxDisplayFrequencyHz_ tagváltozót.
- */
-void SpectrumVisualizationComponent::updateMaxDisplayFrequencyHz() {
-
-    // maxDisplayFrequencyHz_ = radioMode == RadioMode::AM ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM;
-    double currentSamplingFrequencyHz = 0.0;
-    if (!AudioCore1Manager::getFftSampleFrequency(&currentSamplingFrequencyHz)) {
-        DEBUG("SpectrumVisualizationComponent::updateMaxDisplayFrequencyHz: Nem sikerült lekérni a mintavételezési frekvenciát, alapértelmezett érték használata lesz.\n");
-        maxDisplayFrequencyHz_ = (radioMode_ == RadioMode::AM) ? MAX_DISPLAY_FREQUENCY_AM : MAX_DISPLAY_FREQUENCY_FM;
-    } else {
-        // A mintavételezési frekvencia fele a maximális megjelenítési frekvencia
-        maxDisplayFrequencyHz_ = currentSamplingFrequencyHz / 2.0f;
-    }
-
-    DEBUG("SpectrumVisualizationComponent::updateMaxDisplayFrequencyHz: maxDisplayFrequencyHz_ frissítve: %d kHz\n", (int)maxDisplayFrequencyHz_ / 1000);
 }
 
 /**
@@ -1263,20 +1260,20 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
     currentTuningAidType_ = type;
 
     if (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall) {
-        float oldMinFreq = currentTuningAidMinFreqHz_;
-        float oldMaxFreq = currentTuningAidMaxFreqHz_;
+        uint16_t oldMinFreq = currentTuningAidMinFreqHz_;
+        uint16_t oldMaxFreq = currentTuningAidMaxFreqHz_;
 
         if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
             // CW: 600 Hz span a CW offset frekvencia körül
-            float centerFreq = config.data.cwReceiverOffsetHz;
-            currentTuningAidMinFreqHz_ = centerFreq - CW_TUNING_AID_SPAN_HZ / 2.0f;
-            currentTuningAidMaxFreqHz_ = centerFreq + CW_TUNING_AID_SPAN_HZ / 2.0f;
+            uint16_t centerFreq = config.data.cwReceiverOffsetHz;
+            currentTuningAidMinFreqHz_ = centerFreq - CW_TUNING_AID_SPAN_HZ / 2;
+            currentTuningAidMaxFreqHz_ = centerFreq + CW_TUNING_AID_SPAN_HZ / 2;
         } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
             // RTTY: Mark és Space frekvenciák közötti terület + margó
-            float f_mark = config.data.rttyMarkFrequencyHz;
-            float f_space = f_mark - config.data.rttyShiftHz;
-            float min_freq = std::min(f_mark, f_space) - RTTY_TUNING_AID_SPAN_HZ;
-            float max_freq = std::max(f_mark, f_space) + RTTY_TUNING_AID_SPAN_HZ;
+            uint16_t f_mark = config.data.rttyMarkFrequencyHz;
+            uint16_t f_space = f_mark - config.data.rttyShiftHz;
+            uint16_t min_freq = std::min(f_mark, f_space) - RTTY_TUNING_AID_SPAN_HZ;
+            uint16_t max_freq = std::max(f_mark, f_space) + RTTY_TUNING_AID_SPAN_HZ;
             currentTuningAidMinFreqHz_ = min_freq;
             currentTuningAidMaxFreqHz_ = max_freq;
         } else {

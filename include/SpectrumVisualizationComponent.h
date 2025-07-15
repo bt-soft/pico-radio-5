@@ -101,7 +101,14 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     inline void setBorderDrawn() { needBorderDrawn = true; }
 
-    void updateMaxDisplayFrequencyHz();
+    /**
+     * @brief Frissíti a maximális megjelenítési frekvenciát
+     * @param maxDisplayFrequencyHz Az FFT mintavételezési frekvenciája
+     */
+    void setMaxDisplayFrequencyHz(uint16_t maxDisplayFrequencyHz) {
+        maxDisplayFrequencyHz_ = maxDisplayFrequencyHz;
+        DEBUG("SpectrumVisualizationComponent::updateMaxDisplayFrequencyHz: maxDisplayFrequencyHz_ frissítve: %d kHz\n", maxDisplayFrequencyHz_ / 1000);
+    }
 
   private:
     RadioMode radioMode_;
@@ -114,7 +121,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     uint32_t modeIndicatorHideTime_;
     uint32_t lastTouchTime_;
     uint32_t lastFrameTime_; // FPS limitáláshoz
-    double maxDisplayFrequencyHz_;
+    uint16_t maxDisplayFrequencyHz_;
     float envelopeLastSmoothedValue_;
 
     // Frame-alapú adaptív autogain rendszer
@@ -135,17 +142,14 @@ class SpectrumVisualizationComponent : public UIComponent {
     bool spriteCreated_;
     int indicatorFontHeight_;
 
-    // Radio-2 alapú változók
-    int currentYAnalyzer_;
-
     // Peak detection buffer (24 bands max)
     static constexpr int MAX_SPECTRUM_BANDS = 24;
     int Rpeak_[MAX_SPECTRUM_BANDS];
 
     // CW/RTTY hangolási segéd változók
     TuningAidType currentTuningAidType_;
-    float currentTuningAidMinFreqHz_;
-    float currentTuningAidMaxFreqHz_;
+    uint16_t currentTuningAidMinFreqHz_;
+    uint16_t currentTuningAidMaxFreqHz_;
 
     // Waterfall buffer - egyszerűsített 2D vektor
     std::vector<std::vector<uint8_t>> wabuf;

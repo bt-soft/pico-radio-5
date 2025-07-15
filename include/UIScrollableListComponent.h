@@ -55,7 +55,7 @@ class UIScrollableListComponent : public UIComponent {
         tft.fillRect(scrollBarContainerX, scrollBarContainerY, SCROLL_BAR_WIDTH, scrollBarContainerHeight, scrollBarBackgroundColor);
 
         float ratio = (float)visibleItemCount / dataSource->getItemCount();
-        uint16_t thumbHeight = std::max((int)(scrollBarContainerHeight * ratio), 10); // Minimális magasság
+        uint16_t thumbHeight = std::max(static_cast<int>(scrollBarContainerHeight * ratio), 10); // Minimális magasság
 
         // A thumbPosRatio számításának javítása, hogy elkerüljük a 0-val való osztást
         float thumbPosRatio = 0;
@@ -66,7 +66,7 @@ class UIScrollableListComponent : public UIComponent {
         // Biztosítjuk, hogy a thumbPosRatio 0 és 1 között legyen
         thumbPosRatio = std::max(0.0f, std::min(thumbPosRatio, 1.0f));
 
-        uint16_t thumbYInContainer = (int)((scrollBarContainerHeight - thumbHeight) * thumbPosRatio);
+        uint16_t thumbYInContainer = static_cast<int>((scrollBarContainerHeight - thumbHeight) * thumbPosRatio);
         uint16_t thumbActualY = scrollBarContainerY + thumbYInContainer;
 
         tft.fillRect(scrollBarContainerX, thumbActualY, SCROLL_BAR_WIDTH, thumbHeight, scrollBarColor);
