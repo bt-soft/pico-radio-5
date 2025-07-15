@@ -1111,7 +1111,7 @@ const char *SpectrumVisualizationComponent::decodeModeToStr() {
             modeText = "Waterfall";
             break;
         case DisplayMode::Envelope:
-            modeText = "Burkológörbe";
+            modeText = "Envelope";
             break;
         case DisplayMode::CWWaterfall:
             modeText = "CW Waterfall";
@@ -1120,7 +1120,7 @@ const char *SpectrumVisualizationComponent::decodeModeToStr() {
             modeText = "RTTY Waterfall";
             break;
         default:
-            modeText = "Ismeretlen";
+            modeText = "Unknown";
             break;
     }
     return modeText;
@@ -1146,7 +1146,7 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
 
     String modeText = decodeModeToStr();
     if (currentMode_ != DisplayMode::Off) {
-        modeText += isAutoGainMode() ? " (Auto" : " (Manual";
+        modeText += isAutoGainMode() ? " (Auto" : " (Manu";
         modeText += " gain)";
     }
 
@@ -1450,7 +1450,7 @@ void SpectrumVisualizationComponent::renderTuningAid() {
 
                 // Space vonal
                 if (f_space >= min_freq_displayed && f_space <= max_freq_displayed) {
-                    uint16_t ratio_space = (f_space - min_freq_displayed) / displayed_span_hz;
+                    float ratio_space = (static_cast<float>(f_space) - min_freq_displayed) / displayed_span_hz;
                     uint16_t line_x_space = static_cast<uint16_t>(std::round(ratio_space * (bounds.width - 1)));
                     line_x_space = constrain(line_x_space, 0, bounds.width - 1);
                     sprite_->drawFastVLine(line_x_space, 0, graphH, TUNING_AID_RTTY_SPACE_COLOR);
@@ -1458,7 +1458,7 @@ void SpectrumVisualizationComponent::renderTuningAid() {
 
                 // Mark vonal
                 if (f_mark >= min_freq_displayed && f_mark <= max_freq_displayed) {
-                    uint16_t ratio_mark = (f_mark - min_freq_displayed) / displayed_span_hz;
+                    float ratio_mark = (static_cast<float>(f_mark) - min_freq_displayed) / displayed_span_hz;
                     uint16_t line_x_mark = static_cast<uint16_t>(std::round(ratio_mark * (bounds.width - 1)));
                     line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
                     sprite_->drawFastVLine(line_x_mark, 0, graphH, TUNING_AID_RTTY_MARK_COLOR);
@@ -1482,7 +1482,7 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                 uint16_t f_space = f_mark - config.data.rttyShiftHz;
                 // Space címke
                 if (f_space >= min_freq_displayed && f_space <= max_freq_displayed) {
-                    uint16_t ratio_space = (f_space - min_freq_displayed) / displayed_span_hz;
+                    float ratio_space = (static_cast<float>(f_space) - min_freq_displayed) / displayed_span_hz;
                     uint16_t line_x_space = static_cast<uint16_t>(std::round(ratio_space * (bounds.width - 1)));
                     line_x_space = constrain(line_x_space, 0, bounds.width - 1);
                     uint16_t label_y = graphH;
@@ -1492,7 +1492,7 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                 }
                 // Mark címke
                 if (f_mark >= min_freq_displayed && f_mark <= max_freq_displayed) {
-                    uint16_t ratio_mark = (f_mark - min_freq_displayed) / displayed_span_hz;
+                    float ratio_mark = (static_cast<float>(f_mark) - min_freq_displayed) / displayed_span_hz;
                     uint16_t line_x_mark = static_cast<uint16_t>(std::round(ratio_mark * (bounds.width - 1)));
                     line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
                     uint16_t label_y = graphH;
