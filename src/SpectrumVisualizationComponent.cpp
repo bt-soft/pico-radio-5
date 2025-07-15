@@ -274,7 +274,7 @@ void SpectrumVisualizationComponent::draw() {
         // Töröljük a területet ahol az indicator volt - KERET ALATT
         int indicatorH = 20;                       // fix magasság az indicator számára
         int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt
-        tft.fillRect(bounds.x-3, indicatorY, bounds.width+3, indicatorH, TFT_BLACK);
+        tft.fillRect(bounds.x - 3, indicatorY, bounds.width + 3, indicatorH, TFT_BLACK);
     }
 
     // Only draw mode indicator once when it becomes visible
@@ -1382,12 +1382,13 @@ void SpectrumVisualizationComponent::renderTuningAid() {
     constexpr uint16_t TUNING_AID_RTTY_MARK_LINE_COLOR = TFT_YELLOW;
 
     // 4. Célfrekvencia vonalának kirajzolása a sprite-ra
-    if (currentTuningAidType_ != TuningAidType::OFF_DECODER) {
+    if (currentTuningAidType_ == TuningAidType::CW_TUNING || currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
 
         float min_freq_displayed = currentTuningAidMinFreqHz_;
         float max_freq_displayed = currentTuningAidMaxFreqHz_;
         float displayed_span_hz = max_freq_displayed - min_freq_displayed;
 
+        // Hangolási csík kirajzolása
         if (displayed_span_hz > 0) {
             if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
                 // CW célfrekvencia középre kerül
@@ -1395,66 +1396,59 @@ void SpectrumVisualizationComponent::renderTuningAid() {
                 sprite_->drawFastVLine(line_x, 0, graphH, TUNING_AID_TARGET_LINE_COLOR);
 
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
-                float f_mark = config.data.rttyMarkFrequencyHz;
-                float f_space = f_mark - config.data.rttyShiftHz;
+                uint16_t f_mark = config.data.rttyMarkFrequencyHz;
+                uint16_t f_space = f_mark - config.data.rttyShiftHz;
 
                 // Space vonal
                 if (f_space >= min_freq_displayed && f_space <= max_freq_displayed) {
-                    float ratio_space = (f_space - min_freq_displayed) / displayed_span_hz;
-                    int line_x_space = static_cast<int>(std::round(ratio_space * (bounds.width - 1)));
+                    uint16_t ratio_space = (f_space - min_freq_displayed) / displayed_span_hz;
+                    uint16_t line_x_space = static_cast<uint16_t>(std::round(ratio_space * (bounds.width - 1)));
                     line_x_space = constrain(line_x_space, 0, bounds.width - 1);
                     sprite_->drawFastVLine(line_x_space, 0, graphH, TUNING_AID_RTTY_SPACE_LINE_COLOR);
                 }
 
                 // Mark vonal
                 if (f_mark >= min_freq_displayed && f_mark <= max_freq_displayed) {
-                    float ratio_mark = (f_mark - min_freq_displayed) / displayed_span_hz;
-                    int line_x_mark = static_cast<int>(std::round(ratio_mark * (bounds.width - 1)));
+                    uint16_t ratio_mark = (f_mark - min_freq_displayed) / displayed_span_hz;
+                    uint16_t line_x_mark = static_cast<uint16_t>(std::round(ratio_mark * (bounds.width - 1)));
                     line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
                     sprite_->drawFastVLine(line_x_mark, 0, graphH, TUNING_AID_RTTY_MARK_LINE_COLOR);
                 }
             }
-        }
-    }
 
-    // Frekvencia címkék kirajzolása a sprite-ba, így nem villog
-    if (currentTuningAidType_ != TuningAidType::OFF_DECODER) {
-        float min_freq_displayed = currentTuningAidMinFreqHz_;
-        float max_freq_displayed = currentTuningAidMaxFreqHz_;
-        float displayed_span_hz = max_freq_displayed - min_freq_displayed;
+            // Frekvencia címkék kirajzolása a sprite-ba, így nem villog
+            sprite_->setTextDatum(BC_DATUM);
+            sprite_->setTextSize(1);
+            sprite_->setTextColor(TFT_GREEN, TFT_BLACK);
 
-        sprite_->setTextDatum(BC_DATUM);
-        sprite_->setTextSize(1);
-        sprite_->setTextColor(TFT_GREEN, TFT_BLACK);
-
-        if (displayed_span_hz > 0) {
             if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
-                int line_x = bounds.width / 2;
-                int label_y = graphH;
+                uint16_t line_x = bounds.width / 2;
+                uint16_t label_y = graphH;
                 sprite_->fillRect(line_x - 25, label_y - 8, 50, 10, TFT_BLACK);
-                sprite_->drawString(String(static_cast<int>(config.data.cwReceiverOffsetHz)) + "Hz", line_x, label_y);
+                sprite_->drawString(String(config.data.cwReceiverOffsetHz) + "Hz", line_x, label_y);
+
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
-                float f_mark = config.data.rttyMarkFrequencyHz;
-                float f_space = f_mark - config.data.rttyShiftHz;
+                uint16_t f_mark = config.data.rttyMarkFrequencyHz;
+                uint16_t f_space = f_mark - config.data.rttyShiftHz;
                 // Space címke
                 if (f_space >= min_freq_displayed && f_space <= max_freq_displayed) {
-                    float ratio_space = (f_space - min_freq_displayed) / displayed_span_hz;
-                    int line_x_space = static_cast<int>(std::round(ratio_space * (bounds.width - 1)));
+                    uint16_t ratio_space = (f_space - min_freq_displayed) / displayed_span_hz;
+                    uint16_t line_x_space = static_cast<uint16_t>(std::round(ratio_space * (bounds.width - 1)));
                     line_x_space = constrain(line_x_space, 0, bounds.width - 1);
-                    int label_y = graphH;
+                    uint16_t label_y = graphH;
                     sprite_->fillRect(line_x_space - 25, label_y - 8, 50, 10, TFT_BLACK);
                     sprite_->setTextColor(TUNING_AID_RTTY_SPACE_LINE_COLOR, TFT_BLACK);
-                    sprite_->drawString(String(static_cast<int>(round(f_space))) + "Hz", line_x_space, label_y);
+                    sprite_->drawString(String(static_cast<uint16_t>(round(f_space))) + "Hz", line_x_space, label_y);
                 }
                 // Mark címke
                 if (f_mark >= min_freq_displayed && f_mark <= max_freq_displayed) {
-                    float ratio_mark = (f_mark - min_freq_displayed) / displayed_span_hz;
-                    int line_x_mark = static_cast<int>(std::round(ratio_mark * (bounds.width - 1)));
+                    uint16_t ratio_mark = (f_mark - min_freq_displayed) / displayed_span_hz;
+                    uint16_t line_x_mark = static_cast<uint16_t>(std::round(ratio_mark * (bounds.width - 1)));
                     line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
-                    int label_y = graphH;
+                    uint16_t label_y = graphH;
                     sprite_->fillRect(line_x_mark - 25, label_y - 8, 50, 10, TFT_BLACK);
                     sprite_->setTextColor(TUNING_AID_RTTY_MARK_LINE_COLOR, TFT_BLACK);
-                    sprite_->drawString(String(static_cast<int>(round(f_mark))) + "Hz", line_x_mark, label_y);
+                    sprite_->drawString(String(static_cast<uint16_t>(round(f_mark))) + "Hz", line_x_mark, label_y);
                 }
             }
         }
