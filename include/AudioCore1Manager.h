@@ -58,10 +58,11 @@ class AudioCore1Manager {
     static void updateAudioConfig();
 
   public:
-    // Statikus számláló a megszakítások számának tárolására
-    static volatile int interruptCount;
+    // Timer interrupt változók
+    static volatile bool isTimerRunning;
     static volatile bool canRun;
     static volatile float fftTimerInterval; // Időzítő intervallum másodpercben
+    static volatile uint32_t interruptCount;
 
     /**
      * @brief Megszakítás kezelő az AudioCore1Manager számára

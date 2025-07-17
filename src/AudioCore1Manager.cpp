@@ -12,20 +12,19 @@ bool AudioCore1Manager::initialized_ = false;
 float *AudioCore1Manager::currentGainConfigRef_ = nullptr;
 bool AudioCore1Manager::collectOsci_ = false;
 
-// ISR függvény a Core1 audio feldolgozóhoz
-volatile int AudioCore1Manager::interruptCount = 0;
+// ISR változók a Core1 audio feldolgozás vezérléséhez
+volatile bool AudioCore1Manager::isTimerRunning = false;
 volatile bool AudioCore1Manager::canRun = false;
 volatile float AudioCore1Manager::fftTimerInterval = 0.0f;
+volatile uint32_t AudioCore1Manager::interruptCount = 0;
 
-// Megszakítás kezelő az AudioCore1Manager számára
 /**
  * @brief Megszakítás kezelő az AudioCore1Manager számára
  * @param timer A megszakítás időzítő
  */
 bool AudioCore1Manager::onFftTimerInterrupt(struct repeating_timer *) {
-    // Példa: csak egy megszakítás számláló növelése
-    interruptCount++;
     canRun = true;
+    interruptCount++;
     return true;
 }
 
@@ -53,14 +52,22 @@ bool AudioCore1Manager::setFFtIsrTimer(uint16_t fftSampleSize, uint16_t fftSampl
         return false;
     }
 
-    fftTimerInterval = (static_cast<float>(fftSampleSize) / static_cast<float>(fftSamplingFrequency)) * 1000.0f;
-    DEBUG("AudioCore1Manager::setIsrTimer -> Core1 Audio Manager interval: %s ms\n", Utils::floatToString(fftTimerInterval).c_str());
+    // megszakítás letiltása (ha már futna)
+    if (isTimerRunning) {
+        ::audioCore1ManagerTimer.detachInterrupt();
+    }
 
+    fftTimerInterval = (static_cast<float>(fftSampleSize) / static_cast<float>(fftSamplingFrequency)) * 1000.0f;
+    // Megszakítás időzítő beállítása
     bool success = ::audioCore1ManagerTimer.attachInterruptInterval(fftTimerInterval * 1000, AudioCore1Manager::onFftTimerInterrupt);
     if (!success) {
-        DEBUG("HIBA: Core1 Audio Manager timer interrupt initialization failed!\n");
+        DEBUG("AudioCore1Manager::setIsrTimer -> HIBA: timer interrupt beállítása sikertelen!\n");
         Utils::beepError();
+    } else {
+        DEBUG("AudioCore1Manager::setIsrTimer -> Core1 Audio Manager interval: %s ms\n", Utils::floatToString(fftTimerInterval).c_str());
     }
+
+    isTimerRunning = success;
 
     return success;
 }
@@ -343,6 +350,19 @@ bool AudioCore1Manager::setFftSize(uint16_t newSize) {
     if (!initialized_ || !pSharedData_)
         return false;
 
+    // Timer ki- bekapcsolása, a méret 0-ra állítása esetén
+    if (newSize == 0) {
+        isTimerRunning = false;
+        ::audioCore1ManagerTimer.disableTimer();
+        DEBUG("AudioCore1Manager::setFftSize: TIMER Kikapcsolva!\n");
+        return true;
+
+    } else if (!isTimerRunning && newSize > 0) {
+        isTimerRunning = false;
+        ::audioCore1ManagerTimer.enableTimer();
+        DEBUG("AudioCore1Manager::setFftSize: TIMER Bekapcsolva!\n");
+    }
+
     if (newSize < AudioProcessorConstants::MIN_FFT_SAMPLES || newSize > AudioProcessorConstants::MAX_FFT_SAMPLES) {
         DEBUG("AudioProcessor::setFftSize: Érvénytelen FFT méret %d\n", newSize);
         return false;
@@ -386,7 +406,7 @@ void AudioCore1Manager::updateAudioConfig() {
 
     pSharedData_->configChanged = false;
 
-    // DEBUG("AudioCore1Manager::updateAudioConfig: Audio konfiguráció frissítése OK\n");
+    setFFtIsrTimer(pSharedData_->fftSize, pSharedData_->samplingFrequency);
 }
 
 /**

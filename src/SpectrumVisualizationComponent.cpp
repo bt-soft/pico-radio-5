@@ -439,19 +439,19 @@ void SpectrumVisualizationComponent::setFftParametersForDisplayMode() {
 
         { // FFT méret beállítása
             uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
-            uint16_t currentFftSize = getCore1FftSize();
+            // uint16_t currentFftSize = getCore1FftSize();
 
-            if (currentFftSize != optimalFftSize) {
-                DEBUG("SpectrumVisualizationComponent: FFT méret változtatása: %d -> %d, mód: %s\n", currentFftSize, optimalFftSize, decodeModeToStr());
+            // if (currentFftSize != optimalFftSize) {
+            // DEBUG("SpectrumVisualizationComponent: FFT méret változtatása: %d -> %d, mód: %s\n", currentFftSize, optimalFftSize, decodeModeToStr());
 
-                if (AudioCore1Manager::setFftSize(optimalFftSize)) {
-                    DEBUG("SpectrumVisualizationComponent: Az FFT méret sikeresen megváltozott: %d\n", optimalFftSize);
-                } else {
-                    DEBUG("SpectrumVisualizationComponent: Nem sikerült megváltoztatni az FFT méretet: %d\n", optimalFftSize);
-                }
+            if (AudioCore1Manager::setFftSize(optimalFftSize)) {
+                DEBUG("SpectrumVisualizationComponent: Az FFT méret sikeresen megváltozott: %d\n", optimalFftSize);
             } else {
-                DEBUG("SpectrumVisualizationComponent: Az FFT méret már megfelelő: %d, mód: %s\n", currentFftSize, decodeModeToStr());
+                DEBUG("SpectrumVisualizationComponent: Nem sikerült megváltoztatni az FFT méretet: %d\n", optimalFftSize);
             }
+            //} else {
+            //    DEBUG("SpectrumVisualizationComponent: Az FFT méret már megfelelő: %d, mód: %s\n", currentFftSize, decodeModeToStr());
+            //}
         }
 
         // Oszcilloszkóp mód esetén engedélyezzük az oszcilloszkóp minták gyűjtését
@@ -1491,17 +1491,20 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
  */
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
     switch (mode) {
+        case DisplayMode::SpectrumHighRes:
         case DisplayMode::CWWaterfall:
         case DisplayMode::RTTYWaterfall:
-        case DisplayMode::SpectrumHighRes:
-            return 1024; // Maximum felbontás a spektrum analizáláshoz
+            return 512; // Maximum felbontás a spektrum analizáláshoz
 
         case DisplayMode::SpectrumLowRes:
         case DisplayMode::Oscilloscope:
         case DisplayMode::Envelope:
-        case DisplayMode::Off:
         default:
-            return 512; // Alapértelmezett - gyorsabb
+            return 128;
+            // return AudioProcessorConstants::DEFAULT_FFT_SAMPLES; // Alapértelmezett - gyorsabb
+
+        case DisplayMode::Off:
+            return 0;
     }
 }
 
