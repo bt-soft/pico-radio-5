@@ -61,6 +61,7 @@ class AudioCore1Manager {
     // Statikus számláló a megszakítások számának tárolására
     static volatile int interruptCount;
     static volatile bool canRun;
+    static volatile float fftTimerInterval; // Időzítő intervallum másodpercben
 
     /**
      * @brief Megszakítás kezelő az AudioCore1Manager számára
@@ -68,7 +69,7 @@ class AudioCore1Manager {
      * @return true ha a megszakítás sikeresen kezelve lett
      *
      */
-    static bool onTimerInterrupt(struct repeating_timer *);
+    static bool onFftTimerInterrupt(struct repeating_timer *);
 
     /**
      * @brief Core1 audio feldolgozó inicializálása
@@ -81,12 +82,13 @@ class AudioCore1Manager {
      *             ≈ 68,27 ms
      *
      */
-    static bool setIsrTimer(uint16_t fftSampleSize, uint16_t samplingFrequency);
+    static bool setFFtIsrTimer(uint16_t fftSampleSize, uint16_t samplingFrequency);
 
     // EEPROM védelem
     static void pauseCore1Audio();
     static void resumeCore1Audio();
     static bool isCore1Paused();
+
     /**
      * @brief Core1 audio manager inicializálása
      * @param gainConfigAmRef Referencia az AM FFT gain konfigurációra

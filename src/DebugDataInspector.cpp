@@ -65,36 +65,28 @@ void DebugDataInspector::printConfigData(const Config_t &configData) {
     } else if (configData.audioFftConfigAm == 0.0f) {
         DEBUG("  audioFftConfigAm: Auto Gain\n");
     } else {
-        char gainStr[16];
-        dtostrf(configData.audioFftConfigAm, 6, 1, gainStr);
-        DEBUG("  audioFftConfigAm: Manual Gain %sx\n", gainStr);
+        DEBUG("  audioFftConfigAm: Manual Gain %sx\n", Utils::floatToString(configData.audioFftConfigAm).c_str());
     }
     if (configData.audioFftConfigFm == -1.0f) {
         DEBUG("  audioFftConfigFm: Disabled\n");
     } else if (configData.audioFftConfigFm == 0.0f) {
         DEBUG("  audioFftConfigFm: Auto Gain\n");
     } else {
-        char gainStr[16];
-        dtostrf(configData.audioFftConfigFm, 6, 1, gainStr);
-        DEBUG("  audioFftConfigFm: Manual Gain %sx\n", gainStr);
+        DEBUG("  audioFftConfigFm: Manual Gain %sx\n", Utils::floatToString(configData.audioFftConfigFm).c_str());
     }
     if (configData.miniAudioFftConfigAnalyzer == -1.0f) {
         DEBUG("  miniAudioFftConfigAnalyzer: Disabled\n");
     } else if (configData.miniAudioFftConfigAnalyzer == 0.0f) {
         DEBUG("  miniAudioFftConfigAnalyzer: Auto Gain\n");
     } else {
-        char gainStr[16];
-        dtostrf(configData.miniAudioFftConfigAnalyzer, 6, 1, gainStr);
-        DEBUG("  miniAudioFftConfigAnalyzer: Manual Gain %sx\n", gainStr);
+        DEBUG("  miniAudioFftConfigAnalyzer: Manual Gain %sx\n", Utils::floatToString(configData.miniAudioFftConfigAnalyzer).c_str());
     }
     if (configData.miniAudioFftConfigRtty == -1.0f) {
         DEBUG("  miniAudioFftConfigRtty: Disabled\n");
     } else if (configData.miniAudioFftConfigRtty == 0.0f) {
         DEBUG("  miniAudioFftConfigRtty: Auto Gain\n");
     } else {
-        char gainStr[16];
-        dtostrf(configData.miniAudioFftConfigRtty, 6, 1, gainStr);
-        DEBUG("  miniAudioFftConfigRtty: Manual Gain %sx\n", gainStr);
+        DEBUG("  miniAudioFftConfigRtty: Manual Gain %sx\n", Utils::floatToString(configData.miniAudioFftConfigRtty).c_str());
     }
     DEBUG("  cwReceiverOffsetHz: %u\n", configData.cwReceiverOffsetHz);
     DEBUG("  rttyMarkFrequencyHz: %u\n", configData.rttyMarkFrequencyHz);

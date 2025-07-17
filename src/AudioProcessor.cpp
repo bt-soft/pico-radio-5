@@ -1,7 +1,8 @@
 #include <cmath> // std::abs, std::round
 
 #include "AudioProcessor.h"
-#include "defines.h" // DEBUG makróhoz, ha szükséges
+#include "defines.h"
+#include "utils.h"
 
 constexpr uint8_t NOISE_REDUCTION_ANALOG_SAMPLES_COUNT = 4; // Minta átlagolás zajcsökkentéshez
 constexpr float ONE_SECOND_IN_MICROS = 1000000.0f;          // Egy másodperc mikroszekundumban
@@ -41,10 +42,8 @@ AudioProcessor::AudioProcessor(float &gainConfigRef, uint8_t audioPin, uint16_t 
     calculateBinWidthHz(); // Bin szélesség számítása
 
     // Arduino-kompatibilis float-to-string konverzió
-    char fsStr[16], binStr[16];
-    dtostrf(targetSamplingFrequency_, 8, 1, fsStr);
-    dtostrf(binWidthHz_, 8, 2, binStr);
-    DEBUG("AudioProcessor: FFT Méret: %d, Cél Fs: %s Hz, Minta Intervallum: %lu us, Bin Szélesség: %s Hz\n", currentFftSize_, fsStr, sampleIntervalMicros_, binStr);
+    DEBUG("AudioProcessor: FFT Méret: %d, Cél Fs: %s Hz, Minta Intervallum: %lu us, Bin Szélesség: %s Hz\n", currentFftSize_, Utils::floatToString(targetSamplingFrequency_).c_str(), sampleIntervalMicros_,
+          Utils::floatToString(binWidthHz_).c_str());
 
     // Oszcilloszkóp minták inicializálása középpontra (ADC nyers érték)
     for (uint16_t i = 0; i < AudioProcessorConstants::MAX_INTERNAL_WIDTH; ++i) {
@@ -199,9 +198,7 @@ bool AudioProcessor::setFftSize(uint16_t newSize) {
     calculateBinWidthHz();
 
     // Arduino-kompatibilis float-to-string konverzió
-    char binWidthStr[16];
-    dtostrf(binWidthHz_, 8, 2, binWidthStr);
-    DEBUG("AudioProcessor: FFT méret módosítva %d-re, új bin szélesség: %s Hz\n", currentFftSize_, binWidthStr);
+    DEBUG("AudioProcessor: FFT méret módosítva %d-re, új bin szélesség: %s Hz\n", currentFftSize_, Utils::floatToString(binWidthHz_).c_str());
 
     return true;
 }

@@ -7,6 +7,57 @@
 namespace Utils {
 
 /**
+ * @brief  Formáz egy lebegőpontos számot stringgé, a tizedesjegyek számát paraméterként adva meg.
+ * @param value A lebegőpontos szám értéke
+ * @param decimalPlaces A tizedesjegyek száma (alapértelmezett: 2)
+ */
+String floatToString(float value, int decimalPlaces) {
+    String result = String(value, decimalPlaces);
+    return result;
+}
+
+/**
+ * @brief uSec time string formázása
+ * @param val A mikroszekundum érték
+ * @return Formázott idő string, pl. "1sec, 234msec, 567usec"
+ */
+String usecToString(uint32_t val) {
+
+    uint32_t sec = val / 1000000;
+    uint32_t msec = (val % 1000000) / 1000;
+    uint32_t usec = val % 1000;
+
+    String result;
+    if (sec > 0) {
+        result += String(sec) + " sec, ";
+    }
+    if (msec > 0 || sec > 0) {
+        result += String(msec) + " msec, ";
+    }
+    result += String(usec) + " usec";
+    return result;
+}
+
+/**
+ * @brief Elapsed time string formázása
+ * @param startMicros A kezdő időbélyeg (mikroszekundum)
+ * @param endMicros A befejező időbélyeg (mikroszekundum)
+ * @return Formázott idő string, pl. "1sec, 234msec, 567usec"
+ *
+ */
+String elapsedUSecStr(uint32_t startMicros, uint32_t endMicros) {
+    uint32_t elapsed = endMicros - startMicros;
+    return usecToString(elapsed);
+}
+
+/**
+ * @brief Elapsed time string formázása, csak a kezdő időbélyeget adva meg
+ * @param startMicros A kezdő időbélyeg (mikroszekundum)
+ * @return Formázott idő string, pl. "1sec, 234msec, 567usec"
+ */
+String elapsedUSecStr(uint32_t startMicros) { return elapsedUSecStr(startMicros, micros()); }
+
+/**
  * @brief Frekvencia formázása: ha egész, akkor csak egész, ha van tizedes, akkor max 1 tizedesjegy (ha nem nulla)
  * @param freqHz frekvencia Hz-ben
  */
@@ -23,6 +74,7 @@ String formatFrequencyString(float freqHz) {
         }
     } else {
         str = String(static_cast<int>(freqHz + 0.5f)) + "Hz";
+        // Elapsed time string formatting
     }
     return str;
 }

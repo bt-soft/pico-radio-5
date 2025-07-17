@@ -15,13 +15,14 @@ bool AudioCore1Manager::collectOsci_ = false;
 // ISR függvény a Core1 audio feldolgozóhoz
 volatile int AudioCore1Manager::interruptCount = 0;
 volatile bool AudioCore1Manager::canRun = false;
+volatile float AudioCore1Manager::fftTimerInterval = 0.0f;
 
 // Megszakítás kezelő az AudioCore1Manager számára
 /**
  * @brief Megszakítás kezelő az AudioCore1Manager számára
  * @param timer A megszakítás időzítő
  */
-bool AudioCore1Manager::onTimerInterrupt(struct repeating_timer *) {
+bool AudioCore1Manager::onFftTimerInterrupt(struct repeating_timer *) {
     // Példa: csak egy megszakítás számláló növelése
     interruptCount++;
     canRun = true;
@@ -39,7 +40,7 @@ bool AudioCore1Manager::onTimerInterrupt(struct repeating_timer *) {
  *             ≈ 68,27 ms
  *
  */
-bool AudioCore1Manager::setIsrTimer(uint16_t fftSampleSize, uint16_t fftSamplingFrequency) {
+bool AudioCore1Manager::setFFtIsrTimer(uint16_t fftSampleSize, uint16_t fftSamplingFrequency) {
 
     if (!initialized_) {
         DEBUG("AudioCore1Manager: Core1 még nincs inicializálva!\n");
@@ -52,12 +53,10 @@ bool AudioCore1Manager::setIsrTimer(uint16_t fftSampleSize, uint16_t fftSampling
         return false;
     }
 
-    float interval = (static_cast<float>(fftSampleSize) / static_cast<float>(fftSamplingFrequency)) * 1000.0f;
-    char floatStr[10];
-    dtostrf(interval, 4, 2, floatStr); // Formázzuk a floatot stringgé
-    DEBUG("AudioCore1Manager::setIsrTimer -> Core1 Audio Manager interval: %s ms\n", floatStr);
+    fftTimerInterval = (static_cast<float>(fftSampleSize) / static_cast<float>(fftSamplingFrequency)) * 1000.0f;
+    DEBUG("AudioCore1Manager::setIsrTimer -> Core1 Audio Manager interval: %s ms\n", Utils::floatToString(fftTimerInterval).c_str());
 
-    bool success = ::audioCore1ManagerTimer.attachInterruptInterval(interval * 1000, AudioCore1Manager::onTimerInterrupt);
+    bool success = ::audioCore1ManagerTimer.attachInterruptInterval(fftTimerInterval * 1000, AudioCore1Manager::onFftTimerInterrupt);
     if (!success) {
         DEBUG("HIBA: Core1 Audio Manager timer interrupt initialization failed!\n");
         Utils::beepError();
@@ -197,8 +196,6 @@ void AudioCore1Manager::core1Entry() {
  */
 void AudioCore1Manager::core1AudioLoop() {
 
-    uint32_t lastProcessTime = 0;
-
     // Audio feldolgozási loop
     while (!pSharedData_->core1ShouldStop) {
         // EEPROM írás esetén szüneteltetés
@@ -225,54 +222,59 @@ void AudioCore1Manager::core1AudioLoop() {
             continue;
         }
 
-        if (canRun) {
-            canRun = false; // Reset the flag
-            DEBUG("AudioCore1Manager: Core1 audio feldolgozás futtatása, interruptCount: %d\n", interruptCount);
-        }
+        // Audio feldolgozás végrehajtása
+        if (pAudioProcessor_ && canRun) {
 
-        // Audio feldolgozás időzített végrehajtása
-        constexpr uint32_t DEFAULT_LOOP_INTERVAL_MSEC = 100; // core1 túlterhelés megfékezése
-        uint32_t now = millis();
-        if (now - lastProcessTime >= DEFAULT_LOOP_INTERVAL_MSEC) {
+            // DEBUG("AudioCore1Manager: Core1 audio feldolgozás futtatása, interruptCount: %d\n", interruptCount);
 
-            // Audio feldolgozás végrehajtása
-            if (pAudioProcessor_) {
+            uint32_t startTime = micros();
 
-                // Minták gyújtése, oszcilloszkóp minták gyűjtése, ha engedélyezve van
-                pAudioProcessor_->process(collectOsci_);
+            // Minták gyújtése, oszcilloszkóp minták gyűjtése, ha engedélyezve van
+            pAudioProcessor_->process(collectOsci_);
+            uint32_t processTime = micros();
 
-                // Thread-safe adatmásolás
-                if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
-                    // Spektrum adatok másolása
-                    const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
-                    if (magnitudeData) {
-                        uint16_t fftSize = pAudioProcessor_->getFftSize();
-                        memcpy(pSharedData_->spectrumBuffer, magnitudeData, fftSize * sizeof(double));
-                        pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
-                        pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
-                        pSharedData_->spectrumDataReady = true;
+            // Thread-safe adatmásolás
+            if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+                // Spektrum adatok másolása
+                const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
+                if (magnitudeData) {
+                    uint16_t fftSize = pAudioProcessor_->getFftSize();
+                    memcpy(pSharedData_->spectrumBuffer, magnitudeData, fftSize * sizeof(double));
+                    pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
+                    pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
+                    pSharedData_->spectrumDataReady = true;
 
-                        // Ha nincs épp aktív konfigurációs beállítás, akkor lekérjük az aktuális beállításokat is
-                        if (!pSharedData_->configChanged) {
-                            pSharedData_->fftSize = fftSize;
-                            pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
-                        }
+                    // Ha nincs épp aktív konfigurációs beállítás, akkor lekérjük az aktuális beállításokat is
+                    if (!pSharedData_->configChanged) {
+                        pSharedData_->fftSize = fftSize;
+                        pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
                     }
-
-                    // Oszcilloszkóp adatok másolása, ha engedélyezve van
-                    if (collectOsci_) {
-                        const int *osciData = pAudioProcessor_->getOscilloscopeData();
-                        if (osciData) {
-                            memcpy(pSharedData_->oscilloscopeBuffer, osciData, AudioProcessorConstants::MAX_INTERNAL_WIDTH * sizeof(int));
-                            pSharedData_->oscilloscopeDataReady = true;
-                        }
-                    }
-
-                    mutex_exit(&pSharedData_->dataMutex);
                 }
+
+                // Oszcilloszkóp adatok másolása, ha engedélyezve van
+                if (collectOsci_) {
+                    const int *osciData = pAudioProcessor_->getOscilloscopeData();
+                    if (osciData) {
+                        memcpy(pSharedData_->oscilloscopeBuffer, osciData, AudioProcessorConstants::MAX_INTERNAL_WIDTH * sizeof(int));
+                        pSharedData_->oscilloscopeDataReady = true;
+                    }
+                }
+
+                mutex_exit(&pSharedData_->dataMutex);
             }
 
-            lastProcessTime = now;
+            uint32_t copyTime = micros();
+
+            if (interruptCount % 100 == 0) {
+                DEBUG("AudioCore1Manager::core1AudioLoop ->  fftTimerInterval: %s ms, processTime: %s, copyTime: %s, allTime: %s\n", //
+                      Utils::floatToString(fftTimerInterval).c_str(),                                                                //
+                      Utils::elapsedUSecStr(startTime, processTime).c_str(),                                                         //
+                      Utils::elapsedUSecStr(processTime, copyTime).c_str(),                                                          //
+                      Utils::elapsedUSecStr(startTime).c_str());
+            }
+
+            // Futtatás flag resetelése
+            canRun = false;
         }
 
         // Rövid szünet más szálak számára
@@ -589,15 +591,10 @@ void AudioCore1Manager::debugInfo() {
         return;
     }
 
-    // Arduino-kompatibilis float-to-string konverzió
-    char gainStr[16], binStr[16];
-    dtostrf(pSharedData_->currentAutoGain, 8, 2, gainStr);
-    dtostrf(pSharedData_->binWidthHz, 8, 2, binStr);
-
     DEBUG("AudioCore1Manager Debug Info:\n");
     DEBUG("  Core1 Running: %s, Spectrum Ready: %s, Osci Ready: %s\n", pSharedData_->core1Running ? "YES" : "NO", pSharedData_->spectrumDataReady ? "YES" : "NO", pSharedData_->oscilloscopeDataReady ? "YES" : "NO");
     DEBUG("  FFT Size: %d\n", pSharedData_->fftSize);
     DEBUG("  FFT Sample Freq: %dkHz\n", pSharedData_->samplingFrequency / 1000);
-    DEBUG("  Bin Width: %s Hz\n", binStr);
-    DEBUG("  Auto Gain: %s\n", gainStr);
+    DEBUG("  Bin Width: %s Hz\n", Utils::floatToString(pSharedData_->binWidthHz).c_str());
+    DEBUG("  Auto Gain: %s\n", Utils::floatToString(pSharedData_->currentAutoGain).c_str());
 }

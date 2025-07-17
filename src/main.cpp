@@ -237,7 +237,7 @@ void setup() {
     }
 
     // Core1 Audio Manager időzítő beállítása
-    AudioCore1Manager::setIsrTimer(AudioProcessorConstants::DEFAULT_FFT_SAMPLES, AudioProcessorConstants::DEFAULT_FM_SAMPLING_FREQUENCY);
+    AudioCore1Manager::setFFtIsrTimer(AudioProcessorConstants::DEFAULT_FFT_SAMPLES, AudioProcessorConstants::DEFAULT_FM_SAMPLING_FREQUENCY);
 
     delay(100);
 

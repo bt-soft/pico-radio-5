@@ -9,6 +9,36 @@
 namespace Utils {
 
 /**
+ * @brief  Formáz egy lebegőpontos számot stringgé, a tizedesjegyek számát paraméterként adva meg.
+ * @param value A lebegőpontos szám értéke
+ * @param decimalPlaces A tizedesjegyek száma (alapértelmezett: 2)
+ */
+String floatToString(float value, int decimalPlaces = 2);
+
+/**
+ * @brief uSec time string formázása
+ * @param val A mikroszekundum érték
+ * @return Formázott idő string, pl. "1sec, 234msec, 567usec"
+ */
+String usecToString(uint32_t val) ;
+
+/**
+ * @brief Elapsed time string formázása
+ * @param startMicros A kezdő időbélyeg (mikroszekundum)
+ * @param endMicros A befejező időbélyeg (mikroszekundum)
+ * @return Formázott idő string, pl. "1sec, 234msec, 567usec"
+ *
+ */
+String elapsedUSecStr(uint32_t startMicros, uint32_t endMicros);
+
+/**
+ * @brief Elapsed time string formázása, csak a kezdő időbélyeget adva meg
+ * @param startMicros A kezdő időbélyeg (mikroszekundum)
+ * @return Formázott idő string, pl. "1sec, 234msec, 567usec"
+ */
+String elapsedUSecStr(uint32_t startMicros);
+
+/**
  * Frekvencia formázása: ha egész, akkor csak egész, ha van tizedes, akkor max 1 tizedesjegy (ha nem nulla)
  * @param freqHz frekvencia Hz-ben
  * @return String, pl. "10kHz", "10.5kHz", "950Hz"
