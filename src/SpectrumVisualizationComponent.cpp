@@ -890,13 +890,13 @@ void SpectrumVisualizationComponent::renderEnvelope() {
 
     // 1. Adatok eltolása balra a wabuf-ban
     for (int r = 0; r < bounds.height; ++r) { // Teljes bounds.height
-        for (int c = 0; c < bounds.width - 1; ++c) {
+        for (uint32_t c = 0; c < bounds.width - 1; ++c) {
             wabuf[r][c] = wabuf[r][c + 1];
         }
     }
 
-    // Ennél az értéknél nem látszanak a tüskék...
-    constexpr int ENVELOPE_BIN_NMUMBER = 40; // Az envelope-hoz használt bin szám
+    // Ennél az értéknél (512 minta -> 40, 64 minta -> 20) nem látszanak a tüskék, ill jól jelenik meg ...
+    constexpr uint32_t ENVELOPE_BIN_NMUMBER = 20; // Az envelope-hoz használt bin szám
 
     const int min_bin_for_env = std::max(10, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
     const int max_bin_for_env = std::min(static_cast<int>(actualFftSize / ENVELOPE_BIN_NMUMBER - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ * 0.2f / currentBinWidthHz)));
@@ -912,7 +912,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     float maxGainedVal = 0.0f;
 
     // Minden sort feldolgozunk a teljes felbontásért
-    for (int r = 0; r < bounds.height; ++r) {
+    for (uint32_t r = 0; r < bounds.height; ++r) {
         // 'r' (0 to bounds.height-1) leképezése FFT bin indexre a szűkített tartományon belül
         int fft_bin_index = min_bin_for_env + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_env_range - 1)));
         fft_bin_index = constrain(fft_bin_index, min_bin_for_env, max_bin_for_env); // Finomabb gain alkalmazás envelope-hez
@@ -941,14 +941,14 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     sprite_->fillSprite(TFT_BLACK); // Sprite törlése
 
     // Erőteljes simítás a tüskék ellen
-    constexpr float ENVELOPE_SMOOTH_FACTOR = 0.05f;   // Sokkal erősebb simítás (volt 0.15f)
-    constexpr float ENVELOPE_NOISE_THRESHOLD = 10.0f; // Magasabb zajküszöb a tüskék ellen (volt 2.0f)
+    constexpr float ENVELOPE_SMOOTH_FACTOR = 0.05f;   // Sokkal erősebb simítás (0.15f volt)
+    constexpr float ENVELOPE_NOISE_THRESHOLD = 10.0f; // Magasabb zajküszöb a tüskék ellen (2.0f volt)
 
     // Először rajzoljunk egy vékony központi vízszintes vonalat (alapvonal) - mindig látható
     int yCenter_on_sprite = graphH / 2;
     sprite_->drawFastHLine(0, yCenter_on_sprite, bounds.width, TFT_WHITE);
 
-    for (int c = 0; c < bounds.width; ++c) {
+    for (uint32_t c = 0; c < bounds.width; ++c) {
         int sum_val_in_col = 0;
         int count_val_in_col = 0;
         bool column_has_signal = false;
@@ -979,7 +979,9 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         // További simítás: csak jelentős változásokat engedünk át
         if (abs(current_col_max_amplitude - envelopeLastSmoothedValue_) < ENVELOPE_NOISE_THRESHOLD) {
             current_col_max_amplitude = envelopeLastSmoothedValue_;
-        } // Csak akkor rajzolunk burkológörbét, ha van számottevő jel
+        }
+
+        // Csak akkor rajzolunk burkológörbét, ha van számottevő jel
         if (column_has_signal || envelopeLastSmoothedValue_ > 0.5f) {
             // VÍZSZINTES NAGYÍTÁS: Csak a középső részt használjuk nagyobb felbontásért
             float displayValue = envelopeLastSmoothedValue_;
@@ -1464,7 +1466,7 @@ uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mo
         case DisplayMode::SpectrumHighRes:
         case DisplayMode::CWWaterfall:
         case DisplayMode::RTTYWaterfall:
-            return 256; // Maximum felbontás a spektrum analizáláshoz
+            return 1024; // Maximum felbontás a spektrum analizáláshoz
 
         case DisplayMode::SpectrumLowRes:
         case DisplayMode::Oscilloscope:

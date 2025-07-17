@@ -23,7 +23,9 @@ volatile uint32_t AudioCore1Manager::interruptCount = 0;
  * @param timer A megszakítás időzítő
  */
 bool AudioCore1Manager::onFftTimerInterrupt(struct repeating_timer *) {
-    canRun = true;
+    if (!canRun) {
+        canRun = true;
+    }
     interruptCount++;
     return true;
 }
@@ -232,6 +234,10 @@ void AudioCore1Manager::core1AudioLoop() {
 
         // Audio feldolgozás végrehajtása
         if (pAudioProcessor_ && canRun) {
+
+            // Futtatás flag resetelése
+            canRun = false;
+
             if (interruptCount % 100 == 0) {
                 DEBUG("AudioCore1Manager: Core1 audio feldolgozás futtatása, interruptCount: %d\n", interruptCount);
             }
@@ -283,9 +289,6 @@ void AudioCore1Manager::core1AudioLoop() {
                       Utils::elapsedUSecStr(processTime, copyTime).c_str(),                                                          //
                       Utils::elapsedUSecStr(startTime).c_str());
             }
-
-            // Futtatás flag resetelése
-            canRun = false;
         }
 
         // Csak akkor várjon, ha nem volt feldolgozás ebben a ciklusban
