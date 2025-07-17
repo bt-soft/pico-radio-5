@@ -2,77 +2,12 @@
 #include "defines.h"
 #include "utils.h"
 
-#include <RPi_Pico_TimerInterrupt.h>
-extern RPI_PICO_Timer audioCore1ManagerTimer;
-
 // Statikus tagváltozók inicializálása
 AudioCore1Manager::SharedAudioData *AudioCore1Manager::pSharedData_ = nullptr;
 AudioProcessor *AudioCore1Manager::pAudioProcessor_ = nullptr;
 bool AudioCore1Manager::initialized_ = false;
 float *AudioCore1Manager::currentGainConfigRef_ = nullptr;
 bool AudioCore1Manager::collectOsci_ = false;
-
-// ISR változók a Core1 audio feldolgozás vezérléséhez
-volatile bool AudioCore1Manager::isTimerRunning = false;
-volatile bool AudioCore1Manager::canRun = false;
-volatile float AudioCore1Manager::fftTimerInterval = 0.0f;
-volatile uint32_t AudioCore1Manager::interruptCount = 0;
-
-/**
- * @brief Megszakítás kezelő az AudioCore1Manager számára
- * @param timer A megszakítás időzítő
- */
-bool AudioCore1Manager::onFftTimerInterrupt(struct repeating_timer *) {
-    if (!canRun) {
-        canRun = true;
-    }
-    interruptCount++;
-    return true;
-}
-
-/**
- * @brief Core1 audio feldolgozó inicializálása
- * @param fftSampleSize Az FFT méret
- * @param fftSamplingFrequency A mintavételezési frekvencia
- *
- *  Beállítjuk az időzítőt
- *    idő (ms) = (FFT méret / mintavételezési frekvencia) * 1000
- *             = (2048 / 30000) * 1000
- *             ≈ 68,27 ms
- *
- */
-bool AudioCore1Manager::setFFtIsrTimer(uint16_t fftSampleSize, uint16_t fftSamplingFrequency) {
-
-    if (!initialized_) {
-        DEBUG("AudioCore1Manager: Core1 még nincs inicializálva!\n");
-        return false;
-    }
-
-    // Ellenőrizzük a mintavételezési frekvenciát
-    if (fftSamplingFrequency == 0) {
-        DEBUG("AudioCore1Manager::setIsrTimer -> Érvénytelen mintavételezési frekvencia!\n");
-        return false;
-    }
-
-    // megszakítás letiltása (ha már futna)
-    if (isTimerRunning) {
-        ::audioCore1ManagerTimer.detachInterrupt();
-    }
-
-    fftTimerInterval = (static_cast<float>(fftSampleSize) / static_cast<float>(fftSamplingFrequency)) * 1000.0f;
-    // Megszakítás időzítő beállítása
-    bool success = ::audioCore1ManagerTimer.attachInterruptInterval(fftTimerInterval * 1000, AudioCore1Manager::onFftTimerInterrupt);
-    if (!success) {
-        DEBUG("AudioCore1Manager::setIsrTimer -> HIBA: timer interrupt beállítása sikertelen!\n");
-        Utils::beepError();
-    } else {
-        DEBUG("AudioCore1Manager::setIsrTimer -> Core1 Audio Manager interval: %s ms\n", Utils::floatToString(fftTimerInterval).c_str());
-    }
-
-    isTimerRunning = success;
-
-    return success;
-}
 
 /**
  * @brief Core1 audio manager inicializálása
@@ -105,7 +40,7 @@ bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int
     pSharedData_->core1Running = false;
     pSharedData_->core1ShouldStop = false;
     pSharedData_->configChanged = false;
-    pSharedData_->eepromWriteInProgress = false;
+    pSharedData_->goingToPauseProgress = false;
     pSharedData_->core1AudioPaused = false;
     pSharedData_->core1AudioPausedAck = false;
     //
@@ -208,8 +143,13 @@ void AudioCore1Manager::core1AudioLoop() {
     // Audio feldolgozási loop
     while (!pSharedData_->core1ShouldStop) {
 
-        // EEPROM írás esetén szüneteltetés
-        if (pSharedData_->eepromWriteInProgress) {
+        if (!pAudioProcessor_) {
+            DEBUG("AudioCore1Manager: Core1 AudioProcessor nincs inicializálva!\n");
+            break;
+        }
+
+        // EEPROM/Pause írás esetén szüneteltetés
+        if (pSharedData_->goingToPauseProgress) {
             mutex_enter_blocking(&pSharedData_->dataMutex);
             pSharedData_->core1AudioPaused = true;
             pSharedData_->core1AudioPausedAck = true;
@@ -232,25 +172,14 @@ void AudioCore1Manager::core1AudioLoop() {
             continue;
         }
 
-        // Audio feldolgozás végrehajtása
-        if (pAudioProcessor_ && canRun) {
+        // Feldolgozás minden ciklusban, ha nincs szüneteltetve
+        if (!pSharedData_->core1AudioPaused) {
 
-            // Futtatás flag resetelése
-            canRun = false;
-
-            if (interruptCount % 100 == 0) {
-                DEBUG("AudioCore1Manager: Core1 audio feldolgozás futtatása, interruptCount: %d\n", interruptCount);
-            }
-
-            uint32_t startTime = micros();
-
-            // Minták gyújtése, oszcilloszkóp minták gyűjtése, ha engedélyezve van
+            // Audio feldolgozás
             pAudioProcessor_->process(collectOsci_);
-            uint32_t processTime = micros();
 
-            // Thread-safe adatmásolás
+            // Mutex használata a megosztott adatok biztonságos eléréséhez
             if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
-                // Spektrum adatok másolása
                 const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
                 if (magnitudeData) {
                     uint16_t fftSize = pAudioProcessor_->getFftSize();
@@ -258,15 +187,11 @@ void AudioCore1Manager::core1AudioLoop() {
                     pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
                     pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
                     pSharedData_->spectrumDataReady = true;
-
-                    // Ha nincs épp aktív konfigurációs beállítás, akkor lekérjük az aktuális beállításokat is
                     if (!pSharedData_->configChanged) {
                         pSharedData_->fftSize = fftSize;
                         pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
                     }
                 }
-
-                // Oszcilloszkóp adatok másolása, ha engedélyezve van
                 if (collectOsci_) {
                     const int *osciData = pAudioProcessor_->getOscilloscopeData();
                     int osciSampleCount = pAudioProcessor_->getOscilloscopeSampleCount();
@@ -276,25 +201,15 @@ void AudioCore1Manager::core1AudioLoop() {
                         pSharedData_->oscilloscopeDataReady = true;
                     }
                 }
-
                 mutex_exit(&pSharedData_->dataMutex);
             }
 
-            uint32_t copyTime = micros();
-
-            if (interruptCount % 100 == 0) {
-                DEBUG("AudioCore1Manager::core1AudioLoop ->  fftTimerInterval: %s ms, processTime: %s, copyTime: %s, allTime: %s\n", //
-                      Utils::floatToString(fftTimerInterval).c_str(),                                                                //
-                      Utils::elapsedUSecStr(startTime, processTime).c_str(),                                                         //
-                      Utils::elapsedUSecStr(processTime, copyTime).c_str(),                                                          //
-                      Utils::elapsedUSecStr(startTime).c_str());
-            }
+        } else {
+            // Ha szüneteltetve van a feldolgozás, akkor egy kicsit nagyobbat várunk
+            sleep_ms(500);
         }
 
-        // Csak akkor várjon, ha nem volt feldolgozás ebben a ciklusban
-        if (!canRun) {
-            sleep_us(100);
-        }
+        sleep_us(100); // kis várakozás minden ciklusban
     }
 }
 
@@ -359,19 +274,6 @@ bool AudioCore1Manager::setFftSize(uint16_t newSize) {
     if (!initialized_ || !pSharedData_)
         return false;
 
-    // Timer ki- bekapcsolása, a méret 0-ra állítása esetén
-    if (newSize == 0) {
-        isTimerRunning = false;
-        ::audioCore1ManagerTimer.disableTimer();
-        DEBUG("AudioCore1Manager::setFftSize: TIMER Kikapcsolva!\n");
-        return true;
-
-    } else if (!isTimerRunning && newSize > 0) {
-        isTimerRunning = false;
-        ::audioCore1ManagerTimer.enableTimer();
-        DEBUG("AudioCore1Manager::setFftSize: TIMER Bekapcsolva!\n");
-    }
-
     if (newSize < AudioProcessorConstants::MIN_FFT_SAMPLES || newSize > AudioProcessorConstants::MAX_FFT_SAMPLES) {
         DEBUG("AudioProcessor::setFftSize: Érvénytelen FFT méret %d\n", newSize);
         return false;
@@ -414,8 +316,6 @@ void AudioCore1Manager::updateAudioConfig() {
     }
 
     pSharedData_->configChanged = false;
-
-    setFFtIsrTimer(pSharedData_->fftSize, pSharedData_->samplingFrequency);
 }
 
 /**
@@ -555,11 +455,11 @@ void AudioCore1Manager::pauseCore1Audio() {
     if (!initialized_ || !pSharedData_)
         return;
 
-    DEBUG("AudioCore1Manager: Core1 audio szüneteltetése EEPROM íráshoz...\n");
+    DEBUG("AudioCore1Manager: Core1 audio szüneteltetése EEPROM íráshoz/Pause-hez...\n");
 
     // Csak az eepromWriteInProgress flag-et állítsuk itt, a többit Core1 állítja be
     mutex_enter_blocking(&pSharedData_->dataMutex);
-    pSharedData_->eepromWriteInProgress = true;
+    pSharedData_->goingToPauseProgress = true;
     pSharedData_->core1AudioPausedAck = false; // Töröljük az ACK flag-et
     mutex_exit(&pSharedData_->dataMutex);
 
@@ -587,10 +487,10 @@ void AudioCore1Manager::resumeCore1Audio() {
     if (!initialized_ || !pSharedData_)
         return;
 
-    DEBUG("AudioCore1Manager: Core1 audio folytatása EEPROM írás után.\n");
+    DEBUG("AudioCore1Manager: Core1 audio folytatása EEPROM írás/Pause után.\n");
 
     mutex_enter_blocking(&pSharedData_->dataMutex);
-    pSharedData_->eepromWriteInProgress = false;
+    pSharedData_->goingToPauseProgress = false;
     pSharedData_->core1AudioPaused = false;
     mutex_exit(&pSharedData_->dataMutex);
 }
@@ -620,9 +520,12 @@ void AudioCore1Manager::debugInfo() {
     }
 
     DEBUG("AudioCore1Manager Debug Info:\n");
-    DEBUG("  Core1 Running: %s, Spectrum Ready: %s, Osci Ready: %s\n", pSharedData_->core1Running ? "YES" : "NO", pSharedData_->spectrumDataReady ? "YES" : "NO", pSharedData_->oscilloscopeDataReady ? "YES" : "NO");
-    DEBUG("  FFT Sample Freq: %dkHz\n", pSharedData_->samplingFrequency / 1000);
-    DEBUG("  FFT Size: %d\n", pSharedData_->fftSize);
-    DEBUG("  Bin Width: %s Hz\n", Utils::floatToString(pSharedData_->binWidthHz).c_str());
-    DEBUG("  Auto Gain: %s\n", Utils::floatToString(pSharedData_->currentAutoGain).c_str());
+    DEBUG("  Core1 Running: %s\n", pSharedData_->core1AudioPaused ? "NO" : "Yes");
+    if (!pSharedData_->core1AudioPaused) {
+        DEBUG("  Spectrum Ready: %s, Osci Ready: %s\n", pSharedData_->spectrumDataReady ? "Yes" : "NO", pSharedData_->oscilloscopeDataReady ? "Yes" : "NO");
+        DEBUG("  FFT Sample Freq: %dkHz\n", pSharedData_->samplingFrequency / 1000);
+        DEBUG("  FFT Size: %d\n", pSharedData_->fftSize);
+        DEBUG("  Bin Width: %s Hz\n", Utils::floatToString(pSharedData_->binWidthHz).c_str());
+        DEBUG("  Auto Gain: %s\n", Utils::floatToString(pSharedData_->currentAutoGain).c_str());
+    }
 }

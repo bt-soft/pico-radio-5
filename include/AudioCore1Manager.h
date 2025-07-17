@@ -37,8 +37,8 @@ class AudioCore1Manager {
         float fftGainConfigFm;
         volatile bool configChanged;
 
-        // EEPROM mutex védelem
-        volatile bool eepromWriteInProgress;
+        // EEPROM/Pause mutex védelem
+        volatile bool goingToPauseProgress;
         volatile bool core1AudioPaused;
         volatile bool core1AudioPausedAck; // Core1 visszajelzés a szüneteltetésről
 
@@ -59,33 +59,6 @@ class AudioCore1Manager {
     static void updateAudioConfig();
 
   public:
-    // Timer interrupt változók
-    static volatile bool isTimerRunning;
-    static volatile bool canRun;
-    static volatile float fftTimerInterval; // Időzítő intervallum másodpercben
-    static volatile uint32_t interruptCount;
-
-    /**
-     * @brief Megszakítás kezelő az AudioCore1Manager számára
-     * @param timer A megszakítás időzítő
-     * @return true ha a megszakítás sikeresen kezelve lett
-     *
-     */
-    static bool onFftTimerInterrupt(struct repeating_timer *);
-
-    /**
-     * @brief Core1 audio feldolgozó inicializálása
-     * @param fftSampleSize Az FFT méret
-     * @param samplingFrequency A mintavételezési frekvencia
-     *
-     *  Beállítjuk az időzítőt
-     *    idő (ms) = (FFT méret / mintavételezési frekvencia) * 1000
-     *             = (2048 / 30000) * 1000
-     *             ≈ 68,27 ms
-     *
-     */
-    static bool setFFtIsrTimer(uint16_t fftSampleSize, uint16_t samplingFrequency);
-
     // EEPROM védelem
     static void pauseCore1Audio();
     static void resumeCore1Audio();

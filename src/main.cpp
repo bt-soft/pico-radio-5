@@ -236,9 +236,6 @@ void setup() {
         // Folytatjuk anélkül is, de spectrum nem fog működni
     }
 
-    // Core1 Audio Manager időzítő beállítása
-    AudioCore1Manager::setFFtIsrTimer(AudioProcessorConstants::DEFAULT_FFT_SAMPLES, AudioProcessorConstants::DEFAULT_FM_SAMPLING_FREQUENCY);
-
     delay(100);
 
     // Lépés 8: ScreenManager inicializálása

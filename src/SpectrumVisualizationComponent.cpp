@@ -12,7 +12,7 @@ const uint16_t colors0[16] = {0x0000, 0x000F, 0x001F, 0x081F, 0x0810, 0x0800, 0x
 const uint16_t colors1[16] = {0x0000, 0x1000, 0x2000, 0x4000, 0x8000, 0xC000, 0xF800, 0xF8A0, 0xF9C0, 0xFD20, 0xFFE0, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF}; // Hot
 
 constexpr uint16_t MODE_INDICATOR_VISIBLE_TIMEOUT_MS = 10 * 1000; // A mód indikátor kiírásának láthatósága x másodpercig
-constexpr uint8_t SPECTRUM_FPS = 10;                              // FPS limitálás konstans, ez még élvezhető vizualizációt ad, maradjon így 20 FPS-en
+constexpr uint8_t SPECTRUM_FPS = 15;                              // FPS limitálás konstans, ez még élvezhető vizualizációt ad, maradjon így 20 FPS-en
 
 }; // namespace FftDisplayConstants
 
@@ -1464,6 +1464,7 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
     switch (mode) {
         case DisplayMode::SpectrumHighRes:
+        case DisplayMode::Waterfall:
         case DisplayMode::CWWaterfall:
         case DisplayMode::RTTYWaterfall:
             return 1024; // Maximum felbontás a spektrum analizáláshoz
