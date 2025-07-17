@@ -354,7 +354,11 @@ int FreqDisplay::calculateSpriteWidthWithSpaces(const char *mask) {
 }
 
 /**
- * @brief Megbízható sprite szélesség számítás konstansokkal (textWidth() helyett)
+ * @brief Sprite szélesség meghatározása a maszk alapján
+ * @param mask A maszk string, amely meghatározza a frekvencia formátumát
+ * @return A sprite szélessége pixelben
+ * @short Inkább bedrótozott értékeket használunk a különböző maszkokhoz
+ *
  */
 int FreqDisplay::calculateFixedSpriteWidth(const String &mask) { // Konstans értékek a különböző maszkokhoz - ezek nem változnak futás közben
     if (mask == "188.88") {
@@ -362,7 +366,7 @@ int FreqDisplay::calculateFixedSpriteWidth(const String &mask) { // Konstans ér
     } else if (mask == "8888") {
         return 100; // MW/LW: "8888"
     } else if (mask == "88.888") {
-        return 130; // SW AM: "88.888" (CB és 30MHz sávokhoz)
+        return 150; // SW AM: "88.888" (CB és 30MHz sávokhoz)
     } else if (mask == "88 888.88") {
         return 208; // SSB/CW normál: "88 888.88"
     } else if (mask == "88 888") {
