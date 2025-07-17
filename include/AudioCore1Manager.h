@@ -22,7 +22,7 @@ class AudioCore1Manager {
         volatile bool core1ShouldStop;
 
         // Spektrum adatok
-        double spectrumBuffer[2048];         // Max FFT size
+        float spectrumBuffer[2048];          // Max FFT size
         volatile uint16_t samplingFrequency; // Aktuális mintavételezési frekvencia
         volatile uint16_t fftSize;           // Aktuális FFT méret
         volatile float binWidthHz;
@@ -109,7 +109,7 @@ class AudioCore1Manager {
      * @param outAutoGain Jelenlegi auto gain faktor
      * @return true ha friss adat érhető el, false egyébként
      */
-    static bool getSpectrumData(const double **outData, uint16_t *outFftSize, float *outBinWidth, float *outAutoGain);
+    static bool getSpectrumData(const float **outData, uint16_t *outFftSize, float *outBinWidth, float *outAutoGain);
 
     /**
      * @brief Oszcilloszkóp adatok lekérése (core0-ból hívható)

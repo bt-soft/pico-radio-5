@@ -42,7 +42,7 @@ class AudioCore1Manager; // Előre deklaráció
 class AudioProcessor {
   private:
     // FFT objektum
-    ArduinoFFT<double> FFT;
+    ArduinoFFT<float> FFT;
 
     // Konfigurációs referenciák
     float &activeFftGainConfigRef;
@@ -56,9 +56,9 @@ class AudioProcessor {
     uint16_t currentFftSize_;
 
     // FFT tömbök
-    double *vReal;
-    double *vImag;
-    double *RvReal; // Magnitúdó eredmények
+    float *vReal;
+    float *vImag;
+    float *RvReal; // Magnitúdó eredmények
 
     // Oszcilloszkóp adatok
     int osciSamples[AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH];
@@ -109,7 +109,7 @@ class AudioProcessor {
      * Spektrum magnitúdó adatok lekérése
      * @return Pointer a magnitúdó adatokra
      */
-    const double *getMagnitudeData() const { return RvReal; }
+    const float *getMagnitudeData() const { return RvReal; }
 
     /**
      * Oszcilloszkóp minták lekérése
@@ -143,7 +143,7 @@ class AudioProcessor {
 
     friend class AudioCore1Manager; // <-- csak ez az osztály férhet hozzá a protected és a private memberekhez
 
-    // const double *getRvReal() const { return RvReal; }
+    // const float *getRvReal() const { return RvReal; }
     // int getCurrentFftSize() const { return currentFftSize_; }
     // float getBinWidthHz() const { return binWidthHz_; }
 };

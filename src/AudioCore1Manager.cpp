@@ -174,7 +174,7 @@ void AudioCore1Manager::core1AudioLoop() {
 
         // Audio feldolgozás időzített végrehajtása
         constexpr uint32_t DEFAULT_LOOP_INTERVAL_MSEC = 50; // Reszponzívabb spektrum (~20 FPS)
-        static uint32_t lastProcessTime = 0; // static-ká téve, hogy megőrizze az értékét a ciklusok között
+        static uint32_t lastProcessTime = 0;                // static-ká téve, hogy megőrizze az értékét a ciklusok között
         uint32_t now = millis();
 
         if (now - lastProcessTime >= DEFAULT_LOOP_INTERVAL_MSEC) {
@@ -187,10 +187,10 @@ void AudioCore1Manager::core1AudioLoop() {
 
                 // Mutex használata a megosztott adatok biztonságos eléréséhez
                 if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
-                    const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
+                    const float *magnitudeData = pAudioProcessor_->getMagnitudeData();
                     if (magnitudeData) {
                         uint16_t fftSize = pAudioProcessor_->getFftSize();
-                        memcpy(pSharedData_->spectrumBuffer, magnitudeData, fftSize * sizeof(double));
+                        memcpy(pSharedData_->spectrumBuffer, magnitudeData, fftSize * sizeof(float));
                         pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
                         pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
                         pSharedData_->spectrumDataReady = true;
@@ -213,7 +213,6 @@ void AudioCore1Manager::core1AudioLoop() {
 
                 lastProcessTime = now;
             }
-
         }
         sleep_us(1000); // kis várakozás a CPU terhelés csökkentésére (1ms)
     }
@@ -405,7 +404,7 @@ bool AudioCore1Manager::getFftCurrentBinWidth(float *outBinWidth) {
  * @param outAutoGain Jelenlegi auto gain faktor
  * @return true ha friss adat érhető el, false egyébként
  */
-bool AudioCore1Manager::getSpectrumData(const double **outData, uint16_t *outFftSize, float *outBinWidth, float *outAutoGain) {
+bool AudioCore1Manager::getSpectrumData(const float **outData, uint16_t *outFftSize, float *outBinWidth, float *outAutoGain) {
 
     if (!initialized_ || !pSharedData_) {
         return false;

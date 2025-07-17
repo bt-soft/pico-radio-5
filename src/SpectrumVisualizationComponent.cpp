@@ -272,6 +272,10 @@ void SpectrumVisualizationComponent::draw() {
         needBorderDrawn = false; // Reset the flag after drawing
     }
 
+    if (rtv::muteStat) {
+        return;
+    }
+
     // Biztonsági ellenőrzés: FM módban CW/RTTY módok nem engedélyezettek
     if (radioMode_ == RadioMode::FM && (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall)) {
         currentMode_ = DisplayMode::Waterfall; // Automatikus váltás Waterfall módra
@@ -644,7 +648,7 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
     }
 
     // Core1 spektrum adatok lekérése
-    const double *magnitudeData = nullptr;
+    const float *magnitudeData = nullptr;
     uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
     float currentBinWidthHz = 0.0f;
     float currentAutoGain = 1.0f;
@@ -664,7 +668,7 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
     // Adaptív autogain használata
     float adaptiveScale = getAdaptiveScale(SensitivityConstants::AMPLITUDE_SCALE);
 
-    double band_magnitudes[LOW_RES_BANDS] = {0.0};
+    float band_magnitudes[LOW_RES_BANDS] = {0.0f};
 
     // magnitudeData már garantáltan nem nullptr itt
     for (int i = min_bin_idx_low_res; i <= max_bin_idx_low_res; i++) {
@@ -688,7 +692,7 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
         sprite_->fillRect(x_pos_for_bar, 0, dynamic_bar_width_pixels, graphH, TFT_BLACK);
 
         // Adaptív magnitúdó skálázás - egységes logika: nagyobb scale = nagyobb érzékenység
-        double magnitude = band_magnitudes[band_idx];
+        float magnitude = band_magnitudes[band_idx];
         int dsize = static_cast<int>(magnitude * adaptiveScale);
         dsize = constrain(dsize, 0, actual_low_res_peak_max_height);
 
@@ -744,7 +748,7 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
     // Ne töröljük a teljes sprite-ot minden frame-ben - csak a vonalakat rajzoljuk újra
 
     // Core1 spektrum adatok lekérése
-    const double *magnitudeData = nullptr;
+    const float *magnitudeData = nullptr;
     uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
     float currentBinWidthHz = 0.0f;
     float currentAutoGain = 1.0f;
@@ -777,7 +781,7 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
         }
         fft_bin_index = constrain(fft_bin_index, 0, static_cast<int>(actualFftSize / 2 - 1));
 
-        double magnitude = magnitudeData[fft_bin_index];
+        float magnitude = magnitudeData[fft_bin_index];
         maxMagnitude = std::max(maxMagnitude, static_cast<float>(magnitude));
 
         // Előbb töröljük a pixel oszlopot (fekete vonal)
@@ -880,7 +884,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     }
 
     // Core1 spektrum adatok lekérése
-    const double *magnitudeData = nullptr;
+    const float *magnitudeData = nullptr;
     uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
     float currentBinWidthHz = 0.0f;
     float currentAutoGain = 1.0f;
@@ -918,7 +922,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
         // 'r' (0 to bounds.height-1) leképezése FFT bin indexre a szűkített tartományon belül
         int fft_bin_index = min_bin_for_env + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_env_range - 1)));
         fft_bin_index = constrain(fft_bin_index, min_bin_for_env, max_bin_for_env); // Finomabb gain alkalmazás envelope-hez
-        double rawMagnitude = magnitudeData[fft_bin_index];
+        float rawMagnitude = magnitudeData[fft_bin_index];
 
         // KRITIKUS: Infinity és NaN értékek szűrése!
         if (!isfinite(rawMagnitude) || rawMagnitude < 0.0) {
@@ -930,7 +934,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
             rawMagnitude = 10000.0;
         }
 
-        double gained_val = rawMagnitude * adaptiveScale;
+        float gained_val = rawMagnitude * adaptiveScale;
 
         // Debug info gyűjtése
         maxRawMagnitude = std::max(maxRawMagnitude, static_cast<float>(rawMagnitude));
@@ -1041,7 +1045,7 @@ void SpectrumVisualizationComponent::renderWaterfall() {
     }
 
     // Core1 spektrum adatok lekérése
-    const double *magnitudeData = nullptr;
+    const float *magnitudeData = nullptr;
     uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
     float currentBinWidthHz = 0.0f;
     float currentAutoGain = 1.0f;
@@ -1083,7 +1087,7 @@ void SpectrumVisualizationComponent::renderWaterfall() {
         // Waterfall input scale - adaptív autogain-nel
         double rawMagnitude = magnitudeData[fft_bin_index];
         maxMagnitude = std::max(maxMagnitude, static_cast<float>(rawMagnitude));
-        double scaledMagnitude = rawMagnitude * adaptiveScale;
+        float scaledMagnitude = rawMagnitude * adaptiveScale;
         uint8_t finalValue = static_cast<uint8_t>(constrain(scaledMagnitude, 0.0, 255.0));
 
         wabuf[r][bounds.width - 1] = finalValue;
@@ -1200,7 +1204,7 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
     }
 
     // Core1 spektrum adatok lekérése
-    const double *magnitudeData = nullptr;
+    const float *magnitudeData = nullptr;
     uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
     float currentBinWidthHz = 0.0f;
     float currentAutoGain = 1.0f;
@@ -1400,7 +1404,7 @@ void SpectrumVisualizationComponent::drawSpectrumBar(int band_idx, double magnit
 /**
  * @brief Core1 spektrum adatok lekérése
  */
-bool SpectrumVisualizationComponent::getCore1SpectrumData(const double **outData, uint16_t *outSize, float *outBinWidth, float *outAutoGain) {
+bool SpectrumVisualizationComponent::getCore1SpectrumData(const float **outData, uint16_t *outSize, float *outBinWidth, float *outAutoGain) {
     return AudioCore1Manager::getSpectrumData(outData, outSize, outBinWidth, outAutoGain);
 }
 
@@ -1480,8 +1484,7 @@ uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mo
         case DisplayMode::Oscilloscope:
         case DisplayMode::Envelope:
         default:
-            return 64;
-            // return AudioProcessorConstants::DEFAULT_FFT_SAMPLES; // Alapértelmezett - gyorsabb
+            return 256; // 64 is elég lenne, de az a lowresben foghijjas képet ad, ha csökken a HF sávszélesség
 
         case DisplayMode::Off:
             return 0;

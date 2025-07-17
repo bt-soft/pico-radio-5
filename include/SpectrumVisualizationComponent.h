@@ -196,7 +196,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     /**
      * @brief Core1 audio adatok kezelése
      */
-    bool getCore1SpectrumData(const double **outData, uint16_t *outSize, float *outBinWidth, float *outAutoGain);
+    bool getCore1SpectrumData(const float **outData, uint16_t *outSize, float *outBinWidth, float *outAutoGain);
     bool getCore1OscilloscopeData(const int **outData, int *outSampleCount);
     float getCore1BinWidthHz();
     uint16_t getCore1FftSize();

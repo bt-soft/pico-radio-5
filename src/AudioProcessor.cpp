@@ -86,9 +86,9 @@ bool AudioProcessor::allocateFftArrays(uint16_t size) {
     deallocateFftArrays();
 
     // Új tömbök allokálása
-    vReal = new (std::nothrow) double[size];
-    vImag = new (std::nothrow) double[size];
-    RvReal = new (std::nothrow) double[size];
+    vReal = new (std::nothrow) float[size];
+    vImag = new (std::nothrow) float[size];
+    RvReal = new (std::nothrow) float[size];
 
     // Allokálás sikerességének ellenőrzése
     if (!vReal || !vImag || !RvReal) {
@@ -98,9 +98,9 @@ bool AudioProcessor::allocateFftArrays(uint16_t size) {
     }
 
     // Tömbök nullázása
-    memset(vReal, 0, size * sizeof(double));
-    memset(vImag, 0, size * sizeof(double));
-    memset(RvReal, 0, size * sizeof(double));
+    memset(vReal, 0, size * sizeof(float));
+    memset(vImag, 0, size * sizeof(float));
+    memset(RvReal, 0, size * sizeof(float));
 
     // FFT objektum frissítése az új tömbökkel
     FFT.setArrays(vReal, vImag, size);
@@ -208,7 +208,7 @@ bool AudioProcessor::setFftSize(uint16_t newSize) {
 void AudioProcessor::process(bool collectOsciSamples) {
 
     int osci_sample_idx = 0;
-    double max_abs_sample_for_auto_gain = 0.0;
+    float max_abs_sample_for_auto_gain = 0.0f;
 
     // Ha az FFT ki van kapcsolva (-1.0f), akkor töröljük a puffereket és visszatérünk
     if (activeFftGainConfigRef == -1.0f) {
@@ -234,7 +234,7 @@ void AudioProcessor::process(bool collectOsciSamples) {
         for (uint8_t j = 0; j < NOISE_REDUCTION_ANALOG_SAMPLES_COUNT; j++) {
             sum += analogRead(audioInputPin);
         }
-        double averaged_sample = sum / (double)NOISE_REDUCTION_ANALOG_SAMPLES_COUNT;
+        float averaged_sample = sum / (float)NOISE_REDUCTION_ANALOG_SAMPLES_COUNT;
 
         // Oszcilloszkóp minta gyűjtése ha szükséges (decimation factor 2 hatványa: bitmaszk)
         if (collectOsciSamples) {
@@ -246,11 +246,11 @@ void AudioProcessor::process(bool collectOsciSamples) {
             }
         }
 
-        vReal[i] = averaged_sample - 2048.0;
-        vImag[i] = 0.0; // vImag nullázása minden iterációban
+        vReal[i] = averaged_sample - 2048.0f;
+        vImag[i] = 0.0f; // vImag nullázása minden iterációban
 
         if (activeFftGainConfigRef == 0.0f) {
-            double abs_val = std::abs(vReal[i]);
+            float abs_val = std::abs(vReal[i]);
             if (abs_val > max_abs_sample_for_auto_gain) {
                 max_abs_sample_for_auto_gain = abs_val;
             }
@@ -296,7 +296,7 @@ void AudioProcessor::process(bool collectOsciSamples) {
     FFT.complexToMagnitude(vReal, vImag, currentFftSize_); // Az eredmény a vReal-be kerül
 
     // Magnitúdók átmásolása az RvReal tömbbe memcpy-val
-    memcpy(RvReal, vReal, currentFftSize_ * sizeof(double));
+    memcpy(RvReal, vReal, currentFftSize_ * sizeof(float));
 
     // 4. Alacsony frekvenciák csillapítása az RvReal tömbben
     // A binWidthHz_ már tagváltozóként rendelkezésre áll
