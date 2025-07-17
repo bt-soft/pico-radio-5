@@ -4,7 +4,7 @@
 #include "defines.h"
 #include "utils.h"
 
-constexpr uint8_t NOISE_REDUCTION_ANALOG_SAMPLES_COUNT = 1; // Minta átlagolás zajcsökkentéshez
+constexpr uint8_t NOISE_REDUCTION_ANALOG_SAMPLES_COUNT = 2; // Minta átlagolás zajcsökkentéshez
 
 /**
  * @brief AudioProcessor konstruktor - inicializálja az audio feldolgozó objektumot

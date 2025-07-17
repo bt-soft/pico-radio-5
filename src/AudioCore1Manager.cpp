@@ -205,6 +205,7 @@ void AudioCore1Manager::core1AudioLoop() {
 
     // Audio feldolgozási loop
     while (!pSharedData_->core1ShouldStop) {
+
         // EEPROM írás esetén szüneteltetés
         if (pSharedData_->eepromWriteInProgress) {
             mutex_enter_blocking(&pSharedData_->dataMutex);
@@ -231,8 +232,9 @@ void AudioCore1Manager::core1AudioLoop() {
 
         // Audio feldolgozás végrehajtása
         if (pAudioProcessor_ && canRun) {
-
-            // DEBUG("AudioCore1Manager: Core1 audio feldolgozás futtatása, interruptCount: %d\n", interruptCount);
+            if (interruptCount % 100 == 0) {
+                DEBUG("AudioCore1Manager: Core1 audio feldolgozás futtatása, interruptCount: %d\n", interruptCount);
+            }
 
             uint32_t startTime = micros();
 
@@ -286,8 +288,10 @@ void AudioCore1Manager::core1AudioLoop() {
             canRun = false;
         }
 
-        // Rövid szünet más szálak számára
-        sleep_us(100);
+        // Csak akkor várjon, ha nem volt feldolgozás ebben a ciklusban
+        if (!canRun) {
+            sleep_us(100);
+        }
     }
 }
 

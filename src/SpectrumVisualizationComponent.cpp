@@ -1464,13 +1464,13 @@ uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mo
         case DisplayMode::SpectrumHighRes:
         case DisplayMode::CWWaterfall:
         case DisplayMode::RTTYWaterfall:
-            return 512; // Maximum felbontás a spektrum analizáláshoz
+            return 256; // Maximum felbontás a spektrum analizáláshoz
 
         case DisplayMode::SpectrumLowRes:
         case DisplayMode::Oscilloscope:
         case DisplayMode::Envelope:
         default:
-            return 128;
+            return 64;
             // return AudioProcessorConstants::DEFAULT_FFT_SAMPLES; // Alapértelmezett - gyorsabb
 
         case DisplayMode::Off:
