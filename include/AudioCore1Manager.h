@@ -1,9 +1,11 @@
 #pragma once
 
-#include "AudioProcessor.h"
 #include <Arduino.h>
+#include <RPi_Pico_TimerInterrupt.h>
 #include <pico/multicore.h>
 #include <pico/mutex.h>
+
+#include "AudioProcessor.h"
 
 /**
  * @brief Core1 dedikált audio feldolgozó manager
@@ -56,7 +58,15 @@ class AudioCore1Manager {
     static void core1AudioLoop();
     static void updateAudioConfig();
 
+    // Statikus statikus timer objektum pointer (null pointerként indul)
+    static RPI_PICO_Timer *timer;
+
+    // Statikus számláló a megszakítások számának tárolására
+    static volatile int interruptCount;
+
   public:
+    static bool onTimerInterrupt(struct repeating_timer *);
+
     // EEPROM védelem
     static void pauseCore1Audio();
     static void resumeCore1Audio();

@@ -8,6 +8,17 @@ bool AudioCore1Manager::initialized_ = false;
 float *AudioCore1Manager::currentGainConfigRef_ = nullptr;
 bool AudioCore1Manager::collectOsci_ = false;
 
+// Statikus tagok definíciója
+RPI_PICO_Timer *AudioCore1Manager::timer = nullptr;
+volatile int AudioCore1Manager::interruptCount = 0;
+
+// Statikus megszakítás kezelő (ISR)
+bool AudioCore1Manager::onTimerInterrupt(struct repeating_timer *) {
+    // Példa: csak egy megszakítás számláló növelése
+    interruptCount++;
+    return true;
+}
+
 /**
  * @brief Core1 audio manager inicializálása
  * @param gainConfigAmRef Referencia az AM FFT gain konfigurációra
@@ -70,6 +81,9 @@ bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int
         shutdown();
         return false;
     }
+
+    timer = new RPI_PICO_Timer(2);                          // 0 az index, választható
+    timer->attachInterruptInterval(1000, onTimerInterrupt); // 1000 us = 1 ms periódus
 
     initialized_ = true;
     DEBUG("AudioCore1Manager: Sikeresen inicializálva!\n");
