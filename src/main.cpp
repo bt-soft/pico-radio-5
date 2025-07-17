@@ -164,11 +164,11 @@ void setup() {
 
     // Splash screen megjelenítése inicializálás közben
     // Most átváltunk a teljes splash screen-re az SI4735 infókkal
-    SplashScreen splash(tft);
-    splash.show(true, 8);
+    SplashScreen *splash = new SplashScreen(tft);
+    splash->show(true, 8);
 
     // Splash screen megjelenítése progress bar-ral    // Lépés 1: I2C inicializálás
-    splash.updateProgress(1, 9, "Initializing I2C...");
+    splash->updateProgress(1, 9, "Initializing I2C...");
 
     // Az si473x (Nem a default I2C lábakon [4,5] van!!!)
     Wire.setSDA(PIN_SI4735_I2C_SDA); // I2C for SI4735 SDA
@@ -177,7 +177,7 @@ void setup() {
     delay(300);
 
     // Si4735Manager inicializálása itt
-    splash.updateProgress(2, 9, "Initializing SI4735 Manager...");
+    splash->updateProgress(2, 9, "Initializing SI4735 Manager...");
     if (pSi4735Manager == nullptr) {
         pSi4735Manager = new Si4735Manager();
         // BandStore beállítása a Si4735Manager-ben
@@ -188,7 +188,7 @@ void setup() {
     pSi4735Manager->initializeBandTableData(true); // forceReinit = true az első inicializálásnál
 
     // Si4735 inicializálása
-    splash.updateProgress(3, 9, "Detecting SI4735...");
+    splash->updateProgress(3, 9, "Detecting SI4735...");
     int16_t si4735Addr = pSi4735Manager->getDeviceI2CAddress();
     if (si4735Addr == 0) {
         tft.fillScreen(TFT_BLACK);
@@ -201,27 +201,27 @@ void setup() {
         while (true) // nem megyünk tovább
             ;
     } // Lépés 4: SI4735 konfigurálás
-    splash.updateProgress(4, 6, "Configuring SI4735...");
-    pSi4735Manager->setDeviceI2CAddress(si4735Addr == 0x11 ? 0 : 1); // Sets the I2C Bus Address, erre is szükség van...    splash.drawSI4735Info(si4735Manager->getSi4735());
+    splash->updateProgress(4, 6, "Configuring SI4735...");
+    pSi4735Manager->setDeviceI2CAddress(si4735Addr == 0x11 ? 0 : 1); // Sets the I2C Bus Address, erre is szükség van...    splash->drawSI4735Info(si4735Manager->getSi4735());
 
     delay(300);
     //--------------------------------------------------------------------
 
     // Lépés 5: Frekvencia beállítások
-    splash.updateProgress(4, 9, "Setting up radio...");
+    splash->updateProgress(4, 9, "Setting up radio...");
     pSi4735Manager->init(true);
     pSi4735Manager->getSi4735().setVolume(config.data.currVolume); // Hangerő visszaállítása
 
     delay(100);
 
     // Kezdő képernyőtípus beállítása
-    splash.updateProgress(5, 9, "Preparing display...");
+    splash->updateProgress(5, 9, "Preparing display...");
     const char *startScreeName = pSi4735Manager->getCurrentBandType() == FM_BAND_TYPE ? SCREEN_NAME_FM : SCREEN_NAME_AM;
     delay(100);
 
     //--------------------------------------------------------------------
     // Lépés 7: Core1 Audio Manager inicializálása
-    splash.updateProgress(6, 9, "Starting Core1 audio processor...");
+    splash->updateProgress(6, 9, "Starting Core1 audio processor...");
 
     // Core1 Audio Manager inicializálása a megfelelő FFT gain referenciákkal
     bool core1InitSuccess = AudioCore1Manager::init(config.data.audioFftConfigAm,                           // AM FFT gain referencia
@@ -242,7 +242,7 @@ void setup() {
     delay(100);
 
     // Lépés 8: ScreenManager inicializálása
-    splash.updateProgress(7, 9, "Preparing display...");
+    splash->updateProgress(7, 9, "Preparing display...");
 
     // ScreenManager inicializálása itt, amikor minden más már kész
     if (screenManager == nullptr) {
@@ -254,16 +254,21 @@ void setup() {
     delay(100);
 
     // Lépés 9: Finalizálás
-    splash.updateProgress(8, 9, "Starting up...");
+    splash->updateProgress(8, 9, "Starting up...");
+
+    delay(100); // Rövidebb delay
+
+    splash->updateProgress(9, 9, "Starting OK");
 
     delay(100); // Rövidebb delay
 
     // Splash screen eltűntetése
-    splash.hide();
+    splash->hide();
 
     //--------------------------------------------------------------------
 
-    splash.updateProgress(9, 9, "Starting OK");
+    // SplashScreen törlése, már nincs rá szükség
+    delete splash;
 
     // Csippantunk egyet
     Utils::beepTick();

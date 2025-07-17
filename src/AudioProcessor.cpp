@@ -240,8 +240,7 @@ void AudioProcessor::process(bool collectOsciSamples) {
         }
 
         vReal[i] = averaged_sample - 2048.0;
-        // vImag nullázása elhagyható, mert minden iterációban 0-ra állítjuk
-        vImag[i] = 0.0;
+        vImag[i] = 0.0; // vImag nullázása minden iterációban
 
         if (activeFftGainConfigRef == 0.0f) {
             double abs_val = std::abs(vReal[i]);
