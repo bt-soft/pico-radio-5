@@ -24,6 +24,8 @@ RPI_PICO_Timer rotaryTimer(0); // 0-ás timer használata
 RotaryEncoder rotaryEncoder = RotaryEncoder(PIN_ENCODER_CLK, PIN_ENCODER_DT, PIN_ENCODER_SW, ROTARY_ENCODER_STEPS_PER_NOTCH);
 #define ROTARY_ENCODER_SERVICE_INTERVAL_IN_MSEC 1 // 1msec
 
+RPI_PICO_Timer audioCore1ManagerTimer(1); // 1-es timer használata
+
 //------------------ TFT
 #include <TFT_eSPI.h>
 TFT_eSPI tft;
@@ -50,6 +52,10 @@ bool rotaryTimerHardwareInterruptHandler(struct repeating_timer *t) {
     rotaryEncoder.service();
     return true;
 }
+
+// -----------------------------------------------------------------------------
+
+//-
 
 /**
  * @brief Program belépési pont.
@@ -162,7 +168,7 @@ void setup() {
     splash.show(true, 8);
 
     // Splash screen megjelenítése progress bar-ral    // Lépés 1: I2C inicializálás
-    splash.updateProgress(1, 6, "Initializing I2C...");
+    splash.updateProgress(1, 9, "Initializing I2C...");
 
     // Az si473x (Nem a default I2C lábakon [4,5] van!!!)
     Wire.setSDA(PIN_SI4735_I2C_SDA); // I2C for SI4735 SDA
@@ -171,7 +177,7 @@ void setup() {
     delay(300);
 
     // Si4735Manager inicializálása itt
-    splash.updateProgress(2, 6, "Initializing SI4735 Manager...");
+    splash.updateProgress(2, 9, "Initializing SI4735 Manager...");
     if (pSi4735Manager == nullptr) {
         pSi4735Manager = new Si4735Manager();
         // BandStore beállítása a Si4735Manager-ben
@@ -182,7 +188,7 @@ void setup() {
     pSi4735Manager->initializeBandTableData(true); // forceReinit = true az első inicializálásnál
 
     // Si4735 inicializálása
-    splash.updateProgress(3, 6, "Detecting SI4735...");
+    splash.updateProgress(3, 9, "Detecting SI4735...");
     int16_t si4735Addr = pSi4735Manager->getDeviceI2CAddress();
     if (si4735Addr == 0) {
         tft.fillScreen(TFT_BLACK);
@@ -202,20 +208,20 @@ void setup() {
     //--------------------------------------------------------------------
 
     // Lépés 5: Frekvencia beállítások
-    splash.updateProgress(5, 6, "Setting up radio...");
+    splash.updateProgress(4, 9, "Setting up radio...");
     pSi4735Manager->init(true);
     pSi4735Manager->getSi4735().setVolume(config.data.currVolume); // Hangerő visszaállítása
 
     delay(100);
 
     // Kezdő képernyőtípus beállítása
-    splash.updateProgress(6, 6, "Preparing display...");
+    splash.updateProgress(5, 9, "Preparing display...");
     const char *startScreeName = pSi4735Manager->getCurrentBandType() == FM_BAND_TYPE ? SCREEN_NAME_FM : SCREEN_NAME_AM;
     delay(100);
 
     //--------------------------------------------------------------------
     // Lépés 7: Core1 Audio Manager inicializálása
-    splash.updateProgress(7, 9, "Starting Core1 audio processor...");
+    splash.updateProgress(6, 9, "Starting Core1 audio processor...");
 
     // Core1 Audio Manager inicializálása a megfelelő FFT gain referenciákkal
     bool core1InitSuccess = AudioCore1Manager::init(config.data.audioFftConfigAm,                           // AM FFT gain referencia
@@ -224,17 +230,19 @@ void setup() {
                                                     AudioProcessorConstants::DEFAULT_FM_SAMPLING_FREQUENCY, // Mintavételezési frekvencia, FM -> 30kHz
                                                     AudioProcessorConstants::DEFAULT_FFT_SAMPLES            // Kezdeti FFT méret -> 512
     );
-
     if (!core1InitSuccess) {
         DEBUG("HIBA: A Core1 Audio Manager inicializálás sikertelen!\n");
         Utils::beepError();
         // Folytatjuk anélkül is, de spectrum nem fog működni
     }
 
+    // Core1 Audio Manager időzítő beállítása
+    AudioCore1Manager::setIsrTimer(AudioProcessorConstants::DEFAULT_FFT_SAMPLES, AudioProcessorConstants::DEFAULT_FM_SAMPLING_FREQUENCY);
+
     delay(100);
 
     // Lépés 8: ScreenManager inicializálása
-    splash.updateProgress(8, 9, "Preparing display...");
+    splash.updateProgress(7, 9, "Preparing display...");
 
     // ScreenManager inicializálása itt, amikor minden más már kész
     if (screenManager == nullptr) {
@@ -246,7 +254,7 @@ void setup() {
     delay(100);
 
     // Lépés 9: Finalizálás
-    splash.updateProgress(9, 9, "Starting up...");
+    splash.updateProgress(8, 9, "Starting up...");
 
     delay(100); // Rövidebb delay
 
@@ -254,6 +262,8 @@ void setup() {
     splash.hide();
 
     //--------------------------------------------------------------------
+
+    splash.updateProgress(9, 9, "Starting OK");
 
     // Csippantunk egyet
     Utils::beepTick();

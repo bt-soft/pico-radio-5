@@ -1,5 +1,9 @@
 #include "AudioCore1Manager.h"
 #include "defines.h"
+#include "utils.h"
+
+#include <RPi_Pico_TimerInterrupt.h>
+extern RPI_PICO_Timer audioCore1ManagerTimer;
 
 // Statikus tagváltozók inicializálása
 AudioCore1Manager::SharedAudioData *AudioCore1Manager::pSharedData_ = nullptr;
@@ -8,15 +12,58 @@ bool AudioCore1Manager::initialized_ = false;
 float *AudioCore1Manager::currentGainConfigRef_ = nullptr;
 bool AudioCore1Manager::collectOsci_ = false;
 
-// Statikus tagok definíciója
-RPI_PICO_Timer *AudioCore1Manager::timer = nullptr;
+// ISR függvény a Core1 audio feldolgozóhoz
 volatile int AudioCore1Manager::interruptCount = 0;
+volatile bool AudioCore1Manager::canRun = false;
 
-// Statikus megszakítás kezelő (ISR)
+// Megszakítás kezelő az AudioCore1Manager számára
+/**
+ * @brief Megszakítás kezelő az AudioCore1Manager számára
+ * @param timer A megszakítás időzítő
+ */
 bool AudioCore1Manager::onTimerInterrupt(struct repeating_timer *) {
     // Példa: csak egy megszakítás számláló növelése
     interruptCount++;
+    canRun = true;
     return true;
+}
+
+/**
+ * @brief Core1 audio feldolgozó inicializálása
+ * @param fftSampleSize Az FFT méret
+ * @param fftSamplingFrequency A mintavételezési frekvencia
+ *
+ *  Beállítjuk az időzítőt
+ *    idő (ms) = (FFT méret / mintavételezési frekvencia) * 1000
+ *             = (2048 / 30000) * 1000
+ *             ≈ 68,27 ms
+ *
+ */
+bool AudioCore1Manager::setIsrTimer(uint16_t fftSampleSize, uint16_t fftSamplingFrequency) {
+
+    if (!initialized_) {
+        DEBUG("AudioCore1Manager: Core1 még nincs inicializálva!\n");
+        return false;
+    }
+
+    // Ellenőrizzük a mintavételezési frekvenciát
+    if (fftSamplingFrequency == 0) {
+        DEBUG("AudioCore1Manager::setIsrTimer -> Érvénytelen mintavételezési frekvencia!\n");
+        return false;
+    }
+
+    float interval = (static_cast<float>(fftSampleSize) / static_cast<float>(fftSamplingFrequency)) * 1000.0f;
+    char floatStr[10];
+    dtostrf(interval, 4, 2, floatStr); // Formázzuk a floatot stringgé
+    DEBUG("AudioCore1Manager::setIsrTimer -> Core1 Audio Manager interval: %s ms\n", floatStr);
+
+    bool success = ::audioCore1ManagerTimer.attachInterruptInterval(interval * 1000, AudioCore1Manager::onTimerInterrupt);
+    if (!success) {
+        DEBUG("HIBA: Core1 Audio Manager timer interrupt initialization failed!\n");
+        Utils::beepError();
+    }
+
+    return success;
 }
 
 /**
@@ -81,9 +128,6 @@ bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int
         shutdown();
         return false;
     }
-
-    timer = new RPI_PICO_Timer(2);                          // 0 az index, választható
-    timer->attachInterruptInterval(1000, onTimerInterrupt); // 1000 us = 1 ms periódus
 
     initialized_ = true;
     DEBUG("AudioCore1Manager: Sikeresen inicializálva!\n");
@@ -175,16 +219,20 @@ void AudioCore1Manager::core1AudioLoop() {
             mutex_exit(&pSharedData_->dataMutex);
         }
 
-        uint32_t now = millis();
-
         // Konfiguráció frissítése szükség esetén
         if (pSharedData_->configChanged) {
             updateAudioConfig();
             continue;
         }
 
+        if (canRun) {
+            canRun = false; // Reset the flag
+            DEBUG("AudioCore1Manager: Core1 audio feldolgozás futtatása, interruptCount: %d\n", interruptCount);
+        }
+
         // Audio feldolgozás időzített végrehajtása
         constexpr uint32_t DEFAULT_LOOP_INTERVAL_MSEC = 100; // core1 túlterhelés megfékezése
+        uint32_t now = millis();
         if (now - lastProcessTime >= DEFAULT_LOOP_INTERVAL_MSEC) {
 
             // Audio feldolgozás végrehajtása

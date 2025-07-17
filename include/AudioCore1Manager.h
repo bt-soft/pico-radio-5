@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Arduino.h>
-#include <RPi_Pico_TimerInterrupt.h>
 #include <pico/multicore.h>
 #include <pico/mutex.h>
 
@@ -58,14 +57,31 @@ class AudioCore1Manager {
     static void core1AudioLoop();
     static void updateAudioConfig();
 
-    // Statikus statikus timer objektum pointer (null pointerként indul)
-    static RPI_PICO_Timer *timer;
-
+  public:
     // Statikus számláló a megszakítások számának tárolására
     static volatile int interruptCount;
+    static volatile bool canRun;
 
-  public:
+    /**
+     * @brief Megszakítás kezelő az AudioCore1Manager számára
+     * @param timer A megszakítás időzítő
+     * @return true ha a megszakítás sikeresen kezelve lett
+     *
+     */
     static bool onTimerInterrupt(struct repeating_timer *);
+
+    /**
+     * @brief Core1 audio feldolgozó inicializálása
+     * @param fftSampleSize Az FFT méret
+     * @param samplingFrequency A mintavételezési frekvencia
+     *
+     *  Beállítjuk az időzítőt
+     *    idő (ms) = (FFT méret / mintavételezési frekvencia) * 1000
+     *             = (2048 / 30000) * 1000
+     *             ≈ 68,27 ms
+     *
+     */
+    static bool setIsrTimer(uint16_t fftSampleSize, uint16_t samplingFrequency);
 
     // EEPROM védelem
     static void pauseCore1Audio();
