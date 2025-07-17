@@ -824,10 +824,10 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
 
     // Core1 oszcilloszkóp adatok lekérése
     const int *osciData = nullptr;
-    bool dataAvailable = getCore1OscilloscopeData(&osciData);
+    int sampleCount = 0;
+    bool dataAvailable = getCore1OscilloscopeData(&osciData, &sampleCount);
 
-    if (!dataAvailable || !osciData) {
-        // Ha nincs új adat, a korábbi tartalmat rajzoljuk ki újra a villogás elkerülése érdekében.
+    if (!dataAvailable || !osciData || sampleCount <= 0) {
         sprite_->pushSprite(bounds.x, bounds.y);
         return;
     }
@@ -835,61 +835,31 @@ void SpectrumVisualizationComponent::renderOscilloscope() {
     // Sprite törlése - csak akkor, ha van új adat
     sprite_->fillSprite(TFT_BLACK);
 
-    // DC komponens számítása
+    // DC komponens számítása csak az érvényes mintákra
     double sum_samples = 0.0;
-    const int MAX_INTERNAL_WIDTH = AudioProcessorConstants::MAX_INTERNAL_WIDTH; // 320
-    for (int k = 0; k < MAX_INTERNAL_WIDTH; ++k) {
+    for (int k = 0; k < sampleCount; ++k) {
         sum_samples += osciData[k];
     }
-    double dc_offset_correction = (MAX_INTERNAL_WIDTH > 0 && osciData) ? sum_samples / MAX_INTERNAL_WIDTH : 2048.0;
+    double dc_offset_correction = (sampleCount > 0 && osciData) ? sum_samples / sampleCount : 2048.0;
 
-    int actual_osci_samples_to_draw = bounds.width;
-    // --- Érzékenységi faktor meghatározása ---
-    // Az oszcilloszkóp mindig a manuális érzékenységi faktort használja,
-    // mivel az osciSamples nyers ADC értékeket tartalmaz, függetlenül az FFT erősítési módjától.
     float current_sensitivity_factor = SensitivityConstants::OSCI_SENSITIVITY_FACTOR;
-
-    int prev_x = -1, prev_y = -1, prev_sample_idx = -1;
-
-    for (int i = 0; i < actual_osci_samples_to_draw; i++) {
-        int num_available_samples = MAX_INTERNAL_WIDTH;
-        if (num_available_samples == 0)
-            continue; // Ha nincs minta, ne csináljunk semmit
-
-        // Minták leképezése a rendelkezésre álló MAX_INTERNAL_WIDTH-ből a tényleges 'width'-re
-        int sample_idx;
-        if (actual_osci_samples_to_draw == 1) {
-            sample_idx = 0;
-        } else {
-            sample_idx = (i * (num_available_samples - 1)) / (actual_osci_samples_to_draw - 1);
-        }
-        sample_idx = constrain(sample_idx, 0, num_available_samples - 1);
-
-        int raw_sample = osciData[sample_idx];
-        // ADC érték (0-4095) átalakítása a KISZÁMÍTOTT DC KÖZÉPPONTHOZ képest,
-        // majd skálázás az OSCI_SENSITIVITY_FACTOR-ral és a grafikon magasságára
+    int prev_x = -1, prev_y = -1;
+    for (int i = 0; i < sampleCount; i++) {
+        int raw_sample = osciData[i];
         double sample_deviation = (static_cast<double>(raw_sample) - dc_offset_correction);
         double gain_adjusted_deviation = sample_deviation * current_sensitivity_factor;
-
-        // Skálázás a grafikon felére (mivel a jel a középvonal körül ingadozik)
-        double scaled_y_deflection = gain_adjusted_deviation * (static_cast<double>(graphH) / 2.0 - 1.0) / 2048.0; // A 2048.0 itt a maximális elméleti ADC eltérésre skáláz
-
+        double scaled_y_deflection = gain_adjusted_deviation * (static_cast<double>(graphH) / 2.0 - 1.0) / 2048.0;
         int y_pos = graphH / 2 - static_cast<int>(round(scaled_y_deflection));
-        y_pos = constrain(y_pos, 0, graphH - 1); // Korlátozás a grafikon területére
-        int x_pos = i;
-
-        if (prev_x != -1 && i > 0 && sample_idx != prev_sample_idx) {
-            // Csak akkor rajzolunk vonalat, ha ténylegesen másik mintához jutottunk
+        y_pos = constrain(y_pos, 0, graphH - 1);
+        int x_pos = (sampleCount == 1) ? 0 : (int)round((float)i / (sampleCount - 1) * (bounds.width - 1));
+        if (prev_x != -1 && i > 0) {
             sprite_->drawLine(prev_x, prev_y, x_pos, y_pos, TFT_GREEN);
         } else if (prev_x == -1) {
-            sprite_->drawPixel(x_pos, y_pos, TFT_GREEN); // Első pont kirajzolása
+            sprite_->drawPixel(x_pos, y_pos, TFT_GREEN);
         }
         prev_x = x_pos;
         prev_y = y_pos;
-        prev_sample_idx = sample_idx;
     }
-
-    // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
 }
 
@@ -1430,9 +1400,9 @@ bool SpectrumVisualizationComponent::getCore1SpectrumData(const double **outData
 /**
  * @brief Core1 oszcilloszkóp adatok lekérése
  */
-bool SpectrumVisualizationComponent::getCore1OscilloscopeData(const int **outData) {
+bool SpectrumVisualizationComponent::getCore1OscilloscopeData(const int **outData, int *outSampleCount) {
     // Core1 oszcilloszkóp adatok lekérése
-    return AudioCore1Manager::getOscilloscopeData(outData);
+    return AudioCore1Manager::getOscilloscopeData(outData, outSampleCount);
 }
 
 /**

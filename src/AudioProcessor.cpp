@@ -46,7 +46,7 @@ AudioProcessor::AudioProcessor(float &gainConfigRef, uint8_t audioPin, uint16_t 
           Utils::floatToString(binWidthHz_).c_str());
 
     // Oszcilloszkóp minták inicializálása középpontra (ADC nyers érték)
-    for (uint16_t i = 0; i < AudioProcessorConstants::MAX_INTERNAL_WIDTH; ++i) {
+    for (uint16_t i = 0; i < AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH; ++i) {
         osciSamples[i] = 2048;
     }
 }
@@ -210,6 +210,7 @@ bool AudioProcessor::setFftSize(uint16_t newSize) {
 void AudioProcessor::process(bool collectOsciSamples) {
 
     int osci_sample_idx = 0;
+    osciSampleCount = 0;
     uint32_t loopStartTimeMicros;
     double max_abs_sample_for_auto_gain = 0.0;
 
@@ -217,7 +218,7 @@ void AudioProcessor::process(bool collectOsciSamples) {
     if (activeFftGainConfigRef == -1.0f) {
         memset(RvReal, 0, currentFftSize_ * sizeof(double)); // Magnitúdó buffer törlése
         if (collectOsciSamples) {
-            for (int i = 0; i < AudioProcessorConstants::MAX_INTERNAL_WIDTH; ++i)
+            for (int i = 0; i < AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH; ++i)
                 osciSamples[i] = 2048; // Oszcilloszkóp buffer reset
         }
         return;
@@ -237,13 +238,15 @@ void AudioProcessor::process(bool collectOsciSamples) {
 
         // Oszcilloszkóp minta gyűjtése ha szükséges
         if (collectOsciSamples) {
-            if (i % AudioProcessorConstants::OSCI_SAMPLE_DECIMATION_FACTOR == 0 && osci_sample_idx < AudioProcessorConstants::MAX_INTERNAL_WIDTH) {
+            if (i % AudioProcessorConstants::OSCI_SAMPLE_DECIMATION_FACTOR == 0 && osci_sample_idx < AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH) {
                 if (osci_sample_idx < sizeof(osciSamples) / sizeof(osciSamples[0])) { // Biztonsági ellenőrzés
                     osciSamples[osci_sample_idx] = static_cast<int>(averaged_sample);
                     osci_sample_idx++;
                 }
             }
         }
+        // A ténylegesen gyűjtött mintaszám mentése
+        osciSampleCount = osci_sample_idx;
 
         // Középre igazítás (2048 a nulla szint 12 bites ADC-nél)
         vReal[i] = averaged_sample - 2048.0;

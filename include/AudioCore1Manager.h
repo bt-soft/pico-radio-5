@@ -29,7 +29,8 @@ class AudioCore1Manager {
         volatile float currentAutoGain;
 
         // Oszcilloszkóp adatok
-        int oscilloscopeBuffer[320]; // MAX_INTERNAL_WIDTH
+        int oscilloscopeBuffer[320];     // MAX_INTERNAL_WIDTH
+        int oscilloscopeSampleCount = 0; // tényleges mintaszám
 
         // Audio konfiguráció
         float fftGainConfigAm;
@@ -142,7 +143,7 @@ class AudioCore1Manager {
      * @param outData Kimeneti buffer az oszcilloszkóp adatoknak
      * @return true ha friss adat érhető el, false egyébként
      */
-    static bool getOscilloscopeData(const int **outData);
+    static bool getOscilloscopeData(const int **outData, int *outSampleCount);
 
     /**
      * @brief FFT méret váltása (core0-ból hívható)

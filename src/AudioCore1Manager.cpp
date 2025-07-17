@@ -261,8 +261,10 @@ void AudioCore1Manager::core1AudioLoop() {
                 // Oszcilloszkóp adatok másolása, ha engedélyezve van
                 if (collectOsci_) {
                     const int *osciData = pAudioProcessor_->getOscilloscopeData();
-                    if (osciData) {
-                        memcpy(pSharedData_->oscilloscopeBuffer, osciData, AudioProcessorConstants::MAX_INTERNAL_WIDTH * sizeof(int));
+                    int osciSampleCount = pAudioProcessor_->getOscilloscopeSampleCount();
+                    if (osciData && osciSampleCount > 0) {
+                        memcpy(pSharedData_->oscilloscopeBuffer, osciData, osciSampleCount * sizeof(int));
+                        pSharedData_->oscilloscopeSampleCount = osciSampleCount;
                         pSharedData_->oscilloscopeDataReady = true;
                     }
                 }
@@ -516,8 +518,7 @@ bool AudioCore1Manager::getSpectrumData(const double **outData, uint16_t *outFft
 /**
  * @brief Oszcilloszkóp adatok lekérése (core0-ból hívható)
  */
-bool AudioCore1Manager::getOscilloscopeData(const int **outData) {
-
+bool AudioCore1Manager::getOscilloscopeData(const int **outData, int *outSampleCount) {
     if (!initialized_ || !pSharedData_ || !collectOsci_)
         return false;
 
@@ -526,12 +527,12 @@ bool AudioCore1Manager::getOscilloscopeData(const int **outData) {
     if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
         if (pSharedData_->oscilloscopeDataReady) {
             *outData = pSharedData_->oscilloscopeBuffer;
+            *outSampleCount = pSharedData_->oscilloscopeSampleCount;
             pSharedData_->oscilloscopeDataReady = false; // Adat felhasználva
             dataAvailable = true;
         }
         mutex_exit(&pSharedData_->dataMutex);
     }
-
     return dataAvailable;
 }
 
@@ -613,8 +614,8 @@ void AudioCore1Manager::debugInfo() {
 
     DEBUG("AudioCore1Manager Debug Info:\n");
     DEBUG("  Core1 Running: %s, Spectrum Ready: %s, Osci Ready: %s\n", pSharedData_->core1Running ? "YES" : "NO", pSharedData_->spectrumDataReady ? "YES" : "NO", pSharedData_->oscilloscopeDataReady ? "YES" : "NO");
-    DEBUG("  FFT Size: %d\n", pSharedData_->fftSize);
     DEBUG("  FFT Sample Freq: %dkHz\n", pSharedData_->samplingFrequency / 1000);
+    DEBUG("  FFT Size: %d\n", pSharedData_->fftSize);
     DEBUG("  Bin Width: %s Hz\n", Utils::floatToString(pSharedData_->binWidthHz).c_str());
     DEBUG("  Auto Gain: %s\n", Utils::floatToString(pSharedData_->currentAutoGain).c_str());
 }

@@ -25,7 +25,7 @@ const float AUTO_GAIN_ATTACK_COEFF = 0.3f;   // Gyors attack
 const float AUTO_GAIN_RELEASE_COEFF = 0.01f; // Lassú release
 
 // Oszcilloszkóp konstansok
-const uint16_t MAX_INTERNAL_WIDTH = 320;
+const uint16_t OSCI_SAMPLE_MAX_INTERNAL_WIDTH = 320;
 const uint8_t OSCI_SAMPLE_DECIMATION_FACTOR = 1; // Csökkentve 2-ről 1-re több minta gyűjtéséhez
 
 // Spektrum konstansok
@@ -61,7 +61,8 @@ class AudioProcessor {
     double *RvReal; // Magnitúdó eredmények
 
     // Oszcilloszkóp adatok
-    int osciSamples[AudioProcessorConstants::MAX_INTERNAL_WIDTH];
+    int osciSamples[AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH];
+    int osciSampleCount = 0;
 
     // Belső függvények
     bool allocateFftArrays(uint16_t size);
@@ -70,6 +71,7 @@ class AudioProcessor {
     void calculateBinWidthHz();
 
   public:
+    int getOscilloscopeSampleCount() const { return osciSampleCount; }
     /**
      * AudioProcessor konstruktor
      * @param gainConfigRef Referencia a gain konfigurációs értékre
