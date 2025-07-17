@@ -172,44 +172,50 @@ void AudioCore1Manager::core1AudioLoop() {
             continue;
         }
 
-        // Feldolgozás minden ciklusban, ha nincs szüneteltetve
-        if (!pSharedData_->core1AudioPaused) {
+        // Audio feldolgozás időzített végrehajtása
+        constexpr uint32_t DEFAULT_LOOP_INTERVAL_MSEC = 50; // Reszponzívabb spektrum (~20 FPS)
+        static uint32_t lastProcessTime = 0; // static-ká téve, hogy megőrizze az értékét a ciklusok között
+        uint32_t now = millis();
 
-            // Audio feldolgozás
-            pAudioProcessor_->process(collectOsci_);
+        if (now - lastProcessTime >= DEFAULT_LOOP_INTERVAL_MSEC) {
 
-            // Mutex használata a megosztott adatok biztonságos eléréséhez
-            if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
-                const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
-                if (magnitudeData) {
-                    uint16_t fftSize = pAudioProcessor_->getFftSize();
-                    memcpy(pSharedData_->spectrumBuffer, magnitudeData, fftSize * sizeof(double));
-                    pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
-                    pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
-                    pSharedData_->spectrumDataReady = true;
-                    if (!pSharedData_->configChanged) {
-                        pSharedData_->fftSize = fftSize;
-                        pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
+            // Feldolgozás minden ciklusban, ha nincs szüneteltetve
+            if (!pSharedData_->core1AudioPaused) {
+
+                // Audio feldolgozás
+                pAudioProcessor_->process(collectOsci_);
+
+                // Mutex használata a megosztott adatok biztonságos eléréséhez
+                if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+                    const double *magnitudeData = pAudioProcessor_->getMagnitudeData();
+                    if (magnitudeData) {
+                        uint16_t fftSize = pAudioProcessor_->getFftSize();
+                        memcpy(pSharedData_->spectrumBuffer, magnitudeData, fftSize * sizeof(double));
+                        pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
+                        pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
+                        pSharedData_->spectrumDataReady = true;
+                        if (!pSharedData_->configChanged) {
+                            pSharedData_->fftSize = fftSize;
+                            pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
+                        }
                     }
-                }
-                if (collectOsci_) {
-                    const int *osciData = pAudioProcessor_->getOscilloscopeData();
-                    int osciSampleCount = pAudioProcessor_->getOscilloscopeSampleCount();
-                    if (osciData && osciSampleCount > 0) {
-                        memcpy(pSharedData_->oscilloscopeBuffer, osciData, osciSampleCount * sizeof(int));
-                        pSharedData_->oscilloscopeSampleCount = osciSampleCount;
-                        pSharedData_->oscilloscopeDataReady = true;
+                    if (collectOsci_) {
+                        const int *osciData = pAudioProcessor_->getOscilloscopeData();
+                        int osciSampleCount = pAudioProcessor_->getOscilloscopeSampleCount();
+                        if (osciData && osciSampleCount > 0) {
+                            memcpy(pSharedData_->oscilloscopeBuffer, osciData, osciSampleCount * sizeof(int));
+                            pSharedData_->oscilloscopeSampleCount = osciSampleCount;
+                            pSharedData_->oscilloscopeDataReady = true;
+                        }
                     }
+                    mutex_exit(&pSharedData_->dataMutex);
                 }
-                mutex_exit(&pSharedData_->dataMutex);
+
+                lastProcessTime = now;
             }
 
-        } else {
-            // Ha szüneteltetve van a feldolgozás, akkor egy kicsit nagyobbat várunk
-            sleep_ms(500);
         }
-
-        sleep_us(100); // kis várakozás minden ciklusban
+        sleep_us(1000); // kis várakozás a CPU terhelés csökkentésére (1ms)
     }
 }
 

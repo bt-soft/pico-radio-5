@@ -439,19 +439,24 @@ void SpectrumVisualizationComponent::setFftParametersForDisplayMode() {
 
         { // FFT méret beállítása
             uint16_t optimalFftSize = getOptimalFftSizeForMode(currentMode_);
-            // uint16_t currentFftSize = getCore1FftSize();
 
-            // if (currentFftSize != optimalFftSize) {
-            // DEBUG("SpectrumVisualizationComponent: FFT méret változtatása: %d -> %d, mód: %s\n", currentFftSize, optimalFftSize, decodeModeToStr());
+            if (optimalFftSize == 0) {                // 0 méretet az "Off" módhoz használjuk
+                AudioCore1Manager::pauseCore1Audio(); // Audio adatgyűjtés szüneteltetése
 
-            if (AudioCore1Manager::setFftSize(optimalFftSize)) {
-                DEBUG("SpectrumVisualizationComponent: Az FFT méret sikeresen megváltozott: %d\n", optimalFftSize);
             } else {
-                DEBUG("SpectrumVisualizationComponent: Nem sikerült megváltoztatni az FFT méretet: %d\n", optimalFftSize);
+
+                // ha szüneteltetve van, akkor most engedélyezzük (kiléptünk az Off módból)
+                if (AudioCore1Manager::isCore1Paused()) {
+                    AudioCore1Manager::resumeCore1Audio(); // Audio adatgyűjtés folytatása
+                }
+
+                // Méret beállítása
+                if (AudioCore1Manager::setFftSize(optimalFftSize)) {
+                    DEBUG("SpectrumVisualizationComponent: Az FFT méret sikeresen megváltozott: %d\n", optimalFftSize);
+                } else {
+                    DEBUG("SpectrumVisualizationComponent: Nem sikerült megváltoztatni az FFT méretet: %d\n", optimalFftSize);
+                }
             }
-            //} else {
-            //    DEBUG("SpectrumVisualizationComponent: Az FFT méret már megfelelő: %d, mód: %s\n", currentFftSize, decodeModeToStr());
-            //}
         }
 
         // Oszcilloszkóp mód esetén engedélyezzük az oszcilloszkóp minták gyűjtését
@@ -590,9 +595,6 @@ void SpectrumVisualizationComponent::renderOffMode() {
 }
 
 /**
- * @brief Low resolution spektrum renderelése
- */
-/**
  * @brief Low resolution spektrum renderelése (sprite-tal, javított amplitúdóval)
  */
 void SpectrumVisualizationComponent::renderSpectrumLowRes() {
@@ -646,7 +648,6 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
     uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
     float currentBinWidthHz = 0.0f;
     float currentAutoGain = 1.0f;
-
     bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
 
     // Ha nincs friss adat vagy nincs magnitude adat, ne rajzoljunk újra (megelőzzük a villogást)
@@ -757,8 +758,9 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
         return;
     }
 
+    // Use Nyquist frequency for mapping
     const int min_bin_idx_for_display = std::max(2, static_cast<int>(std::round(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ / currentBinWidthHz)));
-    const int max_bin_idx_for_display = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(maxDisplayFrequencyHz_ / currentBinWidthHz)));
+    const int max_bin_idx_for_display = static_cast<int>(actualFftSize / 2 - 1);
     const int num_bins_in_display_range = std::max(1, max_bin_idx_for_display - min_bin_idx_for_display + 1);
 
     // Adaptív autogain használata
@@ -1052,6 +1054,9 @@ void SpectrumVisualizationComponent::renderWaterfall() {
         sprite_->pushSprite(bounds.x, bounds.y);
         return;
     }
+
+    // DEBUG("SpectrumVisualizationComponent::renderWaterfall - maxDisplayFrequencyHz_: %d, actualFftSize: %d, currentBinWidthHz: %s\n", //
+    //       maxDisplayFrequencyHz_, actualFftSize, Utils::floatToString(currentBinWidthHz).c_str());
 
     // 1. Adatok eltolása balra a wabuf-ban (ez továbbra is szükséges a wabuf frissítéséhez)
     for (int r = 0; r < bounds.height; ++r) { // A teljes bounds.height magasságon iterálunk a wabuf miatt
@@ -1448,10 +1453,8 @@ uint16_t SpectrumVisualizationComponent::getCore1FftSize() {
 float SpectrumVisualizationComponent::getCore1BinWidthHz() {
 
     float binWidthHz = 0.0f;
-
-    uint16_t fftSize = 0;
     if (AudioCore1Manager::getFftCurrentBinWidth(&binWidthHz)) {
-        return fftSize;
+        return binWidthHz;
     }
 
     // Ha nincs friss adat, visszaadunk egy becsült értéket
@@ -1463,11 +1466,15 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
  */
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
     switch (mode) {
-        case DisplayMode::SpectrumHighRes:
-        case DisplayMode::Waterfall:
         case DisplayMode::CWWaterfall:
         case DisplayMode::RTTYWaterfall:
             return 1024; // Maximum felbontás a spektrum analizáláshoz
+
+        case DisplayMode::SpectrumHighRes:
+            return 256; // Magas felbontású spektrum, ~150px széles a grafikon, így elég 256 FFT méret
+
+        case DisplayMode::Waterfall:
+            return 256; // Vízfolyás, ~80px magas a grafikon, így elég lenne a 128 FFT méret, de a 256 szebb képet ad
 
         case DisplayMode::SpectrumLowRes:
         case DisplayMode::Oscilloscope:

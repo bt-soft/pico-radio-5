@@ -27,8 +27,7 @@ ScreenScreenSaver::ScreenScreenSaver()
  * @details Beállítja a képernyővédő módot: kék színek, rejtett aláhúzás, kezdeti pozicionálás
  */
 void ScreenScreenSaver::activate() {
-    UIScreen::activate();                 // Szülő osztály activate hívása
-    AudioCore1Manager::pauseCore1Audio(); // Audio adatgyűjtés szüneteltetése
+    UIScreen::activate(); // Szülő osztály activate hívása
     activationTime = millis();
     lastAnimationUpdateTime = millis();
     lastFullUpdateSaverTime = millis(); // Teljes frissítés időzítő nullázása
@@ -43,6 +42,8 @@ void ScreenScreenSaver::activate() {
 
     // Frekvencia és akkumulátor kezdeti elhelyezése
     updateFrequencyAndBatteryDisplay();
+
+    AudioCore1Manager::pauseCore1Audio(); // Audio adatgyűjtés szüneteltetése
 }
 
 /**
@@ -50,12 +51,13 @@ void ScreenScreenSaver::activate() {
  * @details Visszaállítja a FreqDisplay normál módját: alapértelmezett színek és látható aláhúzás
  */
 void ScreenScreenSaver::deactivate() {
-    UIScreen::deactivate();                // Szülő osztály deactivate hívása
-    AudioCore1Manager::resumeCore1Audio(); // Audio adatgyűjtés folytatása
+    UIScreen::deactivate(); // Szülő osztály deactivate hívása
 
     // FreqDisplay visszaállítása normál módra: alapértelmezett színek és látható aláhúzás
     freqDisplayComp->resetToDefaultColors();
     freqDisplayComp->setHideUnderline(false);
+
+    AudioCore1Manager::resumeCore1Audio(); // Audio adatgyűjtés folytatása
 }
 
 /**

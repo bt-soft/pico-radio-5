@@ -222,7 +222,14 @@ void AudioProcessor::process(bool collectOsciSamples) {
 
     // 1. Mintavételezés és középre igazítás, opcionális oszcilloszkóp mintagyűjtés
     // A teljes mintavételezési ciklus idejét is mérhetnénk, de az egyes minták időzítése fontosabb.
+    uint32_t nextSampleTime = micros();
     for (uint16_t i = 0; i < currentFftSize_; i++) {
+        // Pontos időzítés a mintavételezési frekvencia betartásához
+        while (micros() < nextSampleTime) {
+            // busy wait a CPU magon, ez itt elfogadható, mert a Core1 dedikált
+        }
+        nextSampleTime += sampleIntervalMicros_;
+
         uint32_t sum = 0;
         for (uint8_t j = 0; j < NOISE_REDUCTION_ANALOG_SAMPLES_COUNT; j++) {
             sum += analogRead(audioInputPin);
