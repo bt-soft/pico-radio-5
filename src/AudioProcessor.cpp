@@ -4,8 +4,7 @@
 #include "defines.h"
 #include "utils.h"
 
-constexpr uint8_t NOISE_REDUCTION_ANALOG_SAMPLES_COUNT = 4; // Minta átlagolás zajcsökkentéshez
-constexpr float ONE_SECOND_IN_MICROS = 1000000.0f;          // Egy másodperc mikroszekundumban
+constexpr uint8_t NOISE_REDUCTION_ANALOG_SAMPLES_COUNT = 1; // Minta átlagolás zajcsökkentéshez
 
 /**
  * @brief AudioProcessor konstruktor - inicializálja az audio feldolgozó objektumot
@@ -15,7 +14,8 @@ constexpr float ONE_SECOND_IN_MICROS = 1000000.0f;          // Egy másodperc mi
  * @param fftSize FFT méret (alapértelmezett: DEFAULT_FFT_SAMPLES)
  */
 AudioProcessor::AudioProcessor(float &gainConfigRef, uint8_t audioPin, uint16_t targetSamplingFrequency, uint16_t fftSize)
-    : FFT(), activeFftGainConfigRef(gainConfigRef),      //
+    : FFT(),                                             //
+      activeFftGainConfigRef(gainConfigRef),             //
       audioInputPin(audioPin),                           //
       targetSamplingFrequency_(targetSamplingFrequency), //
       binWidthHz_(0.0f),                                 //
@@ -46,9 +46,7 @@ AudioProcessor::AudioProcessor(float &gainConfigRef, uint8_t audioPin, uint16_t 
           Utils::floatToString(binWidthHz_).c_str());
 
     // Oszcilloszkóp minták inicializálása középpontra (ADC nyers érték)
-    for (uint16_t i = 0; i < AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH; ++i) {
-        osciSamples[i] = 2048;
-    }
+    std::fill(osciSamples, osciSamples + AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH, 2048);
 }
 
 /**
@@ -210,16 +208,14 @@ bool AudioProcessor::setFftSize(uint16_t newSize) {
 void AudioProcessor::process(bool collectOsciSamples) {
 
     int osci_sample_idx = 0;
-    osciSampleCount = 0;
-    uint32_t loopStartTimeMicros;
     double max_abs_sample_for_auto_gain = 0.0;
 
     // Ha az FFT ki van kapcsolva (-1.0f), akkor töröljük a puffereket és visszatérünk
     if (activeFftGainConfigRef == -1.0f) {
         memset(RvReal, 0, currentFftSize_ * sizeof(double)); // Magnitúdó buffer törlése
         if (collectOsciSamples) {
-            for (int i = 0; i < AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH; ++i)
-                osciSamples[i] = 2048; // Oszcilloszkóp buffer reset
+            // Oszcilloszkóp minták inicializálása középpontra (ADC nyers érték)
+            std::fill(osciSamples, osciSamples + AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH, 2048);
         }
         return;
     }
@@ -227,44 +223,35 @@ void AudioProcessor::process(bool collectOsciSamples) {
     // 1. Mintavételezés és középre igazítás, opcionális oszcilloszkóp mintagyűjtés
     // A teljes mintavételezési ciklus idejét is mérhetnénk, de az egyes minták időzítése fontosabb.
     for (uint16_t i = 0; i < currentFftSize_; i++) {
-        loopStartTimeMicros = micros();
         uint32_t sum = 0;
-
-        // NOISE_REDUCTION_ANALOG_SAMPLES_COUNT minta átlagolása a zajcsökkentés érdekében
-        for (uint16_t j = 0; j < NOISE_REDUCTION_ANALOG_SAMPLES_COUNT; j++) {
+        for (uint8_t j = 0; j < NOISE_REDUCTION_ANALOG_SAMPLES_COUNT; j++) {
             sum += analogRead(audioInputPin);
         }
         double averaged_sample = sum / (double)NOISE_REDUCTION_ANALOG_SAMPLES_COUNT;
 
-        // Oszcilloszkóp minta gyűjtése ha szükséges
+        // Oszcilloszkóp minta gyűjtése ha szükséges (decimation factor 2 hatványa: bitmaszk)
         if (collectOsciSamples) {
-            if (i % AudioProcessorConstants::OSCI_SAMPLE_DECIMATION_FACTOR == 0 && osci_sample_idx < AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH) {
-                if (osci_sample_idx < sizeof(osciSamples) / sizeof(osciSamples[0])) { // Biztonsági ellenőrzés
-                    osciSamples[osci_sample_idx] = static_cast<int>(averaged_sample);
-                    osci_sample_idx++;
+            if (((AudioProcessorConstants::OSCI_SAMPLE_DECIMATION_FACTOR & (AudioProcessorConstants::OSCI_SAMPLE_DECIMATION_FACTOR - 1)) == 0) ? ((i & (AudioProcessorConstants::OSCI_SAMPLE_DECIMATION_FACTOR - 1)) == 0)
+                                                                                                                                               : (i % AudioProcessorConstants::OSCI_SAMPLE_DECIMATION_FACTOR == 0)) {
+                if (osci_sample_idx < AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH) {
+                    osciSamples[osci_sample_idx++] = static_cast<int>(averaged_sample);
                 }
             }
         }
-        // A ténylegesen gyűjtött mintaszám mentése
-        osciSampleCount = osci_sample_idx;
 
-        // Középre igazítás (2048 a nulla szint 12 bites ADC-nél)
         vReal[i] = averaged_sample - 2048.0;
+        // vImag nullázása elhagyható, mert minden iterációban 0-ra állítjuk
         vImag[i] = 0.0;
 
-        // Auto Gain mód esetén a legnagyobb minta keresése
-        if (activeFftGainConfigRef == 0.0f) { // Auto Gain mód
-            if (std::abs(vReal[i]) > max_abs_sample_for_auto_gain) {
-                max_abs_sample_for_auto_gain = std::abs(vReal[i]);
+        if (activeFftGainConfigRef == 0.0f) {
+            double abs_val = std::abs(vReal[i]);
+            if (abs_val > max_abs_sample_for_auto_gain) {
+                max_abs_sample_for_auto_gain = abs_val;
             }
         }
-
-        // Időzítés a cél mintavételezési frekvencia eléréséhez
-        uint32_t processingTimeMicros = micros() - loopStartTimeMicros;
-        if (processingTimeMicros < sampleIntervalMicros_) {
-            delayMicroseconds(sampleIntervalMicros_ - processingTimeMicros);
-        }
     }
+    // Oszcilloszkóp mintaszám csak a ciklus végén
+    osciSampleCount = osci_sample_idx;
 
     // 2. Erősítés alkalmazása (manuális vagy automatikus)
     if (activeFftGainConfigRef > 0.0f) { // Manuális erősítés
@@ -302,19 +289,15 @@ void AudioProcessor::process(bool collectOsciSamples) {
     FFT.compute(vReal, vImag, currentFftSize_, FFT_FORWARD);
     FFT.complexToMagnitude(vReal, vImag, currentFftSize_); // Az eredmény a vReal-be kerül
 
-    // Magnitúdók átmásolása az RvReal tömbbe
-    for (uint16_t i = 0; i < currentFftSize_; ++i) {
-        RvReal[i] = vReal[i];
-    }
+    // Magnitúdók átmásolása az RvReal tömbbe memcpy-val
+    memcpy(RvReal, vReal, currentFftSize_ * sizeof(double));
 
     // 4. Alacsony frekvenciák csillapítása az RvReal tömbben
     // A binWidthHz_ már tagváltozóként rendelkezésre áll
     const uint16_t attenuation_cutoff_bin = static_cast<int>(AudioProcessorConstants::LOW_FREQ_ATTENUATION_THRESHOLD_HZ / binWidthHz_);
 
-    // Csak a releváns (nem tükrözött) frekvencia bin-eken iterálunk
-    for (uint16_t i = 0; i < (currentFftSize_ / 2); ++i) {
-        if (i < attenuation_cutoff_bin) {
-            RvReal[i] /= AudioProcessorConstants::LOW_FREQ_ATTENUATION_FACTOR;
-        }
+    // Csak az attenuation_cutoff_bin-ig futtatjuk a csillapítást
+    for (uint16_t i = 0; i < attenuation_cutoff_bin && i < (currentFftSize_ / 2); ++i) {
+        RvReal[i] /= AudioProcessorConstants::LOW_FREQ_ATTENUATION_FACTOR;
     }
 }

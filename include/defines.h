@@ -92,4 +92,7 @@
 #define DEBUG(fmt, ...) // Üres makró, ha __DEBUG nincs definiálva
 #endif
 
+// Egy másodperc mikroszekundumban
+#define ONE_SECOND_IN_MICROS 1000000.0f
+
 #endif // DEFINES_H
