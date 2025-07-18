@@ -28,6 +28,9 @@ void Si4735Band::bandInit(bool sysStart) {
 
     if (getCurrentBandType() == FM_BAND_TYPE) {
         si4735.setup(PIN_SI4735_RESET, FM_BAND_TYPE);
+        // A hardveres reset (setup) törli a patch-et a chip memóriájából,
+        // ezért a flag-et is vissza kell állítanunk.
+        ssbLoaded = false;
         si4735.setFM(); // RDS is typically automatically enabled for FM mode in Si4735
 
         // RDS inicializálás és konfiguráció RÖGTÖN az FM setup után
@@ -43,6 +46,9 @@ void Si4735Band::bandInit(bool sysStart) {
 
     } else {
         si4735.setup(PIN_SI4735_RESET, MW_BAND_TYPE);
+        // A hardveres reset (setup) törli a patch-et a chip memóriájából,
+        // ezért a flag-et is vissza kell állítanunk.
+        ssbLoaded = false;
         si4735.setAM();
 
         // Seek beállítások
@@ -104,13 +110,6 @@ void Si4735Band::bandSet(bool useDefaults) {
 
     // Demoduláció beállítása
     uint8_t currMod = currentBand.currDemod;
-
-    // // A sávhoz preferált demodulációs módot állítunk be?
-    // if (useDefaults) {
-    //     // Átmásoljuk a preferált modulációs módot
-    //     currMod = currentBand.currMod = currentBand.prefMod;
-    //     ssbLoaded = false; // SSB patch betöltése szükséges
-    // }
 
     if (currMod == AM_DEMOD_TYPE or currMod == FM_DEMOD_TYPE) {
         ssbLoaded = false;
