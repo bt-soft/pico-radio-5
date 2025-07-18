@@ -47,6 +47,9 @@ AudioProcessor::AudioProcessor(float &gainConfigRef, uint8_t audioPin, uint16_t 
 
     // Oszcilloszkóp minták inicializálása középpontra (ADC nyers érték)
     std::fill(osciSamples, osciSamples + AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH, 2048);
+
+    // Alacsony frekvenciás vágás binjének újraszámítása
+    attenuation_cutoff_bin_ = static_cast<uint16_t>(AudioProcessorConstants::LOW_FREQ_ATTENUATION_THRESHOLD_HZ / binWidthHz_);
 }
 
 /**
@@ -210,13 +213,18 @@ void AudioProcessor::process(bool collectOsciSamples) {
     int osci_sample_idx = 0;
     float max_abs_sample_for_auto_gain = 0.0f;
 
+    // Erősítési módok ellenőrzése a cikluson kívül a hatékonyság érdekében
+    const bool isManualGain = activeFftGainConfigRef > 0.0f;
+    const bool isAutoGain = activeFftGainConfigRef == 0.0f;
+
     // Ha az FFT ki van kapcsolva (-1.0f), akkor töröljük a puffereket és visszatérünk
     if (activeFftGainConfigRef == -1.0f) {
-        memset(RvReal, 0, currentFftSize_ * sizeof(double)); // Magnitúdó buffer törlése
+        memset(RvReal, 0, currentFftSize_ * sizeof(float)); // Magnitúdó buffer törlése
         if (collectOsciSamples) {
             // Oszcilloszkóp minták inicializálása középpontra (ADC nyers érték)
             std::fill(osciSamples, osciSamples + AudioProcessorConstants::OSCI_SAMPLE_MAX_INTERNAL_WIDTH, 2048);
         }
+        osciSampleCount = 0; // Oszcilloszkóp mintaszám nullázása
         return;
     }
 
@@ -246,27 +254,32 @@ void AudioProcessor::process(bool collectOsciSamples) {
             }
         }
 
-        vReal[i] = averaged_sample - 2048.0f;
+        // DC-offset eltávolítása és manuális erősítés alkalmazása egy lépésben
+        float sample = averaged_sample - 2048.0f;
+        if (isManualGain) {
+            vReal[i] = sample * activeFftGainConfigRef;
+        } else {
+            vReal[i] = sample;
+        }
+
         vImag[i] = 0.0f; // vImag nullázása minden iterációban
 
-        if (activeFftGainConfigRef == 0.0f) {
+        // Auto-gain esetén a maximum abszolút érték keresése
+        if (isAutoGain) {
             float abs_val = std::abs(vReal[i]);
             if (abs_val > max_abs_sample_for_auto_gain) {
                 max_abs_sample_for_auto_gain = abs_val;
             }
         }
     }
+
     // Oszcilloszkóp mintaszám csak a ciklus végén
     osciSampleCount = osci_sample_idx;
 
-    // 2. Erősítés alkalmazása (manuális vagy automatikus)
-    if (activeFftGainConfigRef > 0.0f) { // Manuális erősítés
-        for (uint16_t i = 0; i < currentFftSize_; i++) {
-            vReal[i] *= activeFftGainConfigRef;
-        }
+    // 2. Automatikus erősítés alkalmazása (ha aktív)
+    if (isAutoGain) {
 
-    } else if (activeFftGainConfigRef == 0.0f) { // Automatikus erősítés
-        float target_auto_gain_factor = 1.0f;    // Alapértelmezett erősítés, ha nincs jel
+        float target_auto_gain_factor = 1.0f; // Alapértelmezett erősítés, ha nincs jel
 
         if (max_abs_sample_for_auto_gain > 0.001) { // Nullával osztás és extrém erősítés elkerülése
             target_auto_gain_factor = AudioProcessorConstants::FFT_AUTO_GAIN_TARGET_PEAK / max_abs_sample_for_auto_gain;
@@ -299,11 +312,8 @@ void AudioProcessor::process(bool collectOsciSamples) {
     memcpy(RvReal, vReal, currentFftSize_ * sizeof(float));
 
     // 4. Alacsony frekvenciák csillapítása az RvReal tömbben
-    // A binWidthHz_ már tagváltozóként rendelkezésre áll
-    const uint16_t attenuation_cutoff_bin = static_cast<int>(AudioProcessorConstants::LOW_FREQ_ATTENUATION_THRESHOLD_HZ / binWidthHz_);
-
-    // Csak az attenuation_cutoff_bin-ig futtatjuk a csillapítást
-    for (uint16_t i = 0; i < attenuation_cutoff_bin && i < (currentFftSize_ / 2); ++i) {
+    // A gyorsítótárazott `attenuation_cutoff_bin_` értéket használjuk
+    for (uint16_t i = 0; i < attenuation_cutoff_bin_ && i < (currentFftSize_ / 2); ++i) {
         RvReal[i] /= AudioProcessorConstants::LOW_FREQ_ATTENUATION_FACTOR;
     }
 }

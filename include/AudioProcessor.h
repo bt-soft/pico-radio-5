@@ -54,6 +54,8 @@ class AudioProcessor {
     float smoothed_auto_gain_factor_;
     uint32_t sampleIntervalMicros_;
     uint16_t currentFftSize_;
+     uint16_t attenuation_cutoff_bin_;  // Gyorsítótárazott érték a mélyvágáshoz
+
 
     // FFT tömbök
     float *vReal;
