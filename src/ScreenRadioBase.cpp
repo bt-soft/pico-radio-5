@@ -324,8 +324,16 @@ void ScreenRadioBase::processBandButton(bool isHamBand) {
         dialogTitle, "",                                                              // Dialógus címe és üzenete
         _bandNames.get(), _bandCount,                                                 // Gombok feliratai és számuk
         [this](int buttonIndex, const char *buttonLabel, MultiButtonDialog *dialog) { // Gomb kattintás kezelése
+            // Kikeressük az új sáv indexét
+            uint8_t newBandIdx = pSi4735Manager->getBandIdxByBandName(buttonLabel);
+
+            // *** FIX: Visszaállítjuk a sáv preferált demodulációs módját ***
+            // Ez felülírja a memória hangolás vagy manuális módváltás által
+            // esetlegesen beállított ideiglenes módot.
+            pSi4735Manager->getBandByIdx(newBandIdx).currDemod = pSi4735Manager->getBandByIdx(newBandIdx).prefDemod;
+
             // Átállítjuk a használni kívánt BAND indexét
-            config.data.currentBandIdx = pSi4735Manager->getBandIdxByBandName(buttonLabel);
+            config.data.currentBandIdx = newBandIdx;
 
             // Átállítjuk a rádiót a kiválasztott sávra
             pSi4735Manager->init();

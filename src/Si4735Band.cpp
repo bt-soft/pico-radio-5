@@ -357,13 +357,13 @@ void Si4735Band::setAfBandWidth() {
  */
 void Si4735Band::tuneMemoryStation(uint8_t bandIndex, uint16_t frequency, uint8_t demodModIndex, uint8_t bandwidthIndex) {
 
-    // 1. Elkérjük a Band táblát
-    BandTable &currentBand = getCurrentBand();
-
     // Band index beállítása a konfigban
     config.data.currentBandIdx = bandIndex;
 
-    // 2. Demodulátor beállítása a chipen.  Ha CW módra
+    // 1. Elkérjük az ÚJ band tábla rekordot az index frissítése UTÁN
+    BandTable &currentBand = getCurrentBand();
+
+    // 2. Demodulátor beállítása a chipen.
     uint8_t savedMod = demodModIndex; // A demodulációs mód kiemelése
 
     if (savedMod != CW_DEMOD_TYPE and rtv::CWShift == true) {
