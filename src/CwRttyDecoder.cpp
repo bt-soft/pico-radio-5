@@ -128,7 +128,8 @@ void CwRttyDecoder::processFftData(const float *fftData, uint16_t fftSize, float
     // =================================================================
     // Állapotgép logika az eredeti CwDecoder.cpp alapján
     // =================================================================
-    constexpr int MAX_CW_ELEMENTS_ORIG = 6; // Eredeti dekóderben 6 elem a max karakterhossz
+    // === Átemelt logika a pico-radio-2 CwDecoder.cpp-ből ===
+    constexpr int MAX_CW_ELEMENTS = 6;
     bool currentToneState = (peakBin != -1 && peakMagnitude > signalThreshold_);
     unsigned long currentTimeMs = millis();
     char decodedChar = '\0';
@@ -171,35 +172,23 @@ void CwRttyDecoder::processFftData(const float *fftData, uint16_t fftSize, float
     } else if (decoderStarted_ && measuringTone_ && !currentToneState) {
         trailingEdgeTimeMs_ = currentTimeMs;
         unsigned long duration = trailingEdgeTimeMs_ - leadingEdgeTimeMs_;
-        if (toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
-            DEBUG("CW: Tömb tele (%d elem), kényszer dekódolás hang végén\n", toneIndex_);
-            decodedChar = processCollectedElements();
-            memset(rawToneDurations_, 0, sizeof(rawToneDurations_));
-            resetMorseTree();
-            toneIndex_ = 0;
-        }
-        unsigned long dynamicMinDuration = DOT_MIN_MS;
-        if (toneMinDurationMs_ != 9999L && toneMinDurationMs_ > 0) {
-            dynamicMinDuration = max(DOT_MIN_MS, max(MIN_ADAPTIVE_DOT_MS, toneMinDurationMs_ / NOISE_THRESHOLD_FACTOR));
-        }
-        if (duration >= dynamicMinDuration && duration <= DASH_MAX_MS && toneIndex_ < MAX_CW_ELEMENTS_ORIG) {
+        if (duration >= DOT_MIN_MS && duration <= DASH_MAX_MS && toneIndex_ < MAX_CW_ELEMENTS) {
             rawToneDurations_[toneIndex_] = duration;
             toneIndex_++;
             updateReferenceTimings(duration);
         } else {
             if (duration > DASH_MAX_MS) {
                 DEBUG("CW: TÚL HOSSZÚ elem: %lu ms (max: %lu, index: %d)\n", duration, (unsigned long)DASH_MAX_MS, toneIndex_);
-            } else if (duration < dynamicMinDuration) {
-                DEBUG("CW: Dinamikus zajszűrés: %lu ms < %lu ms (adaptív minimum)\n", duration, dynamicMinDuration);
+            } else if (duration < DOT_MIN_MS) {
+                DEBUG("CW: TÚL RÖVID elem: %lu ms (min: %lu, index: %d)\n", duration, (unsigned long)DOT_MIN_MS, toneIndex_);
             }
         }
         measuringTone_ = false;
     } else if (decoderStarted_ && !measuringTone_ && currentToneState) {
         unsigned long gapDuration = currentTimeMs - trailingEdgeTimeMs_;
         wordSpaceProcessed_ = false;
-        // Ha karakterhatár vagy tömb tele, mindig dekódolunk és nullázunk
-        if ((gapDuration >= charGapMs && toneIndex_ > 0) || toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
-            if (toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
+        if ((gapDuration >= charGapMs && toneIndex_ > 0) || toneIndex_ >= MAX_CW_ELEMENTS) {
+            if (toneIndex_ >= MAX_CW_ELEMENTS) {
                 DEBUG("CW: Tömb tele (%d elem), kényszer dekódolás\n", toneIndex_);
             } else {
                 DEBUG("CW: Karakterhatár detektálva, gap: %lu ms (küszöb: %lu ms)\n", gapDuration, charGapMs);
@@ -220,8 +209,8 @@ void CwRttyDecoder::processFftData(const float *fftData, uint16_t fftSize, float
         }
     } else if (decoderStarted_ && !measuringTone_ && !currentToneState) {
         unsigned long spaceDuration = currentTimeMs - trailingEdgeTimeMs_;
-        if ((spaceDuration > charGapMs && toneIndex_ > 0) || toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
-            if (toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
+        if ((spaceDuration > charGapMs && toneIndex_ > 0) || toneIndex_ >= MAX_CW_ELEMENTS) {
+            if (toneIndex_ >= MAX_CW_ELEMENTS) {
                 DEBUG("CW: Tömb tele csendben (%d elem), kényszer dekódolás\n", toneIndex_);
             } else {
                 DEBUG("CW: Hosszú csend detektálva, space: %lu ms (küszöb: %lu ms)\n", spaceDuration, charGapMs);
@@ -256,14 +245,13 @@ void CwRttyDecoder::processFftData(const float *fftData, uint16_t fftSize, float
 
     if (decodedChar != '\0') {
         if (isprint(decodedChar)) {
-            // Ne legyen duplikált szóköz
             if (decodedChar != ' ' || (decodedText.length() > 0 && decodedText[decodedText.length() - 1] != ' ')) {
                 decodedText += decodedChar;
                 DEBUG("CW Decoded: %s\n", decodedText.c_str());
             }
         }
         if (decodedChar == ' ') {
-            lastDecodedChar_ = '\0'; // Szóköz után ne próbáljon újabb szóközt beszúrni
+            lastDecodedChar_ = '\0';
             wordSpaceProcessed_ = true;
         } else {
             lastDecodedChar_ = decodedChar;
