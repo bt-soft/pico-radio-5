@@ -273,10 +273,12 @@ void ScreenAM::handleOwnLoop() {
             float binWidth = 0.0f;
             float autoGain = 1.0f;
 
-            // *** JAVÍTÁS: A nem-fogyasztó gettert használjuk a dekóderhez ***
+            // ***  A nem-fogyasztó gettert használjuk a dekóderhez ***
             if (AudioCore1Manager::getLatestSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
+
                 // Ha a CW dekóder mód aktív
                 if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+
                     // 1. Adat átadása a dekódernek
                     cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
 

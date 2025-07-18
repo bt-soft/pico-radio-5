@@ -1,9 +1,21 @@
+// ...existing code...
+
 #ifndef __CW_RTTY_DECODER_H
 #define __CW_RTTY_DECODER_H
 
 #include <Arduino.h>
 
 class CwRttyDecoder {
+    // Teljesen adaptív átlagok
+    float dotMs_ = 0;
+    float dashMs_ = 0;
+    float gapMs_ = 0;
+    // Adaptív időzítéshez mozgó átlagok és súlyok
+    unsigned long movingToneMs_ = 0;
+    unsigned long movingGapMs_ = 0;
+    static constexpr float TONE_ALPHA = 0.2f;
+    static constexpr float GAP_ALPHA = 0.2f;
+
   public:
     CwRttyDecoder();
     void processFftData(const float *fftData, uint16_t fftSize, float binWidth);
@@ -12,9 +24,9 @@ class CwRttyDecoder {
 
   private:
     // Konstansok
-    static constexpr float NOISE_FLOOR_FACTOR = 8.0f;
-    static constexpr float MINIMUM_THRESHOLD = 150.0f;
-    static constexpr float NOISE_SMOOTHING_FACTOR = 0.05f;
+    static constexpr float NOISE_FLOOR_FACTOR = 2.0f;
+    static constexpr float MINIMUM_THRESHOLD = 50.0f;
+    static constexpr float NOISE_SMOOTHING_FACTOR = 0.2f;
 
     // Adaptív időzítési konstansok (a "jó" CwDecoder.cpp-ből)
     static constexpr uint16_t DOT_MIN_MS = 20;
@@ -62,11 +74,15 @@ class CwRttyDecoder {
     bool inInactiveState;
     uint32_t lastSpaceDebugMs_;
 
+    // Reset utáni első hosszú gap kezeléséhez
+    bool resetAfterLongElement_ = false;
+
     // Morse Tree változók
     int treeIndex_;
     int treeOffset_;
     int treeCount_;
 
+    char morseElementType(unsigned long duration) const;
     void updateReferenceTimings(unsigned long duration);
     char processCollectedElements();
     void resetMorseTree();

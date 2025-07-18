@@ -1475,10 +1475,10 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
     switch (mode) {
         case DisplayMode::CWWaterfall:
-            return 1024; // Nagyobb felbontás a CW jel pontos detektálásához
+            return 256; // Nagyobb felbontás a CW jel pontos detektálásához
 
         case DisplayMode::RTTYWaterfall:
-            return 1024; // Maximum felbontás a spektrum analizáláshoz
+            return 256; // Maximum felbontás a spektrum analizáláshoz
 
         case DisplayMode::SpectrumHighRes:
             return 256; // Magas felbontású spektrum, ~150px széles a grafikon, így elég 256 FFT méret
