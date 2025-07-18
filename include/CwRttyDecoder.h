@@ -5,9 +5,6 @@
 
 class CwRttyDecoder {
   public:
-    // Dekóder állapotok
-    enum class DecoderState { IDLE, MARK, SPACE };
-
     CwRttyDecoder();
     void processFftData(const float *fftData, uint16_t fftSize, float binWidth);
     String getDecodedText();
@@ -15,37 +12,67 @@ class CwRttyDecoder {
 
   private:
     // Konstansok
-    static constexpr float MIN_CW_FREQ_HZ = 700.0f; // Kicsit tágabbra vesszük a sávot
-    static constexpr float MAX_CW_FREQ_HZ = 1000.0f;
-    // A statikus SIGNAL_THRESHOLD helyett dinamikus küszöböt használunk
-    static constexpr float NOISE_FLOOR_FACTOR = 8.0f;      // A küszöb a zajszint ennyiszerese lesz (kísérletezést igényel)
-    static constexpr float MINIMUM_THRESHOLD = 150.0f;     // Abszolút minimum küszöb a téves detektálások ellen
-    static constexpr float NOISE_SMOOTHING_FACTOR = 0.05f; // A zajszint simítási faktora
+    static constexpr float NOISE_FLOOR_FACTOR = 8.0f;
+    static constexpr float MINIMUM_THRESHOLD = 150.0f;
+    static constexpr float NOISE_SMOOTHING_FACTOR = 0.05f;
 
-    // Időzítési konstansok (kezdeti értékek, később lehet dinamikus)
-    static constexpr uint16_t WPM = 15;                   // Words Per Minute
-    static constexpr uint16_t DIT_LENGTH_MS = 1200 / WPM; // A "PARIS" standard alapján
-    static constexpr uint16_t DAH_LENGTH_MS = 3 * DIT_LENGTH_MS;
-    static constexpr float DIT_DAH_THRESHOLD_MS = (DIT_LENGTH_MS + DAH_LENGTH_MS) / 2.0f;
-    static constexpr uint16_t CHAR_SPACE_MS = 3 * DIT_LENGTH_MS;
-    static constexpr uint16_t WORD_SPACE_MS = 7 * DIT_LENGTH_MS;
+    // Adaptív időzítési konstansok (a "jó" CwDecoder.cpp-ből)
+    static constexpr uint16_t DOT_MIN_MS = 20;
+    static constexpr uint16_t DOT_MAX_MS = 250;
+    static constexpr uint16_t DASH_MAX_MS = 2500; // Megnövelve, hogy a lassú jeleket is elfogadja
+    static constexpr uint16_t MAX_CW_ELEMENTS = 8;
+    static constexpr uint32_t MAX_SILENCE_MS = 4000;
+    static constexpr uint16_t MIN_ADAPTIVE_DOT_MS = 15;
+    static constexpr uint8_t NOISE_THRESHOLD_FACTOR = 5;
+
+    // Dinamikus szünet szorzók
+    static constexpr float CHAR_GAP_DOT_MULTIPLIER = 2.8f;
+    static constexpr float WORD_GAP_DOT_MULTIPLIER = 7.0f;
+    static constexpr uint16_t MIN_CHAR_GAP_MS_FALLBACK = 70;
+    static constexpr uint16_t MIN_WORD_GAP_MS_FALLBACK = 200;
+    static constexpr uint32_t SPACE_DEBUG_INTERVAL_MS = 1000;
+
+    // Morse Tree konstansok
+    static const char MORSE_TREE_SYMBOLS[];
+    static constexpr int MORSE_TREE_ROOT_INDEX = 62;
+    static constexpr int MORSE_TREE_INITIAL_OFFSET = 32;
+    static constexpr int MORSE_TREE_MAX_DEPTH = 6;
 
     // Belső állapotváltozók a CW dekódoláshoz
     String decodedText;
-    DecoderState currentState;
-    uint32_t lastStateChangeTime;
-    bool signalPresent;
     float peakFrequencyHz;
     float peakMagnitude;
     float noiseLevel_;
     float signalThreshold_;
 
-    // Morse dekódoláshoz szükséges változók (későbbi lépésekhez)
-    String currentMorseChar;
-    uint32_t lastMarkTime;
+    // Adaptív dekódoláshoz szükséges változók
+    unsigned long startReferenceMs_;
+    unsigned long currentReferenceMs_;
+    unsigned long toneMinDurationMs_;
+    unsigned long toneMaxDurationMs_;
+    unsigned long leadingEdgeTimeMs_;
+    unsigned long trailingEdgeTimeMs_;
+    unsigned long rawToneDurations_[MAX_CW_ELEMENTS];
+    short toneIndex_;
+    bool decoderStarted_;
+    bool measuringTone_;
+    uint32_t lastActivityMs_;
+    bool wordSpaceProcessed_;
+    char lastDecodedChar_;
+    bool inInactiveState;
+    uint32_t lastSpaceDebugMs_;
 
-    void updateState(bool signalIsOn, uint32_t now);
-    char morseToChar(const String &morseCode);
+    // Morse Tree változók
+    int treeIndex_;
+    int treeOffset_;
+    int treeCount_;
+
+    void updateReferenceTimings(unsigned long duration);
+    char processCollectedElements();
+    void resetMorseTree();
+    char getCharFromTree();
+    void processDot();
+    void processDash();
 };
 
 #endif // __CW_RTTY_DECODER_H
