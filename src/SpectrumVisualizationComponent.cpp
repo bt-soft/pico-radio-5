@@ -326,9 +326,8 @@ void SpectrumVisualizationComponent::draw() {
         modeIndicatorDrawn_ = false;
 
         // Töröljük a területet ahol az indicator volt - KERET ALATT
-        int indicatorH = 20;                       // fix magasság az indicator számára
         int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt
-        tft.fillRect(bounds.x - 3, indicatorY, bounds.width + 3, indicatorH, TFT_BLACK);
+        tft.fillRect(bounds.x - 3, indicatorY, bounds.width + 3, 10, TFT_BLACK);
 
         // Frekvencia feliratok kirajzolásának engedélyezése
         frequencyLabelsDrawn_ = true;
@@ -395,7 +394,7 @@ void SpectrumVisualizationComponent::manageSpriteForMode(DisplayMode modeToPrepa
         tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height - 1, TFT_BLACK);
 
         // Frekvencia feliratok területének törlése - CSAK a component szélességében
-        tft.fillRect(bounds.x, bounds.y + bounds.height + 1, bounds.width, 15, TFT_BLACK);
+        tft.fillRect(bounds.x, bounds.y + bounds.height + 1, bounds.width, 10, TFT_BLACK);
 
         // Sprite is törlése ha létezett
         if (spriteCreated_) {
@@ -1554,7 +1553,6 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
     tft.setTextDatum(BC_DATUM);              // Bottom-center alignment
 
     // Mode szöveggé dekódolása
-
     String modeText = decodeModeToStr();
     if (currentMode_ != DisplayMode::Off) {
         modeText += isAutoGainMode() ? " (Auto" : " (Manu";
@@ -1563,7 +1561,7 @@ void SpectrumVisualizationComponent::renderModeIndicator() {
 
     // Clear mode indicator area explicitly before text drawing - KERET ALATT
     int indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
-    tft.fillRect(bounds.x - 4, indicatorY, bounds.width + 8, indicatorH, TFT_BLACK);
+    tft.fillRect(bounds.x - 4, indicatorY, bounds.width + 8, 10, TFT_BLACK);
 
     // Draw text at component bottom + indicator area, center
     // Y coordinate will be the text baseline (bottom of the indicator area)
