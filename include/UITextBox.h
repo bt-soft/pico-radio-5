@@ -13,11 +13,13 @@ class UITextBox : public UIComponent {
     uint16_t textColor;
     uint16_t bgColor;
     uint8_t textSize;
-    uint8_t textDatum;
+    uint8_t textDatum; // A szöveg igazítása (word-wrap esetén korlátozottan használható)
+    TFT_eSprite _sprite;
+    bool _spriteCreated;
 
   public:
     UITextBox(const Rect &bounds, const String &initialText);
-    virtual ~UITextBox() = default;
+    virtual ~UITextBox();
 
     void setText(const String &newText);
     String getText() const;
@@ -26,6 +28,7 @@ class UITextBox : public UIComponent {
     void setTextSize(uint8_t size);
     void setTextDatum(uint8_t datum);
 
+    virtual void setBounds(const Rect &newBounds) override;
     virtual void draw() override;
 };
 

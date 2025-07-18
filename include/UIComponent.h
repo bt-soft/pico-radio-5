@@ -239,7 +239,7 @@ class UIComponent {
     // ================================
 
     // Bounds getter/setter
-    void setBounds(const Rect &newBounds) {
+    virtual void setBounds(const Rect &newBounds) {
         bounds = newBounds;
         markForRedraw();
     }

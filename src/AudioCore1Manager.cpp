@@ -37,6 +37,7 @@ bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int
     memset(pSharedData_, 0, sizeof(SharedAudioData));
     pSharedData_->spectrumDataReady = false;
     pSharedData_->oscilloscopeDataReady = false;
+    pSharedData_->latestSpectrumDataAvailable = false;
     pSharedData_->core1Running = false;
     pSharedData_->core1ShouldStop = false;
     pSharedData_->configChanged = false;
@@ -194,6 +195,14 @@ void AudioCore1Manager::core1AudioLoop() {
                         pSharedData_->binWidthHz = pAudioProcessor_->getBinWidthHz();
                         pSharedData_->currentAutoGain = pAudioProcessor_->getCurrentAutoGain();
                         pSharedData_->spectrumDataReady = true;
+
+                        // 2. A "nem-fogyasztó" cache a dekóderhez
+                        memcpy(pSharedData_->latestSpectrumBuffer, magnitudeData, fftSize * sizeof(float));
+                        pSharedData_->latestFftSize = fftSize;
+                        pSharedData_->latestBinWidthHz = pAudioProcessor_->getBinWidthHz();
+                        pSharedData_->latestCurrentAutoGain = pAudioProcessor_->getCurrentAutoGain();
+                        pSharedData_->latestSpectrumDataAvailable = true;
+
                         if (!pSharedData_->configChanged) {
                             pSharedData_->fftSize = fftSize;
                             pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
@@ -427,6 +436,31 @@ bool AudioCore1Manager::getSpectrumData(const float **outData, uint16_t *outFftS
     return dataAvailable;
 }
 
+/**
+ * @brief Legfrissebb spektrum adatok lekérése (nem-fogyasztó)
+ * @details Ezt a dekóder használja, nem törli a "data ready" flag-et.
+ * @return true ha friss adat érhető el, false egyébként
+ */
+bool AudioCore1Manager::getLatestSpectrumData(const float **outData, uint16_t *outFftSize, float *outBinWidth, float *outAutoGain) {
+    if (!initialized_ || !pSharedData_) {
+        return false;
+    }
+
+    bool dataAvailable = false;
+
+    if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+        if (pSharedData_->latestSpectrumDataAvailable) {
+            *outData = pSharedData_->latestSpectrumBuffer;
+            *outFftSize = pSharedData_->latestFftSize;
+            *outBinWidth = pSharedData_->latestBinWidthHz;
+            *outAutoGain = pSharedData_->latestCurrentAutoGain;
+            dataAvailable = true;
+        }
+        mutex_exit(&pSharedData_->dataMutex);
+    }
+
+    return dataAvailable;
+}
 /**
  * @brief Oszcilloszkóp adatok lekérése (core0-ból hívható)
  */

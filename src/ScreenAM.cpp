@@ -273,14 +273,15 @@ void ScreenAM::handleOwnLoop() {
             float binWidth = 0.0f;
             float autoGain = 1.0f;
 
-            if (AudioCore1Manager::getSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
+            // *** JAVÍTÁS: A nem-fogyasztó gettert használjuk a dekóderhez ***
+            if (AudioCore1Manager::getLatestSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
                 // Ha a CW dekóder mód aktív
                 if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
-                    // 1. Adat átadása a dekódernek a feldolgozáshoz
+                    // 1. Adat átadása a dekódernek
                     cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
 
                     // 2. Dekódolt szöveg (vagy debug állapot) lekérése és megjelenítése
-                    String newText = cwDecoder->getDecodedText(); // Ez most "MARK" vagy "SPACE" lesz
+                    String newText = cwDecoder->getDecodedText();
                     if (newText != decodedTextBox->getText()) {
                         decodedTextBox->setText(newText);
                     }
@@ -367,8 +368,9 @@ void ScreenAM::layoutComponents() {
     cwDecoder = std::make_shared<CwRttyDecoder>();
 
     // Dekódolt szöveg doboz létrehozása
-    Rect textBoxBounds(2, 180, 250, 60); // Példa pozíció
+    Rect textBoxBounds(2, 165, 405, 75); // Pozíció
     decodedTextBox = std::make_shared<UITextBox>(textBoxBounds, "");
+    decodedTextBox->setTextSize(1);
     decodedTextBox->setTextColor(TFT_CYAN, TFT_BLACK);
     addChild(decodedTextBox);
 }

@@ -28,6 +28,13 @@ class AudioCore1Manager {
         volatile float binWidthHz;
         volatile float currentAutoGain;
 
+        // Cache a legutóbbi FFT adatokhoz, amit a dekóder használhat (nem fogyasztó)
+        float latestSpectrumBuffer[2048]; // Max FFT size
+        volatile uint16_t latestFftSize;
+        volatile float latestBinWidthHz;
+        volatile float latestCurrentAutoGain;
+        volatile bool latestSpectrumDataAvailable;
+
         // Oszcilloszkóp adatok
         int oscilloscopeBuffer[320];     // MAX_INTERNAL_WIDTH
         int oscilloscopeSampleCount = 0; // tényleges mintaszám
@@ -117,6 +124,13 @@ class AudioCore1Manager {
      * @return true ha friss adat érhető el, false egyébként
      */
     static bool getOscilloscopeData(const int **outData, int *outSampleCount);
+
+    /**
+     * @brief Legfrissebb spektrum adatok lekérése (nem-fogyasztó)
+     * @details Ezt a dekóder használja, nem törli a "data ready" flag-et.
+     * @return true ha friss adat érhető el, false egyébként
+     */
+    static bool getLatestSpectrumData(const float **outData, uint16_t *outFftSize, float *outBinWidth, float *outAutoGain);
 
     /**
      * @brief FFT méret váltása (core0-ból hívható)
