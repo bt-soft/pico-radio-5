@@ -185,6 +185,7 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
     // ===================================================================
     std::shared_ptr<CwRttyDecoder> cwDecoder;
     std::shared_ptr<UITextBox> decodedTextBox;
+    SpectrumVisualizationComponent::DisplayMode lastSpectrumMode_ = SpectrumVisualizationComponent::DisplayMode::Off;
 };
 
 #endif // __SCREEN_AM_H

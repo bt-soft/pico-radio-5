@@ -362,10 +362,10 @@ void loop() {
         pSi4735Manager->loop();
     }
 
-    // Core1 Audio Manager debug információk kiírása
-    static uint32_t lasAudioCore1ManagerDebugInfo = 0;
-    if (millis() - lasAudioCore1ManagerDebugInfo >= 10 * 1000) {
-        AudioCore1Manager::debugInfo(); // Core1 Audio Manager debug info kiírása
-        lasAudioCore1ManagerDebugInfo = millis();
-    }
+    // // Core1 Audio Manager debug információk kiírása
+    // static uint32_t lasAudioCore1ManagerDebugInfo = 0;
+    // if (millis() - lasAudioCore1ManagerDebugInfo >= 10 * 1000) {
+    //     AudioCore1Manager::debugInfo(); // Core1 Audio Manager debug info kiírása
+    //     lasAudioCore1ManagerDebugInfo = millis();
+    // }
 }

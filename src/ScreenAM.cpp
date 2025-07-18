@@ -100,6 +100,12 @@ void ScreenAM::activate() {
     // Szülő osztály aktiválása (ScreenRadioBase -> ScreenFrequDisplayBase -> UIScreen)
     ScreenRadioBase::activate();
 
+    lastSpectrumMode_ = SpectrumVisualizationComponent::DisplayMode::Off; // Reset on activate
+    if (cwDecoder)
+        cwDecoder->clear();
+    if (decodedTextBox)
+        decodedTextBox->setText("");
+
     // ===================================================================
     // *** EGYETLEN GOMBÁLLAPOT SZINKRONIZÁLÁSI PONT - Event-driven ***
     // ===================================================================
@@ -246,23 +252,35 @@ void ScreenAM::handleOwnLoop() {
     // S-Meter (jelerősség) időzített frissítése - Közös RadioScreen implementáció
     // ===================================================================
     updateSMeter(false /* AM mód */);
+
     // Spektrum és dekóder frissítés
     if (spectrumComp && cwDecoder && decodedTextBox) {
+        SpectrumVisualizationComponent::DisplayMode currentMode = spectrumComp->getCurrentMode();
+
+        // Ha a mód megváltozott, töröljük a dekódert
+        if (currentMode != lastSpectrumMode_) {
+            if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+                cwDecoder->clear();
+                decodedTextBox->setText("");
+            }
+            lastSpectrumMode_ = currentMode;
+        }
+
         // Csak akkor dolgozunk, ha a vizualizáció aktív
-        if (spectrumComp->getCurrentMode() != SpectrumVisualizationComponent::DisplayMode::Off) {
+        if (currentMode != SpectrumVisualizationComponent::DisplayMode::Off) {
             const float *magnitudeData = nullptr;
             uint16_t fftSize = 0;
             float binWidth = 0.0f;
             float autoGain = 1.0f;
 
             if (AudioCore1Manager::getSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
-                // Ha a CW dekóder mód aktív a spektrumon
-                if (spectrumComp->getCurrentMode() == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
-                    // 1. Adat átadása a dekódernek
+                // Ha a CW dekóder mód aktív
+                if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+                    // 1. Adat átadása a dekódernek a feldolgozáshoz
                     cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
 
-                    // 2. Dekódolt szöveg lekérése és megjelenítése
-                    String newText = cwDecoder->getDecodedText();
+                    // 2. Dekódolt szöveg (vagy debug állapot) lekérése és megjelenítése
+                    String newText = cwDecoder->getDecodedText(); // Ez most "MARK" vagy "SPACE" lesz
                     if (newText != decodedTextBox->getText()) {
                         decodedTextBox->setText(newText);
                     }
