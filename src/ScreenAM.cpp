@@ -246,6 +246,30 @@ void ScreenAM::handleOwnLoop() {
     // S-Meter (jelerősség) időzített frissítése - Közös RadioScreen implementáció
     // ===================================================================
     updateSMeter(false /* AM mód */);
+    // Spektrum és dekóder frissítés
+    if (spectrumComp && cwDecoder && decodedTextBox) {
+        // Csak akkor dolgozunk, ha a vizualizáció aktív
+        if (spectrumComp->getCurrentMode() != SpectrumVisualizationComponent::DisplayMode::Off) {
+            const float *magnitudeData = nullptr;
+            uint16_t fftSize = 0;
+            float binWidth = 0.0f;
+            float autoGain = 1.0f;
+
+            if (AudioCore1Manager::getSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
+                // Ha a CW dekóder mód aktív a spektrumon
+                if (spectrumComp->getCurrentMode() == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+                    // 1. Adat átadása a dekódernek
+                    cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
+
+                    // 2. Dekódolt szöveg lekérése és megjelenítése
+                    String newText = cwDecoder->getDecodedText();
+                    if (newText != decodedTextBox->getText()) {
+                        decodedTextBox->setText(newText);
+                    }
+                }
+            }
+        }
+    }
 }
 
 /**
@@ -320,6 +344,15 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     createCommonVerticalButtons();   // ButtonsGroupManager használata
     createCommonHorizontalButtons(); // Alsó közös + AM specifikus vízszintes gombsor
+
+    // CW Dekóder példányosítása
+    cwDecoder = std::make_shared<CwRttyDecoder>();
+
+    // Dekódolt szöveg doboz létrehozása
+    Rect textBoxBounds(2, 180, 250, 60); // Példa pozíció
+    decodedTextBox = std::make_shared<UITextBox>(textBoxBounds, "");
+    decodedTextBox->setTextColor(TFT_CYAN, TFT_BLACK);
+    addChild(decodedTextBox);
 }
 
 /**

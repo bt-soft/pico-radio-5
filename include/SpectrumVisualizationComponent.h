@@ -28,9 +28,10 @@ class SpectrumVisualizationComponent : public UIComponent {
      * @brief Hangolási segéd típusok (CW/RTTY)
      */
     enum class TuningAidType : uint8_t {
+        OFF_DECODER, // A fő dekóder ki van kapcsolva
         CW_TUNING,
         RTTY_TUNING,
-        OFF_DECODER // A fő dekóder ki van kapcsolva
+        // Később itt lehetnek más dekóder típusok is
     };
 
     /**
@@ -73,11 +74,6 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     void cycleThroughModes();
 
-    // /**
-    //  * @brief Kezdeti mód beállítása
-    //  */
-    // void setInitialMode(DisplayMode mode);
-
     /**
      * @brief Mód betöltése config-ból
      */
@@ -109,6 +105,12 @@ class SpectrumVisualizationComponent : public UIComponent {
         maxDisplayFrequencyHz_ = maxDisplayFrequencyHz;
         frequencyLabelsDrawn_ = true;
     }
+
+    /**
+     * @brief lekéri a jelenlegi megjelenítési módot
+     * @return A jelenlegi megjelenítési mód
+     */
+    inline DisplayMode getCurrentMode() { return currentMode_; }
 
   private:
     RadioMode radioMode_;

@@ -473,6 +473,11 @@ void SpectrumVisualizationComponent::setFftParametersForDisplayMode() {
             // RTTY waterfall esetén a CW dekóder nem szükséges
             setTuningAidType(TuningAidType::RTTY_TUNING);
         }
+    } else {
+        // Ha nem fut a Core1, akkor is beállítjuk a típust, hogy a UI konzisztens maradjon
+        if (currentMode_ == DisplayMode::CWWaterfall) {
+            setTuningAidType(TuningAidType::CW_TUNING);
+        }
     }
 }
 
@@ -486,7 +491,7 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
     // FM módban kihagyjuk a CW és RTTY hangolási segéd módokat
     if (radioMode_ == RadioMode::FM) {
         if (nextMode == static_cast<int>(DisplayMode::CWWaterfall)) {
-            nextMode = static_cast<int>(DisplayMode::Off); // Ugrás az Off módra
+            nextMode = static_cast<int>(DisplayMode::Off); // Ugrás az Off módra, mert FM-en nincs CW
         } else if (nextMode == static_cast<int>(DisplayMode::RTTYWaterfall)) {
             nextMode = static_cast<int>(DisplayMode::Off); // Ugrás az Off módra
         } else if (nextMode > static_cast<int>(DisplayMode::Waterfall)) {
@@ -1471,6 +1476,8 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
     switch (mode) {
         case DisplayMode::CWWaterfall:
+            return 1024; // Nagyobb felbontás a CW jel pontos detektálásához
+
         case DisplayMode::RTTYWaterfall:
             return 1024; // Maximum felbontás a spektrum analizáláshoz
 
