@@ -1,7 +1,7 @@
 #include "CwRttyDecoder.h"
 #include "Config.h"
-#include "utils.h"
 #include "defines.h"
+#include "utils.h"
 #include <cmath>
 
 const char CwRttyDecoder::MORSE_TREE_SYMBOLS[] = {
@@ -126,8 +126,9 @@ void CwRttyDecoder::processFftData(const float *fftData, uint16_t fftSize, float
     }
 
     // =================================================================
-    // Itt kezdődik a CwDecoder.cpp-ből átvett állapotgép logika
+    // Állapotgép logika az eredeti CwDecoder.cpp alapján
     // =================================================================
+    constexpr int MAX_CW_ELEMENTS_ORIG = 6; // Eredeti dekóderben 6 elem a max karakterhossz
     bool currentToneState = (peakBin != -1 && peakMagnitude > signalThreshold_);
     unsigned long currentTimeMs = millis();
     char decodedChar = '\0';
@@ -137,11 +138,9 @@ void CwRttyDecoder::processFftData(const float *fftData, uint16_t fftSize, float
     if (toneMinDurationMs_ != 9999L && toneMinDurationMs_ > 0) {
         elementGapMinMs = max(DOT_MIN_MS / 2, toneMinDurationMs_ / 4);
     }
-
     unsigned long estimatedDotLength = (toneMinDurationMs_ == 9999L || toneMinDurationMs_ == 0) ? (currentReferenceMs_ / 2) : toneMinDurationMs_;
     if (estimatedDotLength < DOT_MIN_MS || currentReferenceMs_ == 0)
         estimatedDotLength = DOT_MIN_MS;
-
     unsigned long charGapMs = max(MIN_CHAR_GAP_MS_FALLBACK, (unsigned long)(estimatedDotLength * CHAR_GAP_DOT_MULTIPLIER));
     unsigned long wordGapMs = max(MIN_WORD_GAP_MS_FALLBACK, (unsigned long)(estimatedDotLength * WORD_GAP_DOT_MULTIPLIER));
     if (wordGapMs <= charGapMs)
@@ -154,7 +153,7 @@ void CwRttyDecoder::processFftData(const float *fftData, uint16_t fftSize, float
         }
     }
 
-    if (currentTimeMs - lastActivityMs_ > MAX_SILENCE_MS && decoderStarted_) {
+    if (currentTimeMs - lastActivityMs_ > MAX_SILENCE_MS) {
         if (!inInactiveState) {
             clear();
             DEBUG("CW: Reset tétlenség (%lu ms) miatt\n", MAX_SILENCE_MS);
@@ -172,20 +171,20 @@ void CwRttyDecoder::processFftData(const float *fftData, uint16_t fftSize, float
     } else if (decoderStarted_ && measuringTone_ && !currentToneState) {
         trailingEdgeTimeMs_ = currentTimeMs;
         unsigned long duration = trailingEdgeTimeMs_ - leadingEdgeTimeMs_;
-
-        if (toneIndex_ >= MAX_CW_ELEMENTS) {
+        if (toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
             DEBUG("CW: Tömb tele (%d elem), kényszer dekódolás hang végén\n", toneIndex_);
             decodedChar = processCollectedElements();
+            memset(rawToneDurations_, 0, sizeof(rawToneDurations_));
+            resetMorseTree();
+            toneIndex_ = 0;
         }
-
-        // Dinamikus zajszűrés
         unsigned long dynamicMinDuration = DOT_MIN_MS;
         if (toneMinDurationMs_ != 9999L && toneMinDurationMs_ > 0) {
-            dynamicMinDuration = max(MIN_ADAPTIVE_DOT_MS, toneMinDurationMs_ / NOISE_THRESHOLD_FACTOR);
+            dynamicMinDuration = max(DOT_MIN_MS, max(MIN_ADAPTIVE_DOT_MS, toneMinDurationMs_ / NOISE_THRESHOLD_FACTOR));
         }
-
-        if (duration >= dynamicMinDuration && duration <= DASH_MAX_MS && toneIndex_ < MAX_CW_ELEMENTS) {
-            rawToneDurations_[toneIndex_++] = duration;
+        if (duration >= dynamicMinDuration && duration <= DASH_MAX_MS && toneIndex_ < MAX_CW_ELEMENTS_ORIG) {
+            rawToneDurations_[toneIndex_] = duration;
+            toneIndex_++;
             updateReferenceTimings(duration);
         } else {
             if (duration > DASH_MAX_MS) {
@@ -198,50 +197,77 @@ void CwRttyDecoder::processFftData(const float *fftData, uint16_t fftSize, float
     } else if (decoderStarted_ && !measuringTone_ && currentToneState) {
         unsigned long gapDuration = currentTimeMs - trailingEdgeTimeMs_;
         wordSpaceProcessed_ = false;
-
-        if (toneIndex_ >= MAX_CW_ELEMENTS) {
-            DEBUG("CW: Tömb tele (%d elem), kényszer dekódolás\n", toneIndex_);
-            decodedChar = processCollectedElements();
-        }
-
-        if (gapDuration >= charGapMs && toneIndex_ > 0) {
-            decodedChar = processCollectedElements();
-        }
-
-        leadingEdgeTimeMs_ = currentTimeMs;
-        measuringTone_ = true;
-    } else if (decoderStarted_ && !measuringTone_ && !currentToneState) {
-        unsigned long spaceDuration = currentTimeMs - trailingEdgeTimeMs_;
-        if ((spaceDuration > charGapMs && toneIndex_ > 0) || toneIndex_ >= MAX_CW_ELEMENTS) {
-            if (toneIndex_ >= MAX_CW_ELEMENTS) {
-                DEBUG("CW: Tömb tele csendben (%d elem), kényszer dekódolás\n", toneIndex_);
+        // Ha karakterhatár vagy tömb tele, mindig dekódolunk és nullázunk
+        if ((gapDuration >= charGapMs && toneIndex_ > 0) || toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
+            if (toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
+                DEBUG("CW: Tömb tele (%d elem), kényszer dekódolás\n", toneIndex_);
+            } else {
+                DEBUG("CW: Karakterhatár detektálva, gap: %lu ms (küszöb: %lu ms)\n", gapDuration, charGapMs);
             }
             decodedChar = processCollectedElements();
+            if (decodedChar != '\0') {
+                lastDecodedChar_ = decodedChar;
+                lastActivityMs_ = currentTimeMs;
+            }
+            resetMorseTree();
+            toneIndex_ = 0;
+            memset(rawToneDurations_, 0, sizeof(rawToneDurations_));
+            leadingEdgeTimeMs_ = currentTimeMs;
+            measuringTone_ = true;
+        } else if (gapDuration >= elementGapMinMs || toneIndex_ == 0) {
+            leadingEdgeTimeMs_ = currentTimeMs;
+            measuringTone_ = true;
+        }
+    } else if (decoderStarted_ && !measuringTone_ && !currentToneState) {
+        unsigned long spaceDuration = currentTimeMs - trailingEdgeTimeMs_;
+        if ((spaceDuration > charGapMs && toneIndex_ > 0) || toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
+            if (toneIndex_ >= MAX_CW_ELEMENTS_ORIG) {
+                DEBUG("CW: Tömb tele csendben (%d elem), kényszer dekódolás\n", toneIndex_);
+            } else {
+                DEBUG("CW: Hosszú csend detektálva, space: %lu ms (küszöb: %lu ms)\n", spaceDuration, charGapMs);
+            }
+            decodedChar = processCollectedElements();
+            resetMorseTree();
+            memset(rawToneDurations_, 0, sizeof(rawToneDurations_));
+            toneIndex_ = 0;
             decoderStarted_ = false;
         }
     }
 
+    // Szóköz beszúrása csak ha tényleg szóköz szünet van, és az előző karakter nem szóköz
     if (decodedChar == '\0' && !measuringTone_ && !currentToneState && lastDecodedChar_ != '\0') {
         unsigned long spaceDuration = currentTimeMs - trailingEdgeTimeMs_;
-
+        unsigned long dynamicWordGapMs;
+        if (toneMinDurationMs_ != 9999L && toneMinDurationMs_ > 0) {
+            dynamicWordGapMs = toneMinDurationMs_ * 7;
+        } else {
+            dynamicWordGapMs = max(200UL, (unsigned long)(estimatedDotLength * 4.0f));
+        }
         if (currentTimeMs - lastSpaceDebugMs_ >= SPACE_DEBUG_INTERVAL_MS) {
-            DEBUG("CW: Szóköz ellenőrzés - space: %lu ms, küszöb: %lu ms, lastChar: '%c'\n", spaceDuration, wordGapMs, lastDecodedChar_);
+            DEBUG("CW: Szóköz ellenőrzés - space: %lu ms, küszöb: %lu ms, lastChar: '%c', processed: %s\n", spaceDuration, dynamicWordGapMs, lastDecodedChar_, wordSpaceProcessed_ ? "igen" : "nem");
             lastSpaceDebugMs_ = currentTimeMs;
         }
-
-        if (spaceDuration > wordGapMs && !wordSpaceProcessed_) {
+        if (spaceDuration > dynamicWordGapMs && !wordSpaceProcessed_ && lastDecodedChar_ != ' ') {
             decodedChar = ' ';
             wordSpaceProcessed_ = true;
+            DEBUG("CW: Szóköz beszúrva, gap: %lu ms (küszöb: %lu ms)\n", spaceDuration, dynamicWordGapMs);
         }
     }
 
     if (decodedChar != '\0') {
-        if (isprint(decodedChar)) { // Csak nyomtatható karaktereket adunk hozzá
-            decodedText += decodedChar;
-            DEBUG("CW Decoded: %s\n", decodedText.c_str());
+        if (isprint(decodedChar)) {
+            // Ne legyen duplikált szóköz
+            if (decodedChar != ' ' || (decodedText.length() > 0 && decodedText[decodedText.length() - 1] != ' ')) {
+                decodedText += decodedChar;
+                DEBUG("CW Decoded: %s\n", decodedText.c_str());
+            }
         }
-        if (decodedChar != ' ') {
+        if (decodedChar == ' ') {
+            lastDecodedChar_ = '\0'; // Szóköz után ne próbáljon újabb szóközt beszúrni
+            wordSpaceProcessed_ = true;
+        } else {
             lastDecodedChar_ = decodedChar;
+            wordSpaceProcessed_ = false;
         }
     }
 }
