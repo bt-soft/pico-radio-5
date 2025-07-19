@@ -47,6 +47,8 @@ class CwDecoder {
     float peakMagnitude_;   // Detektált csúcs amplitúdó
     float noiseLevel_;      // Becsült zajszint
     float signalThreshold_; // Jeldetektálási küszöb
+
+    bool detectTone(const float *fftData, uint16_t fftSize, float binWidth);
 };
 
 #endif // __CW_DECODER_H

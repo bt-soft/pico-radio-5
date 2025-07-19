@@ -22,14 +22,7 @@ void CwDecoder::clear() {
  */
 String CwDecoder::getDecodedText() { return ""; }
 
-/**
- * Fő jelfeldolgozó függvény: FFT adatokból morze jelek detektálása és állapotgép futtatása
- * @param fftData FFT amplitúdó tömb
- * @param fftSize FFT méret
- * @param binWidth Frekvencia bin szélesség (Hz)
- */
-void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float binWidth) {
-
+bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidth) {
     static uint32_t lastCallMs = 0;
     uint32_t nowMs = millis();
     if (lastCallMs != 0) {
@@ -128,6 +121,17 @@ void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float bin
     }
 
     prevIsToneDetected = isToneDetected;
+}
+
+/**
+ * Fő jelfeldolgozó függvény: FFT adatokból morze jelek detektálása és állapotgép futtatása
+ * @param fftData FFT amplitúdó tömb
+ * @param fftSize FFT méret
+ * @param binWidth Frekvencia bin szélesség (Hz)
+ */
+void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float binWidth) {
+
+    bool isToneDetected = detectTone(fftData, fftSize, binWidth);
     DEBUG("Tone: %s, peak Frequency: %s Hz, binWidth: %s Hz, Magnitude: %s, Noise Level: %s, Threshold: %s\n", isToneDetected ? "true" : "false", Utils::floatToString(peakFrequencyHz_).c_str(),
           Utils::floatToString(binWidth).c_str(), Utils::floatToString(peakMagnitude_).c_str(), Utils::floatToString(noiseLevel_).c_str(), Utils::floatToString(signalThreshold_).c_str());
 }
