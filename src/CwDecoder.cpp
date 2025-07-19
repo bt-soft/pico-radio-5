@@ -1,11 +1,9 @@
 #include "CwDecoder.h"
-#include "Config.h"  // Feltételezve, hogy ez tartalmazza a config.data.cwReceiverOffsetHz-t
-#include "defines.h" // Feltételezve, hogy ez tartalmazza a DEBUG makrót
-#include "utils.h"   // Feltételezve, hogy ez tartalmazza a Utils::floatToString-ot
+#include "Config.h"
+#include "defines.h"
+#include "utils.h"
 #include <cmath>
 
-// --- Statikus morze tábla inicializálása a class-on kívül ---
-// Ez a tábla egy egyszerűsített példa; egy teljes morze tábla ennél jóval nagyobb lenne.
 /**
  * Statikus morze tábla inicializálása a class-on kívül
  * Ez a tábla egy egyszerűsített példa; egy teljes morze tábla ennél jóval nagyobb lenne.
@@ -14,13 +12,16 @@ const std::map<String, char> CwDecoder::morseTable_ = {{".-", 'A'},    {"-...", 
                                                        {".---", 'J'},  {"-.-", 'K'},   {".-..", 'L'},  {"--", 'M'},    {"-.", 'N'},    {"---", 'O'},   {".--.", 'P'},  {"--.-", 'Q'},  {".-.", 'R'},
                                                        {"...", 'S'},   {"-", 'T'},     {"..-", 'U'},   {"...-", 'V'},  {".--", 'W'},   {"-..-", 'X'},  {"-.--", 'Y'},  {"--..", 'Z'},  {"-----", '0'},
                                                        {".----", '1'}, {"..---", '2'}, {"...--", '3'}, {"....-", '4'}, {".....", '5'}, {"-....", '6'}, {"--...", '7'}, {"---..", '8'}, {"----.", '9'}};
-
-CwDecoder::CwDecoder() { clear(); }
 /**
  * Konstruktor: minden állapotot alaphelyzetbe állít
  */
 
-// --- Állapotok és változók alaphelyzetbe állítása ---
+CwDecoder::CwDecoder() { clear(); }
+
+/**
+ * Minden állapot és változó alaphelyzetbe állítása
+ */
+
 void CwDecoder::clear() {
     currentState_ = DecoderState::IDLE;
     lastStateChangeMs_ = millis(); // Inicializálás az aktuális idővel
@@ -41,12 +42,11 @@ void CwDecoder::clear() {
     bitTimeInitStartMs_ = 0;
 }
 
-String CwDecoder::getDecodedText() { return decodedText_; }
 /**
- * Minden állapot és változó alaphelyzetbe állítása
+ * dekódolt szöveg visszaadása
  */
+String CwDecoder::getDecodedText() { return decodedText_; }
 
-// --- Hibakeresési információk összegyűjtése ---
 /**
  * Hibakeresési információk összegyűjtése, állapot, jelszintek, morze stb.
  */
@@ -81,36 +81,41 @@ String CwDecoder::getDebugInfo() const {
     return debug;
 }
 
-// --- Morze időzítés osztályozása ---
 /**
  * Egy adott időtartam osztályozása (pont, vonal, szünet stb.)
  * @param duration Időtartam (ms)
  * @param isToneDuration Hang (true) vagy szünet (false)
  * @return Osztályozott morze időzítés
+ *
+ * Ezek az arányok a szabványos morze időzítést követik:
+ * Pont = 1 egység, Vonal = 3 egység
+ * Elemközi szünet = 1 egység
+ * Karakterközi szünet = 3 egység
+ * Szóköz = 7 egység
  */
 CwDecoder::MorseTiming CwDecoder::classifyDuration(unsigned long duration, bool isToneDuration) {
-    // These ratios are standard for Morse code timing.
-    // Dot = 1 unit, Dash = 3 units
-    // Inter-element space = 1 unit
-    // Inter-character space = 3 units
-    // Inter-word space = 7 units
+    // Ezek az arányok a szabványos morze időzítést követik.
+    // Pont = 1 egység, Vonal = 3 egység
+    // Elemközi szünet = 1 egység
+    // Karakterközi szünet = 3 egység
+    // Szóköz = 7 egység
 
-    if (duration < (bitTimeMs_ * 0.3f)) { // Még rövidebbeket is szűrünk
+    if (duration < (bitTimeMs_ * 0.3f)) { // Itt a nagyon rövideket is kiszűrjük (valószínűleg zaj)
         return MorseTiming::TOO_SHORT;
     }
 
     if (isToneDuration) {
-        // DOT: 0.5–1.5, DASH: 1.5–4.0
+        // PONT: 0.5–1.5, VONAL: 1.5–4.0
         float ratio = (float)duration / bitTimeMs_;
         if (ratio >= 0.5f && ratio < 1.5f) {
             return MorseTiming::DOT;
         } else if (ratio >= 1.5f && ratio < 4.0f) {
             return MorseTiming::DASH;
         } else {
-            return MorseTiming::DASH;
+            return MorseTiming::DASH; // Ha túl hosszú, akkor is vonalnak vesszük
         }
     } else {
-        // INTRA: 0.5–2.0, CHAR: 2.0–5.0, WORD: 5.0+
+        // ELEM KÖZTI SZÜNET: 0.5–2.0, KARAKTERKÖZI: 2.0–5.0, SZÓKÖZ: 5.0+
         float ratio = (float)duration / bitTimeMs_;
         if (ratio >= 0.5f && ratio < 2.0f) {
             return MorseTiming::INTRA_CHAR_SPACE;
@@ -123,6 +128,10 @@ CwDecoder::MorseTiming CwDecoder::classifyDuration(unsigned long duration, bool 
     }
 }
 
+/**
+ * Időzítés szövegesen (debug célra)
+ * @param timing Osztályozott morze időzítés
+ */
 String CwDecoder::getMorseTimingString(MorseTiming timing) const {
     switch (timing) {
         case MorseTiming::TOO_SHORT:
@@ -142,7 +151,6 @@ String CwDecoder::getMorseTimingString(MorseTiming timing) const {
     }
 }
 
-// --- Pont idő (bitTime) adaptáció ---
 /**
  * Pont idő (bitTime) adaptáció, automatikus WPM követés
  * @param duration Aktuális hang időtartama (ms)
@@ -208,7 +216,6 @@ float CwDecoder::updateAndGetBitTime(unsigned long duration) {
     return bitTimeMs_;
 }
 
-// --- Morze karakter dekódolása ---
 /**
  * Az aktuális morze karakter dekódolása és hozzáfűzése a szöveghez
  */
@@ -227,7 +234,6 @@ void CwDecoder::decodeMorseChar() {
     currentMorseChar_ = ""; // Reset for next character
 }
 
-// --- Állapotgép kezelő függvények ---
 /**
  * Állapotgép: IDLE állapot kezelése
  * @param isToneDetected Detektáltunk-e jelet
@@ -314,7 +320,6 @@ void CwDecoder::handleSilenceState(bool isToneDetected, unsigned long now) {
     }
 }
 
-// --- Fő jelfeldolgozó függvény (FFT adatból morze detektálás) ---
 /**
  * Fő jelfeldolgozó függvény: FFT adatokból morze jelek detektálása és állapotgép futtatása
  * @param fftData FFT amplitúdó tömb
@@ -332,12 +337,6 @@ void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float bin
     int endBin = static_cast<int>(endFreqHz / binWidth);
     if (endBin >= (int)fftSize / 2) {
         endBin = (fftSize / 2) - 1; // Ensure within bounds
-        // --- Adaptív zajszint és jeldetektálási küszöb számítása (javított) ---
-        static const float NOISE_ALPHA = 0.08f;           // Gyors zaj adaptáció
-        static const float SIGNAL_ALPHA = 0.04f;          // Lassú threshold adaptáció
-        static const float NOISE_FLOOR_FACTOR_ON = 1.7f;  // Jel detektálásához
-        static const float NOISE_FLOOR_FACTOR_OFF = 1.3f; // Jel eltűnéséhez (hiszterézis)
-        static const float MINIMUM_THRESHOLD = 250.0f;    // Alacsonyabb minimum
     }
 
     float maxMagnitude = 0.0f;
@@ -353,11 +352,11 @@ void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float bin
     peakFrequencyHz_ = (peakBin != -1) ? (peakBin * binWidth) : 0.0f;
 
     // --- Adaptive Noise Level and Signal Threshold Calculation (javított) ---
-    static const float NOISE_ALPHA = 0.08f;           // Gyorsabb zaj adaptáció
-    static const float SIGNAL_ALPHA = 0.04f;          // Lassabb threshold adaptáció
-    static const float NOISE_FLOOR_FACTOR_ON = 1.7f;  // Jel detektálásához
-    static const float NOISE_FLOOR_FACTOR_OFF = 1.3f; // Jel eltűnéséhez (hiszterézis)
-    static const float MINIMUM_THRESHOLD = 250.0f;    // Alacsonyabb minimum
+    static const float NOISE_ALPHA = 0.15f;            // Még gyorsabb zaj adaptáció
+    static const float SIGNAL_ALPHA = 0.07f;           // Gyorsabb threshold adaptáció
+    static const float NOISE_FLOOR_FACTOR_ON = 1.25f;  // Jel detektálásához (érzékenyebb)
+    static const float NOISE_FLOOR_FACTOR_OFF = 1.05f; // Jel eltűnéséhez (hiszterézis, érzékenyebb)
+    static const float MINIMUM_THRESHOLD = 80.0f;      // Még alacsonyabb minimum
 
     // Zaj adaptáció
     if (peakMagnitude_ < 2000.0f) { // Csak akkor adaptáljuk, ha nincs erős jel
@@ -392,8 +391,8 @@ void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float bin
     }
     prevToneDetected = isToneDetected;
 
-    DEBUG("CW: (Tick) State: %s, Tone: %s, Mag: %s, Thresh: %s, Noise: %s\n", getDebugInfo().c_str(), isToneDetected ? "TRUE" : "FALSE", Utils::floatToString(peakMagnitude_).c_str(),
-          Utils::floatToString(signalThreshold_).c_str(), Utils::floatToString(noiseLevel_).c_str());
+    // DEBUG("CW: (Tick) State: %s, Tone: %s, Mag: %s, Thresh: %s, Noise: %s\n", getDebugInfo().c_str(), isToneDetected ? "TRUE" : "FALSE", Utils::floatToString(peakMagnitude_).c_str(),
+    //       Utils::floatToString(signalThreshold_).c_str(), Utils::floatToString(noiseLevel_).c_str());
 
     // --- State Machine Logic ---
     switch (currentState_) {
