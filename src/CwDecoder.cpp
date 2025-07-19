@@ -136,8 +136,16 @@ void CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
 
 // --- Stabil edge-counting alapú dekóder ---
 void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float binWidth) {
+
+     unsigned long now = millis();
+     
+    // static unsigned long lastNow = now;
+    // if (now != lastNow) {
+    //     DEBUG("[CW]  dt: %lu ms\n", now - lastNow);
+    //     lastNow = now;
+    // }
+
     detectTone(fftData, fftSize, binWidth);
-    unsigned long now = millis();
 
     // Ha a frekvencia NINCS ablakban, mindig csendként kezeljük, és ha előzőleg hang volt, akkor szimbólumot zárunk
     static bool prevFreqInRange = true;

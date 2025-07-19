@@ -9,6 +9,9 @@
 class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<ScreenAM> {
 
   public:
+    static bool audioDecoderRun;
+    static ScreenAM *that;
+
     // ===================================================================
     // Konstruktor és destruktor
     // ===================================================================
@@ -74,6 +77,14 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
      * - Bandwidth gomb ↔ AM szűrő beállítások
      */
     virtual void activate() override;
+
+    /**
+     * @brief Képernyő deaktiválása - Cleanup és állapotok visszaállítása
+     *
+     */
+    virtual void deactivate() override;
+
+    static void processAudioDecoder();
 
     /**
      * @brief Dialógus bezárásának kezelése - Gombállapot szinkronizálás

@@ -183,8 +183,17 @@ void AudioCore1Manager::core1AudioLoop() {
             // Feldolgozás minden ciklusban, ha nincs szüneteltetve
             if (!pSharedData_->core1AudioPaused) {
 
-                // Audio feldolgozás
+                // Audio feldolgozás időmérés
+                uint32_t t0 = micros();
                 pAudioProcessor_->process(collectOsci_);
+
+                // Csak 5 másodpercenként írjuk ki a futásidőt
+                static uint32_t lastDebugPrint = 0;
+                uint32_t nowDebug = millis();
+                if (nowDebug - lastDebugPrint >= 5000) {
+                    DEBUG("AudioCore1Manager: pAudioProcessor_->process(%s) futásidő: %s\n", collectOsci_ ? "true" : "false", Utils::elapsedUSecStr(t0, micros()).c_str());
+                    lastDebugPrint = nowDebug;
+                }
 
                 // Mutex használata a megosztott adatok biztonságos eléréséhez
                 if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
@@ -427,7 +436,9 @@ bool AudioCore1Manager::getSpectrumData(const float **outData, uint16_t *outFftS
             *outFftSize = pSharedData_->fftSize;
             *outBinWidth = pSharedData_->binWidthHz;
             *outAutoGain = pSharedData_->currentAutoGain;
+
             pSharedData_->spectrumDataReady = false; // Adat felhasználva
+
             dataAvailable = true;
         }
         mutex_exit(&pSharedData_->dataMutex);
@@ -454,6 +465,9 @@ bool AudioCore1Manager::getLatestSpectrumData(const float **outData, uint16_t *o
             *outFftSize = pSharedData_->latestFftSize;
             *outBinWidth = pSharedData_->latestBinWidthHz;
             *outAutoGain = pSharedData_->latestCurrentAutoGain;
+
+            // pSharedData_->latestSpectrumDataAvailable = false; // adat felhasználva
+
             dataAvailable = true;
         }
         mutex_exit(&pSharedData_->dataMutex);

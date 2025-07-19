@@ -24,7 +24,8 @@ RPI_PICO_Timer rotaryTimer(0); // 0-ás timer használata
 RotaryEncoder rotaryEncoder = RotaryEncoder(PIN_ENCODER_CLK, PIN_ENCODER_DT, PIN_ENCODER_SW, ROTARY_ENCODER_STEPS_PER_NOTCH);
 #define ROTARY_ENCODER_SERVICE_INTERVAL_IN_MSEC 1 // 1msec
 
-RPI_PICO_Timer audioCore1ManagerTimer(1); // 1-es timer használata
+// A CW/RTTY dekóderhez szükséges
+RPI_PICO_Timer audioDecoderTimer(1); // 1-es timer használata
 
 //------------------ TFT
 #include <TFT_eSPI.h>

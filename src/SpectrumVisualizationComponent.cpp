@@ -1475,7 +1475,7 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
     switch (mode) {
         case DisplayMode::CWWaterfall:
-            return 1024; // Nagyobb felbontás a CW jel pontos detektálásához
+            return 256; // Nagyobb felbontás a CW jel pontos detektálásához
 
         case DisplayMode::RTTYWaterfall:
             return 256; // Maximum felbontás a spektrum analizáláshoz

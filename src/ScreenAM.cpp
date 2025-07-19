@@ -2,6 +2,56 @@
 #include "CwDecoder.h"
 #include "MultiButtonDialog.h"
 
+#include <RPi_Pico_TimerInterrupt.h>
+extern RPI_PICO_Timer audioDecoderTimer;
+constexpr int AUDIO_DECODER_TIMER_INTERVAL = 10; // Audio dekóder időzítő intervallum (másodpercben)
+
+bool ScreenAM::audioDecoderRun = false;
+ScreenAM *ScreenAM::that = nullptr;
+
+/**
+ * @brief  Hardware timer interrupt service routine az audio dekóder számára
+ */
+bool audioDecoderTimerHardwareInterruptHandler(struct repeating_timer *t) {
+    ScreenAM::audioDecoderRun = true;
+
+    // Audio dekóder feldolgozása
+    ScreenAM::processAudioDecoder();
+
+    return true;
+}
+
+/**
+ *
+ */
+void ScreenAM::processAudioDecoder() {
+
+    if (ScreenAM::that == nullptr || ScreenAM::that->spectrumComp == nullptr || ScreenAM::that->cwDecoder == nullptr) {
+        DEBUG("ScreenAM::processAudioDecoder() - ScreenAM::that vagy a spectrumComp vagy a cwDecoder nullptr\n");
+        return;
+    }
+
+    // Lekérjük a jelenlegi spektrum vizualizáció módot
+    SpectrumVisualizationComponent::DisplayMode currentMode = ScreenAM::that->spectrumComp->getCurrentMode();
+
+    // Csak akkor dolgozunk, ha a vizualizáció aktív
+    if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+        const float *magnitudeData = nullptr;
+        uint16_t fftSize = 0;
+        float binWidth = 0.0f;
+        float autoGain = 1.0f;
+
+        // ***  A nem-fogyasztó gettert használjuk a dekóderhez ***
+        if (AudioCore1Manager::getLatestSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
+
+            // Ha a CW dekóder mód aktív
+            if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+               // ScreenAM::that->cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
+            }
+        }
+    }
+}
+
 // ===================================================================
 // Vízszintes gombsor azonosítók - Képernyő-specifikus navigáció
 // ===================================================================
@@ -114,6 +164,26 @@ void ScreenAM::activate() {
     updateCommonHorizontalButtonStates(); // Közös gombok szinkronizálása
     updateHorizontalButtonStates();       // AM-specifikus gombok szinkronizálása
     updateFreqDisplayWidth();             // FreqDisplay szélességének frissítése
+
+    // --- Start audioDecoderTimer ha a képernyő aktiválódik ---
+    audioDecoderTimer.detachInterrupt(); // Biztonság kedvéért leállítjuk először
+    audioDecoderTimer.attachInterruptInterval(AUDIO_DECODER_TIMER_INTERVAL * 1000, audioDecoderTimerHardwareInterruptHandler);
+    ScreenAM::that = this; // Beállítjuk a statikus pointert az aktuális ScreenAM példányra
+}
+
+/**
+ * @brief AM képernyő deaktiválása - audioDecoderTimer leállítása
+ * @details Hívja meg a képernyőváltó logika, amikor elhagyjuk az AM képernyőt!
+ */
+void ScreenAM::deactivate() {
+    DEBUG("ScreenAM::deactivate() - Képernyő deaktiválása\n");
+
+    // --- Stop audioDecoderTimer ha a képernyő deaktiválódik
+    audioDecoderTimer.detachInterrupt();
+    ScreenAM::that = nullptr; // töröljük a statikus pointert
+
+    // Szülő osztály deaktiválása
+    ScreenRadioBase::deactivate();
 }
 
 // =====================================================================
@@ -267,27 +337,14 @@ void ScreenAM::handleOwnLoop() {
             lastSpectrumMode_ = currentMode;
         }
 
-        // Csak akkor dolgozunk, ha a vizualizáció aktív
-        if (currentMode != SpectrumVisualizationComponent::DisplayMode::Off) {
-            const float *magnitudeData = nullptr;
-            uint16_t fftSize = 0;
-            float binWidth = 0.0f;
-            float autoGain = 1.0f;
+        // Ha a CW dekóder mód aktív
+        if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
 
-            // ***  A nem-fogyasztó gettert használjuk a dekóderhez ***
-            if (AudioCore1Manager::getLatestSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
-
-                // Ha a CW dekóder mód aktív
-                if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
-
-                    // 1. Adat átadása a dekódernek
-                    cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
-
-                    // 2. Dekódolt szöveg (vagy debug állapot) lekérése és megjelenítése
-                    String newText = cwDecoder->getDecodedText();
-                    if (newText != decodedTextBox->getText()) {
-                        decodedTextBox->setText(newText);
-                    }
+            // A Dekódolt szöveg (vagy debug állapot) lekérése és megjelenítése
+            if (cwDecoder) {
+                String newText = cwDecoder->getDecodedText();
+                if (newText != decodedTextBox->getText()) {
+                    decodedTextBox->setText(newText);
                 }
             }
         }
