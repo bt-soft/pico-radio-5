@@ -15,20 +15,26 @@ void CwDecoder::clear() {
     peakMagnitude_ = 0.0f;
     noiseLevel_ = 0.0f;
     signalThreshold_ = 0.0f;
+    prevIsToneDetected = false;
+    isToneDetected = false;
+    decodedText = "";
+    currentSymbol = "";
+    lastEdgeMs = 0;
+    toneSamples = 0;
+    silenceSamples = 0;
+    dotLenMs = 120.0f;
+    sampleHead = 0;
+    sampleCount = 0;
+    freqInRange_ = false;
+    memset(sampleBuf, 0, sizeof(sampleBuf));
 }
 
 /**
  * dekódolt szöveg visszaadása
  */
-String CwDecoder::getDecodedText() { return ""; }
+String CwDecoder::getDecodedText() { return decodedText; }
 
-bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidth) {
-    static uint32_t lastCallMs = 0;
-    uint32_t nowMs = millis();
-    if (lastCallMs != 0) {
-        // DEBUG("CwDecoder::processFftData() delta: %lu ms\n", nowMs - lastCallMs);
-    }
-    lastCallMs = nowMs;
+void CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidth) {
 
     // Lekérjük CW a középfrekvenciát a konfigurációból
     uint16_t centerFreqHz = config.data.cwReceiverOffsetHz;
@@ -70,16 +76,16 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
     // --- Adaptive Noise Level and Signal Threshold Calculation (javított) ---
     constexpr float NOISE_ALPHA = 0.035f;           // Lassabb zaj adaptáció (alap)
     constexpr float SIGNAL_ALPHA = 0.025f;          // Lassabb threshold adaptáció
-    constexpr float NOISE_FLOOR_FACTOR_ON = 1.07f;  // Jel detektálásához (nagyon érzékeny)
-    constexpr float NOISE_FLOOR_FACTOR_OFF = 0.93f; // Jel eltűnéséhez (hiszterézis, érzékeny)
+    constexpr float NOISE_FLOOR_FACTOR_ON = 1.15f;  // Jel detektálásához (hiszterézis, stabilabb)
+    constexpr float NOISE_FLOOR_FACTOR_OFF = 0.85f; // Jel eltűnéséhez (hiszterézis, stabilabb)
     constexpr float MINIMUM_THRESHOLD = 10.0f;      // Még alacsonyabb minimum
 
-    // Zaj adaptáció: ha a csúcs bin értéke jelentősen nagyobb, gyors reset
+    // Zaj adaptáció: ha a csúcs bin értéke extrém nagy, gyors reset (4x!)
     if (noiseLevel_ == 0.0f) {
         // Inicializálás: első érték beállítása
         noiseLevel_ = measuredNoise;
-    } else if (peakMagnitude_ > measuredNoise * 2.0f) {
-        // Ha a jel kiugróan nagy, gyors reset a zajszintre
+    } else if (peakMagnitude_ > measuredNoise * 4.0f) {
+        // Ha a jel extrém kiugró, gyors reset a zajszintre
         noiseLevel_ = measuredNoise;
     } else {
         // Gyorsabb lefelé adaptáció (NOISE_ALPHA * 2)
@@ -99,30 +105,26 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
     else
         signalThreshold_ = (1.0f - SIGNAL_ALPHA) * signalThreshold_ + SIGNAL_ALPHA * targetThreshold;
 
-    // Hiszterézis: külön threshold a be- és kikapcsolásra
-    static bool prevIsToneDetected = false;
-    bool isToneDetected;
-
     // Feltételek külön változókban, olvashatóbb logika
-    constexpr float FREQ_TOLERANCE_HZ = 50.0f;         // tolerancia a frekvencia eltérésre
-    constexpr float NOISE_THRESHOLD_MULTIPLIER = 3.0f; // legalább 3x a zaj szintjéhez képest a jel
-
-    bool freqInRange = std::abs(peakFrequencyHz_ - centerFreqHz) <= FREQ_TOLERANCE_HZ;
+    constexpr float FREQ_TOLERANCE_HZ = 120.0f;        // tolerancia a frekvencia eltérésre (közepes)
+    constexpr float NOISE_THRESHOLD_MULTIPLIER = 2.0f; // legalább 2x a zaj szintjéhez képest a jel (stabilabb)
+    // Hiszterézis visszaállítása
+    freqInRange_ = std::abs(peakFrequencyHz_ - centerFreqHz) <= FREQ_TOLERANCE_HZ;
     bool peakIsStrong = peakMagnitude_ > measuredNoise * NOISE_THRESHOLD_MULTIPLIER;
     bool aboveOnThreshold = peakMagnitude_ > (noiseLevel_ * NOISE_FLOOR_FACTOR_ON);
     bool aboveOffThreshold = peakMagnitude_ > (noiseLevel_ * NOISE_FLOOR_FACTOR_OFF);
 
+    // DEBUG minden kritikus értékre
+    // DEBUG("[CW] peakFreq: %s Hz, peakMag: %s, noise: %s, th_on: %s, th_off: %s, freqInRange: %d, peakIsStrong: %d\n", Utils::floatToString(peakFrequencyHz_).c_str(), Utils::floatToString(peakMagnitude_).c_str(),
+    //       Utils::floatToString(noiseLevel_).c_str(), Utils::floatToString(noiseLevel_ * NOISE_FLOOR_FACTOR_ON).c_str(), Utils::floatToString(noiseLevel_ * NOISE_FLOOR_FACTOR_OFF).c_str(), freqInRange, peakIsStrong);
+
     if (!prevIsToneDetected) {
         // Jel bekapcsolásához: threshold felett, kiugró csúcs, frekvencia ablakban
-        isToneDetected = aboveOnThreshold && peakIsStrong && freqInRange;
+        isToneDetected = aboveOnThreshold && peakIsStrong && freqInRange_;
     } else {
         // Jel kikapcsolásához: threshold alatt, kiugró csúcs, frekvencia ablakban
-        isToneDetected = aboveOffThreshold && peakIsStrong && freqInRange;
+        isToneDetected = aboveOffThreshold && peakIsStrong && freqInRange_;
     }
-
-    prevIsToneDetected = isToneDetected;
-
-    return isToneDetected;
 }
 
 /**
@@ -131,9 +133,164 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
  * @param fftSize FFT méret
  * @param binWidth Frekvencia bin szélesség (Hz)
  */
-void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float binWidth) {
 
-    bool isToneDetected = detectTone(fftData, fftSize, binWidth);
-    DEBUG("Tone: %s, peak Frequency: %s Hz, binWidth: %s Hz, Magnitude: %s, Noise Level: %s, Threshold: %s\n", isToneDetected ? "true" : "false", Utils::floatToString(peakFrequencyHz_).c_str(),
-          Utils::floatToString(binWidth).c_str(), Utils::floatToString(peakMagnitude_).c_str(), Utils::floatToString(noiseLevel_).c_str(), Utils::floatToString(signalThreshold_).c_str());
+// --- Stabil edge-counting alapú dekóder ---
+void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float binWidth) {
+    detectTone(fftData, fftSize, binWidth);
+    unsigned long now = millis();
+
+    // Ha a frekvencia NINCS ablakban, mindig csendként kezeljük, és ha előzőleg hang volt, akkor szimbólumot zárunk
+    static bool prevFreqInRange = true;
+    if (!freqInRange_) {
+        if (prevFreqInRange) {
+            // Ha most lépett ki az ablakból, szimbólum lezárása
+            if (!currentSymbol.isEmpty()) {
+                DEBUG("[CW] Frekvencia kilépett az ablakból, szimbólum lezárva: %s\n", currentSymbol.c_str());
+                char decoded = decodeMorse(currentSymbol);
+                DEBUG("Decoded char: %c\n", decoded);
+                pushChar(decoded);
+                resetSymbol();
+            }
+        }
+        prevFreqInRange = false;
+        // Mintavételezés: csak csendet írunk be
+        uint8_t sample = 0;
+        sampleBuf[sampleHead] = sample;
+        sampleHead = (sampleHead + 1) % SAMPLE_BUF_SIZE;
+        if (sampleCount < SAMPLE_BUF_SIZE)
+            sampleCount++;
+        // Állapotfrissítés
+        static bool lastSample = 0;
+        if (sample != lastSample) {
+            unsigned long edgeMs = now;
+            unsigned long duration = (lastEdgeMs == 0) ? 0 : (edgeMs - lastEdgeMs);
+            lastEdgeMs = edgeMs;
+            silenceSamples = duration;
+            if (silenceSamples > 0) {
+                if (silenceSamples > 7 * dotLenMs) {
+                    DEBUG("Word gap (freq out): %lu ms\n", silenceSamples);
+                    pushChar(' ');
+                } else if (silenceSamples > 3 * dotLenMs) {
+                    DEBUG("Inter-char gap (freq out): %lu ms\n", silenceSamples);
+                } else {
+                    DEBUG("Intra-char gap (freq out): %lu ms\n", silenceSamples);
+                }
+            }
+            toneSamples = 0;
+            lastSample = sample;
+        }
+        prevIsToneDetected = false;
+        return;
+    } else {
+        prevFreqInRange = true;
+    }
+
+    // Mintavételezés: minden híváskor 1 (tone) vagy 0 (silence) sample-t teszünk a FIFO-ba
+    uint8_t sample = isToneDetected ? 1 : 0;
+    sampleBuf[sampleHead] = sample;
+    sampleHead = (sampleHead + 1) % SAMPLE_BUF_SIZE;
+    if (sampleCount < SAMPLE_BUF_SIZE)
+        sampleCount++;
+
+    // Edge detektálás: csak akkor dolgozunk, ha változott az állapot
+    static bool lastSample = 0;
+    if (sample != lastSample) {
+        unsigned long edgeMs = now;
+        unsigned long duration = (lastEdgeMs == 0) ? 0 : (edgeMs - lastEdgeMs);
+        lastEdgeMs = edgeMs;
+
+        if (sample == 1) {
+            // Silence -> Tone: szünet vége
+            silenceSamples = duration;
+            if (silenceSamples > 0) {
+                // Gap típus eldöntése
+                if (silenceSamples > 7 * dotLenMs) {
+                    DEBUG("Word gap: %lu ms\n", silenceSamples);
+                    pushChar(' ');
+                } else if (silenceSamples > 3 * dotLenMs) {
+                    DEBUG("Inter-char gap: %lu ms | morze: %s\n", silenceSamples, currentSymbol.c_str());
+                    char decoded = decodeMorse(currentSymbol);
+                    DEBUG("Decoded char: %c\n", decoded);
+                    pushChar(decoded);
+                    resetSymbol();
+                } else {
+                    DEBUG("Intra-char gap: %lu ms\n", silenceSamples);
+                }
+            }
+            toneSamples = 0;
+        } else {
+            // Tone -> Silence: hang vége
+            toneSamples = duration;
+            if (toneSamples > 0) {
+                if (toneSamples > 2.8f * dotLenMs) {
+                    DEBUG("Dash - : %lu ms (dotLen: %s)\n", toneSamples, Utils::floatToString(dotLenMs).c_str());
+                    pushSymbol('-');
+                } else {
+                    DEBUG("Dot . : %lu ms (dotLen: %s)\n", toneSamples, Utils::floatToString(dotLenMs).c_str());
+                    pushSymbol('.');
+                    // dotLen adaptáció: csak rövid hangokra
+                    if (toneSamples < 2.0f * dotLenMs) {
+                        dotLenMs = 0.93f * dotLenMs + 0.07f * toneSamples;
+                    }
+                }
+            }
+            silenceSamples = 0;
+        }
+        lastSample = sample;
+    }
+    prevIsToneDetected = isToneDetected;
 }
+
+// --- Morse-fa dekódolás ---
+char CwDecoder::decodeMorse(const String &morse) {
+    struct MorseNode {
+        char c;
+        const MorseNode *dot;
+        const MorseNode *dash;
+    };
+    static const MorseNode morseTree[] = {
+        // c, dot, dash
+        {' ', morseTree + 1, morseTree + 2},   // 0: root
+        {'E', morseTree + 3, morseTree + 4},   // 1: .
+        {'T', morseTree + 5, morseTree + 6},   // 2: -
+        {'I', morseTree + 7, morseTree + 8},   // 3: ..
+        {'A', morseTree + 9, morseTree + 10},  // 4: .-
+        {'N', morseTree + 11, morseTree + 12}, // 5: -.
+        {'M', morseTree + 13, morseTree + 14}, // 6: --
+        {'S', nullptr, nullptr},               // 7: ...
+        {'U', nullptr, nullptr},               // 8: ..-
+        {'R', nullptr, nullptr},               // 9: .-.
+        {'W', nullptr, nullptr},               // 10: .--
+        {'D', nullptr, nullptr},               // 11: -..
+        {'K', nullptr, nullptr},               // 12: -.-
+        {'G', nullptr, nullptr},               // 13: --.
+        {'O', nullptr, nullptr},               // 14: ---
+    };
+    const MorseNode *node = &morseTree[0];
+    for (size_t i = 0; i < morse.length(); ++i) {
+        if (morse[i] == '.') {
+            if (!node->dot)
+                return '?';
+            node = node->dot;
+        } else if (morse[i] == '-') {
+            if (!node->dash)
+                return '?';
+            node = node->dash;
+        } else {
+            return '?';
+        }
+    }
+    return node->c;
+}
+
+void CwDecoder::pushSymbol(char symbol) { currentSymbol += symbol; }
+
+void CwDecoder::pushChar(char c) {
+    if (c == ' ') {
+        decodedText += ' ';
+    } else if (c != '?' && c != '\0') {
+        decodedText += c;
+    }
+}
+
+void CwDecoder::resetSymbol() { currentSymbol = ""; }

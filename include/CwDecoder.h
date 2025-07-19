@@ -18,37 +18,41 @@ struct CStringCompare {
  */
 class CwDecoder {
   public:
-    /**
-     * Konstruktor: minden állapotot alaphelyzetbe állít
-     */
     CwDecoder();
-
-    /**
-     * Minden állapot és változó alaphelyzetbe állítása
-     */
     void clear();
-
-    /**
-     * Fő jelfeldolgozó függvény: FFT adatokból morze jelek detektálása és állapotgép futtatása
-     * @param fftData FFT amplitúdó tömb
-     * @param fftSize FFT méret
-     * @param binWidth Frekvencia bin szélesség (Hz)
-     */
     void processFftData(const float *fftData, uint16_t fftSize, float binWidth);
-
-    /**
-     * Visszaadja az eddig dekódolt szöveget
-     */
     String getDecodedText();
 
   private:
     // --- Jelfeldolgozás ---
-    float peakFrequencyHz_; // Detektált csúcsfrekvencia
-    float peakMagnitude_;   // Detektált csúcs amplitúdó
-    float noiseLevel_;      // Becsült zajszint
-    float signalThreshold_; // Jeldetektálási küszöb
+    bool freqInRange_;
+    float peakFrequencyHz_;
+    float peakMagnitude_;
+    float noiseLevel_;
+    float signalThreshold_;
+    bool prevIsToneDetected;
+    bool isToneDetected;
+    void detectTone(const float *fftData, uint16_t fftSize, float binWidth);
 
-    bool detectTone(const float *fftData, uint16_t fftSize, float binWidth);
+    // --- FIFO mintapuffer ---
+    static constexpr int SAMPLE_BUF_SIZE = 128;
+    uint8_t sampleBuf[SAMPLE_BUF_SIZE]; // 1: tone, 0: silence
+    int sampleHead;
+    int sampleCount;
+
+    // --- Dekódolás ---
+    String decodedText;
+    String currentSymbol;
+    unsigned long lastEdgeMs;
+    int toneSamples;
+    int silenceSamples;
+    float dotLenMs;
+
+    // Morse-fa (statikus, csak olvasás)
+    char decodeMorse(const String &morse);
+    void pushSymbol(char symbol);
+    void pushChar(char c);
+    void resetSymbol();
 };
 
 #endif // __CW_DECODER_H
