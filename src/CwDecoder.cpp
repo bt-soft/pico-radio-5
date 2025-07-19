@@ -121,6 +121,8 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
     }
 
     prevIsToneDetected = isToneDetected;
+
+    return isToneDetected;
 }
 
 /**
