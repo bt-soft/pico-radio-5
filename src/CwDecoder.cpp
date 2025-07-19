@@ -8,10 +8,10 @@
  * Statikus morze tábla inicializálása a class-on kívül
  * Ez a tábla egy egyszerűsített példa; egy teljes morze tábla ennél jóval nagyobb lenne.
  */
-const std::map<String, char> CwDecoder::morseTable_ = {{".-", 'A'},    {"-...", 'B'},  {"-.-.", 'C'},  {"-..", 'D'},   {".", 'E'},     {"..-.", 'F'},  {"--.", 'G'},   {"....", 'H'},  {"..", 'I'},
-                                                       {".---", 'J'},  {"-.-", 'K'},   {".-..", 'L'},  {"--", 'M'},    {"-.", 'N'},    {"---", 'O'},   {".--.", 'P'},  {"--.-", 'Q'},  {".-.", 'R'},
-                                                       {"...", 'S'},   {"-", 'T'},     {"..-", 'U'},   {"...-", 'V'},  {".--", 'W'},   {"-..-", 'X'},  {"-.--", 'Y'},  {"--..", 'Z'},  {"-----", '0'},
-                                                       {".----", '1'}, {"..---", '2'}, {"...--", '3'}, {"....-", '4'}, {".....", '5'}, {"-....", '6'}, {"--...", '7'}, {"---..", '8'}, {"----.", '9'}};
+const std::map<const char *, char, CStringCompare> CwDecoder::morseTable_ = {
+    {".-", 'A'},   {"-...", 'B'}, {"-.-.", 'C'},  {"-..", 'D'},   {".", 'E'},     {"..-.", 'F'},  {"--.", 'G'},   {"....", 'H'},  {"..", 'I'},    {".---", 'J'},  {"-.-", 'K'},   {".-..", 'L'},
+    {"--", 'M'},   {"-.", 'N'},   {"---", 'O'},   {".--.", 'P'},  {"--.-", 'Q'},  {".-.", 'R'},   {"...", 'S'},   {"-", 'T'},     {"..-", 'U'},   {"...-", 'V'},  {".--", 'W'},   {"-..-", 'X'},
+    {"-.--", 'Y'}, {"--..", 'Z'}, {"-----", '0'}, {".----", '1'}, {"..---", '2'}, {"...--", '3'}, {"....-", '4'}, {".....", '5'}, {"-....", '6'}, {"--...", '7'}, {"---..", '8'}, {"----.", '9'}};
 /**
  * Konstruktor: minden állapotot alaphelyzetbe állít
  */
@@ -94,37 +94,35 @@ String CwDecoder::getDebugInfo() const {
  * Szóköz = 7 egység
  */
 CwDecoder::MorseTiming CwDecoder::classifyDuration(unsigned long duration, bool isToneDuration) {
-    // Ezek az arányok a szabványos morze időzítést követik.
-    // Pont = 1 egység, Vonal = 3 egység
-    // Elemközi szünet = 1 egység
-    // Karakterközi szünet = 3 egység
-    // Szóköz = 7 egység
+    // A küszöbértékek a szabványos morze időzítésen alapulnak, általában a két
+    // időtartam (pl. pont és vonal) közé esnek.
+    // Pont: 1 egység, Vonal: 3 egység -> küszöb ~2 egység
+    // Elemközi szünet: 1 egység, Karakterközi szünet: 3 egység -> küszöb ~2 egység
+    // Karakterközi szünet: 3 egység, Szóköz: 7 egység -> küszöb ~5 egység
 
-    if (duration < (bitTimeMs_ * 0.3f)) { // Itt a nagyon rövideket is kiszűrjük (valószínűleg zaj)
+    // A pont/elemközi szünet felénél rövidebb jeleket zajnak tekintjük.
+    if (duration < (bitTimeMs_ * 0.5f)) {
         return MorseTiming::TOO_SHORT;
     }
 
+    float ratio = (float)duration / bitTimeMs_;
+
     if (isToneDuration) {
-        // PONT: 0.5–1.5, VONAL: 1.5–4.0
-        float ratio = (float)duration / bitTimeMs_;
-        if (ratio >= 0.5f && ratio < 1.5f) {
+        // A pont és a vonal közötti küszöb kb. 2x-es pontidő.
+        if (ratio < 2.0f) {
             return MorseTiming::DOT;
-        } else if (ratio >= 1.5f && ratio < 4.0f) {
-            return MorseTiming::DASH;
         } else {
-            return MorseTiming::DASH; // Ha túl hosszú, akkor is vonalnak vesszük
+            return MorseTiming::DASH; // Bármi, ami hosszabb, az vonal.
         }
     } else {
-        // ELEM KÖZTI SZÜNET: 0.5–2.0, KARAKTERKÖZI: 2.0–5.0, SZÓKÖZ: 5.0+
-        float ratio = (float)duration / bitTimeMs_;
-        if (ratio >= 0.5f && ratio < 2.0f) {
+        // Szünetek osztályozása
+        if (ratio < 2.0f) {
             return MorseTiming::INTRA_CHAR_SPACE;
-        } else if (ratio >= 2.0f && ratio < 5.0f) {
+        } else if (ratio < 5.0f) {
             return MorseTiming::CHAR_SPACE;
-        } else if (ratio >= 5.0f) {
+        } else {
             return MorseTiming::WORD_SPACE;
         }
-        return MorseTiming::TOO_SHORT;
     }
 }
 
@@ -223,7 +221,7 @@ void CwDecoder::decodeMorseChar() {
     if (currentMorseChar_.length() == 0)
         return;
 
-    auto it = morseTable_.find(currentMorseChar_);
+    auto it = morseTable_.find(currentMorseChar_.c_str());
     if (it != morseTable_.end()) {
         decodedText_ += it->second;
         DEBUG("CW: Decoded char: '%c' from '%s'\n", it->second, currentMorseChar_.c_str());
@@ -352,21 +350,31 @@ void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float bin
     peakFrequencyHz_ = (peakBin != -1) ? (peakBin * binWidth) : 0.0f;
 
     // --- Adaptive Noise Level and Signal Threshold Calculation (javított) ---
-    static const float NOISE_ALPHA = 0.15f;            // Még gyorsabb zaj adaptáció
-    static const float SIGNAL_ALPHA = 0.07f;           // Gyorsabb threshold adaptáció
-    static const float NOISE_FLOOR_FACTOR_ON = 1.25f;  // Jel detektálásához (érzékenyebb)
-    static const float NOISE_FLOOR_FACTOR_OFF = 1.05f; // Jel eltűnéséhez (hiszterézis, érzékenyebb)
-    static const float MINIMUM_THRESHOLD = 80.0f;      // Még alacsonyabb minimum
 
-    // Zaj adaptáció
-    if (peakMagnitude_ < 2000.0f) { // Csak akkor adaptáljuk, ha nincs erős jel
-        if (noiseLevel_ == 0.0f)
-            noiseLevel_ = peakMagnitude_;
-        else
-            noiseLevel_ = (1.0f - NOISE_ALPHA) * noiseLevel_ + NOISE_ALPHA * peakMagnitude_;
+    // Új paraméterek: lassabb adaptáció, kisebb szorzók, nagyobb hiszterézis, alacsonyabb minimum
+    static const float NOISE_ALPHA = 0.035f;           // Lassabb zaj adaptáció (alap)
+    static const float SIGNAL_ALPHA = 0.025f;          // Lassabb threshold adaptáció
+    static const float NOISE_FLOOR_FACTOR_ON = 1.07f;  // Jel detektálásához (nagyon érzékeny)
+    static const float NOISE_FLOOR_FACTOR_OFF = 0.93f; // Jel eltűnéséhez (hiszterézis, érzékeny)
+    static const float MINIMUM_THRESHOLD = 10.0f;      // Még alacsonyabb minimum
+
+    // Zaj adaptáció: SILENCE állapotban gyorsabb lefelé adaptáció, TONE-ban lassú
+    if (noiseLevel_ == 0.0f) {
+        // Inicializálás: első érték beállítása
+        noiseLevel_ = peakMagnitude_;
     } else {
-        // Erős jel esetén a zaj ne nőjön meg hirtelen
-        noiseLevel_ = (1.0f - NOISE_ALPHA) * noiseLevel_ + NOISE_ALPHA * (peakMagnitude_ * 0.05f);
+        if (currentState_ == DecoderState::TONE) {
+            // TONE alatt csak lefelé, nagyon lassan
+            if (peakMagnitude_ < noiseLevel_)
+                noiseLevel_ = (1.0f - NOISE_ALPHA * 0.2f) * noiseLevel_ + (NOISE_ALPHA * 0.2f) * peakMagnitude_;
+            // Ha nagyobb a jel, ne növeljük a zajszintet
+        } else {
+            // SILENCE állapotban gyorsabb lefelé adaptáció (NOISE_ALPHA * 2)
+            float alpha = NOISE_ALPHA * 2.0f;
+            if (alpha > 1.0f)
+                alpha = 1.0f;
+            noiseLevel_ = (1.0f - alpha) * noiseLevel_ + alpha * peakMagnitude_;
+        }
     }
 
     // Threshold adaptáció
@@ -391,10 +399,17 @@ void CwDecoder::processFftData(const float *fftData, uint16_t fftSize, float bin
     }
     prevToneDetected = isToneDetected;
 
-    // DEBUG("CW: (Tick) State: %s, Tone: %s, Mag: %s, Thresh: %s, Noise: %s\n", getDebugInfo().c_str(), isToneDetected ? "TRUE" : "FALSE", Utils::floatToString(peakMagnitude_).c_str(),
-    //       Utils::floatToString(signalThreshold_).c_str(), Utils::floatToString(noiseLevel_).c_str());
+    DEBUG("CW: (Tick) State: %s, Tone: %s, Mag: %s, Thresh: %s, Noise: %s\n", getDebugInfo().c_str(), isToneDetected ? "TRUE" : "FALSE", Utils::floatToString(peakMagnitude_).c_str(),
+          Utils::floatToString(signalThreshold_).c_str(), Utils::floatToString(noiseLevel_).c_str());
 
     // --- State Machine Logic ---
+    // Ha túl régóta vagyunk TONE állapotban (pl. >2s), reseteljük az állapotgépet (beragadt jel esetén)
+    if (currentState_ == DecoderState::TONE && (nowMs - lastStateChangeMs_ > 2000)) {
+        DEBUG("CW: Túl hosszú TONE állapot, reset!");
+        clear();
+        return;
+    }
+
     switch (currentState_) {
         case DecoderState::IDLE:
             handleIdleState(isToneDetected, nowMs);

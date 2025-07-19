@@ -4,6 +4,14 @@
 #include <Arduino.h>
 #include <map>    // For the Morse code table
 #include <string> // For std::string in the map
+#include <cstring> // For strcmp
+
+// Custom comparator for C-style strings (const char*)
+struct CStringCompare {
+    bool operator()(const char* a, const char* b) const {
+        return std::strcmp(a, b) < 0;
+    }
+};
 
 // --- CW (Morse) dekóder osztály ---
 /**
@@ -51,7 +59,7 @@ class CwDecoder {
     // --- Dekódolás ---
     String decodedText_;                             // Eddig dekódolt szöveg
     String currentMorseChar_;                        // Az aktuálisan épülő morze karakter (. vagy - sorozat)
-    static const std::map<String, char> morseTable_; // Statikus morze tábla
+    static const std::map<const char*, char, CStringCompare> morseTable_; // Statikus morze tábla
     /**
      * Az aktuális morze karakter dekódolása és hozzáfűzése a szöveghez
      */
