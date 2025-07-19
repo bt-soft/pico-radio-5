@@ -5,7 +5,7 @@
 #include <Arduino.h>
 
 namespace AudioProcessorConstants {
-// CwRttyDecoder deklaráció
+
 // Audio input konstansok
 const uint16_t MAX_SAMPLING_FREQUENCY = 30000;                         // 30kHz mintavételezés a 15kHz Nyquist limithez
 const uint16_t MIN_SAMPLING_FREQUENCY = 2000;                          // 1kHz Minimum mintavételezési frekvencia -> 2kHz Nyquist limit
@@ -54,8 +54,7 @@ class AudioProcessor {
     float smoothed_auto_gain_factor_;
     uint32_t sampleIntervalMicros_;
     uint16_t currentFftSize_;
-     uint16_t attenuation_cutoff_bin_;  // Gyorsítótárazott érték a mélyvágáshoz
-
+    uint16_t attenuation_cutoff_bin_; // Gyorsítótárazott érték a mélyvágáshoz
 
     // FFT tömbök
     float *vReal;

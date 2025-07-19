@@ -1,4 +1,5 @@
 #include "ScreenAM.h"
+#include "CwDecoder.h"
 #include "MultiButtonDialog.h"
 
 // ===================================================================
@@ -367,7 +368,7 @@ void ScreenAM::layoutComponents() {
     createCommonHorizontalButtons(); // Alsó közös + AM specifikus vízszintes gombsor
 
     // CW Dekóder példányosítása
-    cwDecoder = std::make_shared<CwRttyDecoder>();
+    cwDecoder = std::make_shared<CwDecoder>();
 
     // Dekódolt szöveg doboz létrehozása
     Rect textBoxBounds(2, 165, 405, 75); // Pozíció

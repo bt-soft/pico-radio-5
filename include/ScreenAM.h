@@ -2,7 +2,7 @@
 #define __SCREEN_AM_H
 
 #include "CommonVerticalButtons.h"
-#include "CwRttyDecoder.h" // Új include
+#include "CwDecoder.h" // Új include
 #include "ScreenRadioBase.h"
 #include "UITextBox.h" // Új include
 
@@ -183,7 +183,7 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
     // ===================================================================
     // AM specifikus tagváltozók
     // ===================================================================
-    std::shared_ptr<CwRttyDecoder> cwDecoder;
+    std::shared_ptr<CwDecoder> cwDecoder;
     std::shared_ptr<UITextBox> decodedTextBox;
     SpectrumVisualizationComponent::DisplayMode lastSpectrumMode_ = SpectrumVisualizationComponent::DisplayMode::Off;
 };
