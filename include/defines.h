@@ -36,7 +36,7 @@
 #define MEMORY_INFO_INTERVAL 20 * 1000 // 20mp
 
 // Soros portra várakozás a debug üzenetek előtt
-#define DEBUG_WAIT_FOR_SERIAL
+//#define DEBUG_WAIT_FOR_SERIAL
 
 // Debug keretek rajzolása a UI komponensek köré
 #define DRAW_DEBUG_FRAMES
