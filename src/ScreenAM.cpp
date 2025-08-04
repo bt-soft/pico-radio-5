@@ -46,7 +46,7 @@ void ScreenAM::processAudioDecoder() {
 
             // Ha a CW dekóder mód aktív
             if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
-               // ScreenAM::that->cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
+                // ScreenAM::that->cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
             }
         }
     }
@@ -696,7 +696,11 @@ void ScreenAM::handleDemodButton(const UIButton::ButtonEvent &event) {
             // Kikeressük az aktuális Band rekordot
             BandTable &currentband = ::pSi4735Manager->getCurrentBand();
 
-            // Demodulációs mód bellítása
+            // FONTOS: Mentjük a jelenlegi frekvenciát, mielőtt megváltoztatjuk a demodulációs módot
+            uint16_t currentFrequency = ::pSi4735Manager->getSi4735().getCurrentFrequency();
+            currentband.currFreq = currentFrequency;
+
+            // Demodulációs mód beállítása
             currentband.currDemod = buttonIndex + 1; // Az FM  mód indexe 0, azt kihagyjuk
 
             // Újra beállítjuk a sávot az új móddal (false -> ne a preferáltat töltse)

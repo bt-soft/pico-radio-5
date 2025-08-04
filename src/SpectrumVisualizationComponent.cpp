@@ -2,6 +2,7 @@
 #include "AudioCore1Manager.h"
 #include "Config.h"
 #include "defines.h"
+#include "utils.h"
 #include <cmath>
 #include <cstring>
 #include <vector>
@@ -168,8 +169,9 @@ float SpectrumVisualizationComponent::getAdaptiveScale(float baseConstant) {
     if (isAutoGainMode()) {
         return baseConstant * adaptiveGainFactor_;
     }
-    // Manual módban az eredeti konstanst használjuk
-    return baseConstant;
+    // Manual módban a felhasználó által beállított gain faktort használjuk
+    float manualGainFactor = (radioMode_ == RadioMode::AM) ? config.data.audioFftConfigAm : config.data.audioFftConfigFm;
+    return baseConstant * manualGainFactor;
 }
 
 /**
@@ -681,13 +683,27 @@ void SpectrumVisualizationComponent::renderSpectrumLowRes() {
     // Adaptív autogain használata
     float adaptiveScale = getAdaptiveScale(SensitivityConstants::AMPLITUDE_SCALE);
 
+    // Zajküszöb - alacsony szintű zajt nullázza
+    constexpr float NOISE_THRESHOLD = 0.003f; // Experimentális érték, finomhangolható
+
     float band_magnitudes[LOW_RES_BANDS] = {0.0f};
 
     // magnitudeData már garantáltan nem nullptr itt
     for (int i = min_bin_idx_low_res; i <= max_bin_idx_low_res; i++) {
         uint8_t band_idx = getBandVal(i, min_bin_idx_low_res, num_bins_in_low_res_range, LOW_RES_BANDS);
         if (band_idx < LOW_RES_BANDS) {
-            band_magnitudes[band_idx] = std::max(band_magnitudes[band_idx], magnitudeData[i]);
+            float magnitude = magnitudeData[i];
+
+            // DEBUG: Magnitude értékek kiírása (csak néhány bin-re a spam elkerülése végett)
+            // if (i % 10 == 0) {
+            //     DEBUG("LowRes magnitude[%d]: %s (threshold: %s)\n", i, Utils::floatToString(magnitude, 6).c_str(), Utils::floatToString(NOISE_THRESHOLD, 6).c_str());
+            // }
+
+            // Zajküszöb alkalmazása
+            if (magnitude < NOISE_THRESHOLD) {
+                magnitude = 0.0f;
+            }
+            band_magnitudes[band_idx] = std::max(band_magnitudes[band_idx], magnitude);
         }
     }
 
@@ -784,6 +800,9 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
     float adaptiveScale = getAdaptiveScale(SensitivityConstants::AMPLITUDE_SCALE);
     float maxMagnitude = 0.0f;
 
+    // Zajküszöb - alacsony szintű zajt nullázza
+    constexpr float NOISE_THRESHOLD = 0.003f; // Experimentális érték, finomhangolható
+
     for (int screen_pixel_x = 0; screen_pixel_x < bounds.width; ++screen_pixel_x) {
         int fft_bin_index;
         if (bounds.width == 1) {
@@ -795,6 +814,17 @@ void SpectrumVisualizationComponent::renderSpectrumHighRes() {
         fft_bin_index = constrain(fft_bin_index, 0, static_cast<int>(actualFftSize / 2 - 1));
 
         float magnitude = magnitudeData[fft_bin_index];
+
+        // DEBUG: Magnitude értékek kiírása (csak néhány oszlopra a spam elkerülése végett)
+        // if (screen_pixel_x % 20 == 0) {
+        //     DEBUG("HighRes magnitude[%d]: %s (threshold: %s)\n", fft_bin_index, Utils::floatToString(magnitude, 6).c_str(), Utils::floatToString(NOISE_THRESHOLD, 6).c_str());
+        // }
+
+        // Zajküszöb alkalmazása
+        if (magnitude < NOISE_THRESHOLD) {
+            magnitude = 0.0f;
+        }
+
         maxMagnitude = std::max(maxMagnitude, static_cast<float>(magnitude));
 
         // Előbb töröljük a pixel oszlopot (fekete vonal)
@@ -1089,6 +1119,7 @@ void SpectrumVisualizationComponent::renderWaterfall() {
     // 2. Új adatok betöltése a wabuf jobb szélére (a wabuf továbbra is bounds.height magas)
 
     // Adaptív autogain használata waterfall-hoz
+    constexpr float NOISE_THRESHOLD = 0.003f; // Experimentális érték, finomhangolható
     float adaptiveScale = getAdaptiveScale(SensitivityConstants::WATERFALL_INPUT_SCALE);
     float maxMagnitude = 0.0f;
 
@@ -1099,6 +1130,17 @@ void SpectrumVisualizationComponent::renderWaterfall() {
 
         // Waterfall input scale - adaptív autogain-nel
         double rawMagnitude = magnitudeData[fft_bin_index];
+
+        // DEBUG: Magnitude értékek kiírása (csak néhány sorra a spam elkerülése végett)
+        // if (r % 10 == 0) {
+        //     DEBUG("Waterfall magnitude[%d]: %s (threshold: %s)\n", fft_bin_index, Utils::floatToString(static_cast<float>(rawMagnitude), 6).c_str(), Utils::floatToString(NOISE_THRESHOLD, 6).c_str());
+        // }
+
+        // Zajküszöb alkalmazása
+        if (rawMagnitude < NOISE_THRESHOLD) {
+            rawMagnitude = 0.0;
+        }
+
         maxMagnitude = std::max(maxMagnitude, static_cast<float>(rawMagnitude));
         float scaledMagnitude = rawMagnitude * adaptiveScale;
         uint8_t finalValue = static_cast<uint8_t>(constrain(scaledMagnitude, 0.0, 255.0));
