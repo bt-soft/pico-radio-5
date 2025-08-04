@@ -333,6 +333,15 @@ void SpectrumVisualizationComponent::draw() {
         frequencyLabelsDrawn_ = true;
     }
 
+    // Ha változott a kijelzési mód, töröljük a waterfall felső feliratát
+    if (lastRenderedMode_ != currentMode_) {
+        if (lastRenderedMode_ == DisplayMode::Waterfall) {
+            // Töröljük a spektrum feletti területet ahol a max frekvencia volt
+            // Pontosan a szöveg területét töröljük
+            tft.fillRect(bounds.x, bounds.y - 18, bounds.width, 15, TFT_BLACK);
+        }
+    }
+
     lastRenderedMode_ = currentMode_;
 }
 
@@ -1121,6 +1130,11 @@ void SpectrumVisualizationComponent::renderWaterfall() {
 
     // Sprite kirakása a képernyőre
     sprite_->pushSprite(bounds.x, bounds.y);
+
+    // Frekvencia feliratok rajzolása, ha még nem történt meg és nincs aktív mód indicator
+    if (!modeIndicatorVisible_) {
+        renderFrequencyLabels(AnalyzerConstants::ANALYZER_MIN_FREQ_HZ, maxDisplayFrequencyHz_);
+    }
 }
 
 /**
@@ -1584,13 +1598,25 @@ void SpectrumVisualizationComponent::renderFrequencyLabels(uint16_t minDisplayFr
     tft.setTextSize(1);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
 
-    // Balra igazított min frekvencia
-    tft.setTextDatum(BL_DATUM);
-    tft.drawString(Utils::formatFrequencyString(minDisplayFrequencyHz), bounds.x, indicatorY + indicatorH);
+    // Waterfall módban középre igazított elrendezés
+    if (currentMode_ == DisplayMode::Waterfall) {
+        // Min frekvencia a spektrum alatt középen
+        tft.setTextDatum(BC_DATUM); // Bottom center
+        tft.drawString(Utils::formatFrequencyString(minDisplayFrequencyHz), bounds.x + bounds.width / 2, indicatorY + indicatorH);
 
-    // Jobbra igazított max frekvencia
-    tft.setTextDatum(BR_DATUM);
-    tft.drawString(Utils::formatFrequencyString(maxDisplayFrequencyHz), bounds.x + bounds.width, indicatorY + indicatorH);
+        // Max frekvencia a spektrum felett középen - 2 pixellel magasabbra
+        tft.setTextDatum(TC_DATUM); // Top center
+        tft.drawString(Utils::formatFrequencyString(maxDisplayFrequencyHz), bounds.x + bounds.width / 2, bounds.y - 10);
+    } else {
+        // Spektrum és tuning aid módokban balra/jobbra igazított elrendezés
+        // Balra igazított min frekvencia
+        tft.setTextDatum(BL_DATUM);
+        tft.drawString(Utils::formatFrequencyString(minDisplayFrequencyHz), bounds.x, indicatorY + indicatorH);
+
+        // Jobbra igazított max frekvencia
+        tft.setTextDatum(BR_DATUM);
+        tft.drawString(Utils::formatFrequencyString(maxDisplayFrequencyHz), bounds.x + bounds.width, indicatorY + indicatorH);
+    }
 
     frequencyLabelsDrawn_ = false;
 }
