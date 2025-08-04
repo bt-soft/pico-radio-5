@@ -494,7 +494,10 @@ void FreqDisplay::draw() {
 
     // Csak akkor töröljük a hátteret, ha szükséges (pl. első rajzolás, mód váltás)
     if (needsFullClear) {
-        tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, this->colors.background);
+        // Optimalizált törlés - csak a szükséges területet törli
+        int clearWidth = 285;                        // Elég széles a teljes frekvencia kijelzéshez
+        int clearHeight = FREQ_7SEGMENT_HEIGHT + 10; // Frekvencia + aláhúzás + mértékegység terület (további 3px csökkentve)
+        tft.fillRect(bounds.x, bounds.y, clearWidth, clearHeight, this->colors.background);
         needsFullClear = false; // Reset a flag
     }
 
@@ -676,8 +679,11 @@ void FreqDisplay::handleBfoAnimation() {
 
     // Animáció: 4 lépésben interpolálunk pozíció és méret között
     for (uint8_t i = 0; i < 4; i++) {
-        // Teljes képernyő törlése minden lépésben
-        tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, this->colors.background);
+        // Optimalizált törlési terület - csak a frekvencia + mértékegység területét törli
+        // Normál SSB/CW módban a "kHz" pozíciója: freqSpriteX + 250 + kb. 30 pixel szélesség
+        int clearWidth = 285;                        // Elég széles a "kHz" szöveg teljes letörléséhez
+        int clearHeight = FREQ_7SEGMENT_HEIGHT + 10; // Csak a frekvencia kijelző magassága (további 3px csökkentve)
+        tft.fillRect(bounds.x, bounds.y, clearWidth, clearHeight, this->colors.background);
 
         // Interpoláció számítása (0.0 - 1.0 között)
         float progress = (float)i / 3.0f;
@@ -701,8 +707,10 @@ void FreqDisplay::handleBfoAnimation() {
         delay(100); // 100ms késleltetés lépésenként
     }
 
-    // Animáció után teljes terület törlése a maradványok eltávolítására
-    tft.fillRect(bounds.x, bounds.y, bounds.width, bounds.height, this->colors.background);
+    // Animáció után optimalizált törlés a maradványok eltávolítására
+    int clearWidth = 285;                        // Elég széles a "kHz" szöveg teljes letörléséhez
+    int clearHeight = FREQ_7SEGMENT_HEIGHT + 10; // Csak a frekvencia kijelző magassága (további 3px csökkentve)
+    tft.fillRect(bounds.x, bounds.y, clearWidth, clearHeight, this->colors.background);
 }
 
 /**
