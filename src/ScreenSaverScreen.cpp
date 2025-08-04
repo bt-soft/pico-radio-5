@@ -222,7 +222,8 @@ void ScreenScreenSaver::drawBatteryInfo() {
     using namespace ScreenSaverConstants;
 
     // Akkumulátor feszültség olvasása és százalék kiszámítása
-    float vSupply = PicoSensorUtils::readVBus();
+    // float vSupply = PicoSensorUtils::readVBus();
+    float vSupply = PicoSensorUtils::readVSys();
     uint8_t bat_percent = map(static_cast<int>(vSupply * 100), MIN_BATTERY_VOLTAGE, MAX_BATTERY_VOLTAGE, 0, 100);
     bat_percent = constrain(bat_percent, 0, 100); // Akkumulátor szín meghatározása töltöttség alapján
     uint16_t colorBatt = TFT_DARKCYAN;

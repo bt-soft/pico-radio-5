@@ -20,14 +20,20 @@ namespace PicoSensorUtils {
 
 // Cache struktúra
 struct SensorCache {
-    float vbusValue;
-    float temperatureValue;
-    unsigned long vbusLastRead;
-    unsigned long temperatureLastRead;
-    bool vbusValid;
-    bool temperatureValid;
+    // float vbusValue;                   // VBUS feszültség utolsó mért értéke (Volt)
+    // unsigned long vbusLastRead;        // VBUS utolsó mérésének időpontja (ms)
+    // bool vbusValid;                    // VBUS cache érvényessége
+    float temperatureValue;            // Hőmérséklet utolsó mért értéke (Celsius)
+    unsigned long temperatureLastRead; // Hőmérséklet utolsó mérésének időpontja (ms)
+    bool temperatureValid;             // Hőmérséklet cache érvényessége
 
-    SensorCache() : vbusValue(0.0f), temperatureValue(0.0f), vbusLastRead(0), temperatureLastRead(0), vbusValid(false), temperatureValid(false) {}
+    float vsysValue;            // VSYS feszültség utolsó mért értéke (Volt)
+    unsigned long vsysLastRead; // VSYS utolsó mérésének időpontja (ms)
+    bool vsysValid;             // VSYS cache érvényessége
+
+    // Konstruktor: minden értéket alaphelyzetbe állít
+    SensorCache() : temperatureValue(0.0f), temperatureLastRead(0), temperatureValid(false), vsysValue(0.0f), vsysLastRead(0), vsysValid(false) {}
+    SensorCache(const SensorCache &) = default;
 };
 
 // Globális cache példány
@@ -36,73 +42,57 @@ static SensorCache sensorCache;
 /**
  * AD inicializálása
  */
-inline void init() { analogReadResolution(AD_RESOLUTION); }
+void init();
 
 /**
- * ADC olvasás és VBUS feszültség kiszámítása külső osztóval
- * @return A VBUS mért feszültsége Voltban.
+ * A Pico VSYS (tápfeszültség) mérése az ADC3 (GPIO29) bemeneten keresztül.
+ * A Pico belső feszültségosztója miatt a mért értéket 3-mal kell szorozni.
+ * Az eredményt cache-eljük, hogy ne legyen felesleges mérés.
+ * @return VSYS feszültség Voltban
  */
-inline float readVBus() {
-    unsigned long currentTime = millis();
+float readVSys();
 
-    // Ellenőrizzük, hogy a cache még érvényes-e
-    if (sensorCache.vbusValid && (currentTime - sensorCache.vbusLastRead < PICO_SENSORS_CACHE_TIMEOUT_MS)) {
-        return sensorCache.vbusValue;
-    }
+// /**
+//  * ADC olvasás és VBUS feszültség kiszámítása külső osztóval
+//  * @return A VBUS mért feszültsége Voltban.
+//  */
+// float readVBus() {
+//     unsigned long currentTime = millis();
 
-    // Cache lejárt vagy nem érvényes, új mérés
-    float voltageOut = (analogRead(PIN_VBUS_INPUT) * V_REFERENCE) / CONVERSION_FACTOR;
-    float vbusVoltage = voltageOut * DIVIDER_RATIO;
+//     // Ellenőrizzük, hogy a cache még érvényes-e
+//     if (sensorCache.vbusValid && (currentTime - sensorCache.vbusLastRead < PICO_SENSORS_CACHE_TIMEOUT_MS)) {
+//         return sensorCache.vbusValue;
+//     }
 
-    // Cache frissítése
-    sensorCache.vbusValue = vbusVoltage;
-    sensorCache.vbusLastRead = currentTime;
-    sensorCache.vbusValid = true;
+//     // Cache lejárt vagy nem érvényes, új mérés
+//     float voltageOut = (analogRead(PIN_VBUS_INPUT) * V_REFERENCE) / CONVERSION_FACTOR;
+//     float vbusVoltage = voltageOut * DIVIDER_RATIO;
 
-    return vbusVoltage;
-}
+//     // Cache frissítése
+//     sensorCache.vbusValue = vbusVoltage;
+//     sensorCache.vbusLastRead = currentTime;
+//     sensorCache.vbusValid = true;
+
+//     return vbusVoltage;
+// }
 
 /**
  * Kiolvassa a processzor hőmérsékletét
  * @return processzor hőmérséklete Celsius fokban
  */
-inline float readCoreTemperature() {
-    unsigned long currentTime = millis();
-
-    // Ellenőrizzük, hogy a cache még érvényes-e
-    if (sensorCache.temperatureValid && (currentTime - sensorCache.temperatureLastRead < PICO_SENSORS_CACHE_TIMEOUT_MS)) {
-        return sensorCache.temperatureValue;
-    }
-
-    // Cache lejárt vagy nem érvényes, új mérés
-    float temperature = analogReadTemp();
-
-    // Cache frissítése
-    sensorCache.temperatureValue = temperature;
-    sensorCache.temperatureLastRead = currentTime;
-    sensorCache.temperatureValid = true;
-
-    return temperature;
-}
+float readCoreTemperature();
 
 /**
  * Cache törlése - következő olvasásnál új mérést fog végezni
  */
-inline void clearCache() {
-    sensorCache.vbusValid = false;
-    sensorCache.temperatureValid = false;
-}
+void clearCache();
 
 /**
  * Cache státusz lekérdezése
- * @param vbusValid kimeneti paraméter - VBUS cache érvényessége
- * @param tempValid kimeneti paraméter - hőmérséklet cache érvényessége
+ * @param vsysValid kimeneti paraméter - VSYS cache érvényessége
+ * @param temperatureValid kimeneti paraméter - hőmérséklet cache érvényessége
  */
-inline void getCacheStatus(bool &vbusValid, bool &tempValid) {
-    unsigned long currentTime = millis();
-    vbusValid = sensorCache.vbusValid && (currentTime - sensorCache.vbusLastRead < PICO_SENSORS_CACHE_TIMEOUT_MS);
-    tempValid = sensorCache.temperatureValid && (currentTime - sensorCache.temperatureLastRead < PICO_SENSORS_CACHE_TIMEOUT_MS);
-}
+// void getCacheStatus(bool &vbusValid, bool &tempValid);
 
 }; // namespace PicoSensorUtils
 
