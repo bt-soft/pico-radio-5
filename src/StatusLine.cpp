@@ -302,8 +302,7 @@ void StatusLine::updateTemperature() {
  */
 void StatusLine::updateVoltage() {
 
-    // float voltage = PicoSensorUtils::readVBus();                      // Cache-olt érték
-    float voltage = PicoSensorUtils::readVSys();                      // Cache-olt érték
+    float voltage = PicoSensorUtils::readVBusExternal();              // Cache-olt érték
     String voltageText = isnan(voltage) ? "---" : String(voltage, 2); // 2 tizedesjegy
 
     clearBoxContent(8);

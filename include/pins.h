@@ -12,7 +12,7 @@
 #define PIN_AUDIO_INPUT A0 // A0/GPIO26 az FFT audio bemenethez
 
 // Feszültségmérés
-// #define PIN_VBUS_INPUT A1 // A1/GPIO27 a VBUS bemenethez
+#define PIN_VBUS_EXTERNAL_MEASURE_INPUT A1 // A1/GPIO27 a VBUS mérésének feszültségosztós bemenetéhez
 
 // Rotary Encoder
 #define PIN_ENCODER_CLK 17
