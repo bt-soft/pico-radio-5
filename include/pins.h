@@ -8,11 +8,11 @@
 #define PIN_SI4735_I2C_SCL 9
 #define PIN_SI4735_RESET 10
 
-// Feszültségmérés
-#define PIN_VBUS_INPUT A0 // A0/GPIO26 a VBUS bemenethez
-
 // Audio FFT bemenet
-#define PIN_AUDIO_INPUT A1 // A1/GPIO27 az audio bemenethez
+#define PIN_AUDIO_INPUT A0 // A0/GPIO26 az FFT audio bemenethez
+
+// Feszültségmérés
+// #define PIN_VBUS_INPUT A1 // A1/GPIO27 a VBUS bemenethez
 
 // Rotary Encoder
 #define PIN_ENCODER_CLK 17

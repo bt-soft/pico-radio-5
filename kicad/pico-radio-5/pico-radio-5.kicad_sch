@@ -3129,6 +3129,16 @@
 		)
 		(uuid "0b28490a-9a7c-4e85-8628-6eff31896623")
 	)
+	(wire
+		(pts
+			(xy 144.78 72.39) (xy 151.13 72.39)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0de5c420-cc11-42e1-a7bc-f160ec22b9a9")
+	)
 	(bus
 		(pts
 			(xy 90.17 57.15) (xy 90.17 54.61)
@@ -3178,6 +3188,16 @@
 			(type default)
 		)
 		(uuid "19aad759-65b9-44eb-8a62-8cb8f256645d")
+	)
+	(wire
+		(pts
+			(xy 116.84 20.32) (xy 116.84 21.59)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "19ae818e-e3ea-48be-aa27-c10cdf3f4d80")
 	)
 	(bus
 		(pts
@@ -3488,6 +3508,16 @@
 			(type default)
 		)
 		(uuid "8f740484-e284-4d1e-9a95-2b3b33fb1ee1")
+	)
+	(wire
+		(pts
+			(xy 121.92 20.32) (xy 121.92 21.59)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "956cba4c-3323-40cd-ba17-4facc6a13b92")
 	)
 	(wire
 		(pts
@@ -4182,6 +4212,28 @@
 		(uuid "2831e4aa-1723-466d-8622-cb50e1be970a")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
 			(at 161.5537 62.23 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+	)
+	(global_label "AD_AUDIO"
+		(shape input)
+		(at 151.13 72.39 0)
+		(fields_autoplaced yes)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "336c509f-9337-48f0-9909-7df1a42969e0")
+		(property "Intersheetrefs" "${INTERSHEET_REFS}"
+			(at 163.0658 72.39 0)
 			(effects
 				(font
 					(size 1.27 1.27)
