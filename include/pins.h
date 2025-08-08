@@ -20,8 +20,8 @@
 #define PIN_ENCODER_SW 18
 
 // Others
-#define PIN_AUDIO_MUTE 20
-#define PIN_TFT_BACKGROUND_LED 21
-#define PIN_BEEPER 22
+#define PIN_TFT_BACKGROUND_LED 1 // A NYÁK miatt áthelyezve a  GPIO1-es lábra
+#define PIN_AUDIO_MUTE 19
+#define PIN_BEEPER 20
 
 #endif // __PINS_H
