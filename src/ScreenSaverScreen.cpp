@@ -36,7 +36,10 @@ void ScreenScreenSaver::activate() {
     freqDisplayComp->setCustomColors(UIColorPalette::createScreenSaverFreqColors());
     freqDisplayComp->setHideUnderline(true);
 
-    // Az eyges pozíciók meghatárotzása az aktuális mód alapján
+    // Lekérdezzük az aktuális frekvenciát az induláskor
+    currentFrequencyValue = ::pSi4735Manager->getSi4735().getCurrentFrequency();
+
+    // Az egyes pozíciók meghatározása az aktuális mód alapján
     currentBorderWidth = getCurrentBorderWidth();                                                                              // Animált keret véletlenszerű pozíciójának meghatározása
     currentAccuXOffset = currentBorderWidth - (ScreenSaverConstants::BATTERY_RECT_FULL_W + ScreenSaverConstants::ELEMENT_GAP); // Akkumulátor X pozíció a keret bal szélétől
 
@@ -121,7 +124,6 @@ void ScreenScreenSaver::updateFrequencyAndBatteryDisplay() {
     // FreqDisplay pozícionálása a keret belsejében, bal oldaltól INTERNAL_MARGIN távolságra
     uint16_t freqDisplayX = animationBorderX + INTERNAL_MARGIN;
     uint16_t freqDisplayY = animationBorderY + FREQ_DISPLAY_Y_OFFSET; // Aktuális frekvencia beállítása és FreqDisplay frissítése
-    currentFrequencyValue = ::pSi4735Manager->getCurrentBand().currFreq;
     if (freqDisplayComp) {
         freqDisplayComp->setBounds(Rect(freqDisplayX, freqDisplayY, FreqDisplay::FREQDISPLAY_WIDTH, FreqDisplay::FREQDISPLAY_HEIGHT));
         freqDisplayComp->setFrequency(currentFrequencyValue);
