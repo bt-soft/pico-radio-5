@@ -1,4 +1,4 @@
-26427986910576295
+26433253777521876
 Audio_Module
 Reverb_BTDR-1H
 Digital Reverberation Unit, http://www.belton.co.kr/inc/downfile.php?seq=17&file=pdf (footprint from http://www.uk-electronic.de/PDF/BTDR-1.pdf)
@@ -60865,6 +60865,20 @@ LCD 16x2 Alphanumeric 16pin
 22
 18
 Display
+TFT-320x240
+
+
+0
+14
+14
+Display
+Untitled
+
+
+0
+0
+0
+Display
 WC1602A
 LCD 16x2 http://www.wincomlcd.com/pdf/WC1602A-SFYLYHTC06.pdf
 LCD 16x2 Alphanumeric 16pin
@@ -96312,6 +96326,13 @@ Resistor Radial_Power series Radial pin pitch 7.37mm 10W length 16.1mm width 9mm
 0
 2
 2
+Rotary_Encoder
+KY-040-PORT
+<b>PIN HEADER</b>
+
+0
+5
+5
 Rotary_Encoder
 RotaryEncoder_Alps_EC11E-Switch_Vertical_H20mm
 Alps rotary encoder, EC11E... with switch, vertical shaft, http://www.alps.com/prod/info/E/HTML/Encoder/Incremental/EC11/EC11E15204A3.html
