@@ -9,6 +9,171 @@
 		(date "2025-08-04")
 	)
 	(lib_symbols
+		(symbol "Connector:Conn_01x02_Socket"
+			(pin_names
+				(offset 1.016)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "J"
+				(at 0 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "Conn_01x02_Socket"
+				(at 0 -5.08 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Generic connector, single row, 01x02, script generated"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_locked" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "ki_keywords" "connector"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "Connector*:*_1x??_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "Conn_01x02_Socket_1_1"
+				(polyline
+					(pts
+						(xy -1.27 0) (xy -0.508 0)
+					)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -1.27 -2.54) (xy -0.508 -2.54)
+					)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0 -0.508)
+					(mid -0.5058 0)
+					(end 0 0.508)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0 -3.048)
+					(mid -0.5058 -2.54)
+					(end 0 -2.032)
+					(stroke
+						(width 0.1524)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(pin passive line
+					(at -5.08 0 0)
+					(length 3.81)
+					(name "Pin_1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at -5.08 -2.54 0)
+					(length 3.81)
+					(name "Pin_2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Connector:Conn_01x03_Socket"
 			(pin_names
 				(offset 1.016)
@@ -644,310 +809,6 @@
 						(effects
 							(font
 								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
-		(symbol "Device:BK-18650-PC2"
-			(pin_numbers
-				(hide yes)
-			)
-			(pin_names
-				(offset 1.016)
-				(hide yes)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(property "Reference" "BT"
-				(at -3.81 3.81 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left bottom)
-				)
-			)
-			(property "Value" "BK-18650-PC2"
-				(at -3.81 -5.08 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify left bottom)
-				)
-			)
-			(property "Footprint" "Battery:BatteryHolder_MPD_BK-18650-PC2"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(hide yes)
-				)
-			)
-			(property "Description" "Battery Holder (Open) 18650 1 Cell PC Pin"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "MF" "Memory Protection Devices"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "Package" "None"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "BATTERY_HOLDER" ""
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "Check_prices" "https://www.snapeda.com/parts/BK-18650-PC2/Memory+Protection+Devices/view-part/?ref=eda"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "Price" "None"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "SnapEDA_Link" "https://www.snapeda.com/parts/BK-18650-PC2/Memory+Protection+Devices/view-part/?ref=snap"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "MP" "BK-18650-PC2"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "Description_1" "Battery Holder (Open) 18650 1 Cell PC Pin"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "Availability" "In Stock"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "AVAILABILITY" "In Stock"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(property "PURCHASE-URL" "https://www.ktron.in/product/18650-battery-holder-1s-pcb-mounted/"
-				(at 0 0 0)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-					(justify bottom)
-					(hide yes)
-				)
-			)
-			(symbol "BK-18650-PC2_0_0"
-				(polyline
-					(pts
-						(xy -3.81 1.905) (xy -2.54 1.905)
-					)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -3.175 2.54) (xy -3.175 1.27)
-					)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 2.54) (xy -1.27 0)
-					)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 0) (xy -2.54 0)
-					)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 0) (xy -1.27 -2.54)
-					)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 1.27 1.27) (xy 1.27 0)
-					)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 1.27 0) (xy 1.27 -1.27)
-					)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy 1.27 0) (xy 2.54 0)
-					)
-					(stroke
-						(width 0.254)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(pin bidirectional line
-					(at -7.62 0 0)
-					(length 5.08)
-					(name "1"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "+"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-				)
-				(pin bidirectional line
-					(at 7.62 0 180)
-					(length 5.08)
-					(name "2"
-						(effects
-							(font
-								(size 1.016 1.016)
-							)
-						)
-					)
-					(number "-"
-						(effects
-							(font
-								(size 1.016 1.016)
 							)
 						)
 					)
@@ -5435,10 +5296,10 @@
 		(uuid "8240caac-7660-4f33-85dd-83827cf240a7")
 	)
 	(junction
-		(at 185.42 102.87)
+		(at 271.78 24.13)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "b17d1494-9a9d-4ed1-b8aa-ed1164bd2baf")
+		(uuid "a6903e16-bcde-44f8-b1ea-f26b5ec75d8c")
 	)
 	(junction
 		(at 160.02 111.76)
@@ -5453,16 +5314,10 @@
 		(uuid "d3f841f6-dd71-457a-bf05-1a21aef2a8ba")
 	)
 	(junction
-		(at 275.59 24.13)
+		(at 185.42 102.87)
 		(diameter 0)
 		(color 0 0 0 0)
-		(uuid "daad56a9-7d4d-4f5e-b90e-be27a88632d1")
-	)
-	(junction
-		(at 182.88 102.87)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "e4269326-0775-4008-b244-7a7c947c17c6")
+		(uuid "e3df6ca5-1f17-4f0c-a5a7-e41bc9d5961f")
 	)
 	(junction
 		(at 142.24 111.76)
@@ -6173,7 +6028,7 @@
 	)
 	(wire
 		(pts
-			(xy 251.46 43.18) (xy 251.46 35.56)
+			(xy 251.46 40.64) (xy 251.46 35.56)
 		)
 		(stroke
 			(width 0)
@@ -6220,6 +6075,16 @@
 			(type default)
 		)
 		(uuid "40452fe0-3d9f-45ca-a564-890b2047b4c2")
+	)
+	(wire
+		(pts
+			(xy 182.88 102.87) (xy 185.42 102.87)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "41eae0fe-fea1-44c0-8568-5664e0469e29")
 	)
 	(wire
 		(pts
@@ -6353,6 +6218,16 @@
 	)
 	(wire
 		(pts
+			(xy 271.78 24.13) (xy 271.78 29.21)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "55ad0d2b-2179-4632-8f25-20bde6719173")
+	)
+	(wire
+		(pts
 			(xy 163.83 88.9) (xy 165.1 88.9)
 		)
 		(stroke
@@ -6410,6 +6285,16 @@
 			(type default)
 		)
 		(uuid "5f502985-0019-4146-b918-abdd98cccde8")
+	)
+	(wire
+		(pts
+			(xy 185.42 102.87) (xy 185.42 104.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "5fa9a6b6-9c8a-4c26-9dbd-2680015d4fc6")
 	)
 	(wire
 		(pts
@@ -6473,7 +6358,7 @@
 	)
 	(wire
 		(pts
-			(xy 275.59 20.32) (xy 275.59 24.13)
+			(xy 271.78 20.32) (xy 271.78 24.13)
 		)
 		(stroke
 			(width 0)
@@ -6693,7 +6578,7 @@
 	)
 	(wire
 		(pts
-			(xy 260.35 43.18) (xy 260.35 35.56)
+			(xy 260.35 40.64) (xy 260.35 35.56)
 		)
 		(stroke
 			(width 0)
@@ -6820,16 +6705,6 @@
 			(type default)
 		)
 		(uuid "8abb6716-9980-43c3-bdf9-1f7732c19c77")
-	)
-	(wire
-		(pts
-			(xy 182.88 102.87) (xy 185.42 102.87)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "8c56a2b2-9672-40b0-a872-f41c8e9253b7")
 	)
 	(wire
 		(pts
@@ -7161,16 +7036,6 @@
 		)
 		(uuid "b584caee-a4e4-4cc5-b2df-c1ba6d00ee4f")
 	)
-	(wire
-		(pts
-			(xy 182.88 102.87) (xy 182.88 104.14)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b6f19a7c-65ee-408b-953f-d452ffae7a00")
-	)
 	(bus
 		(pts
 			(xy 109.22 73.66) (xy 111.76 73.66)
@@ -7230,16 +7095,6 @@
 			(type default)
 		)
 		(uuid "bd5cfc57-d1f7-47a4-a1e9-427bb661d122")
-	)
-	(wire
-		(pts
-			(xy 181.61 102.87) (xy 182.88 102.87)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "bdf91dda-4a57-4931-91ff-4c760302eab3")
 	)
 	(wire
 		(pts
@@ -7573,7 +7428,7 @@
 	)
 	(wire
 		(pts
-			(xy 275.59 39.37) (xy 275.59 43.18)
+			(xy 271.78 31.75) (xy 271.78 40.64)
 		)
 		(stroke
 			(width 0)
@@ -7723,7 +7578,7 @@
 	)
 	(wire
 		(pts
-			(xy 260.35 24.13) (xy 275.59 24.13)
+			(xy 260.35 24.13) (xy 271.78 24.13)
 		)
 		(stroke
 			(width 0)
@@ -8404,187 +8259,6 @@
 		)
 	)
 	(symbol
-		(lib_id "Device:BK-18650-PC2")
-		(at 275.59 31.75 270)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "0171d5ff-80fd-43b8-be6d-9aa71ab5bffb")
-		(property "Reference" "BT1"
-			(at 279.146 25.654 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Value" "BK-18650-PC2"
-			(at 267.97 38.1 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" "Battery:BatteryHolder_MPD_BK-18650-PC2"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Battery Holder (Open) 18650 1 Cell PC Pin"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "MF" "Memory Protection Devices"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "Package" "None"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "BATTERY_HOLDER" ""
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "Check_prices" "https://www.snapeda.com/parts/BK-18650-PC2/Memory+Protection+Devices/view-part/?ref=eda"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "Price" "None"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "SnapEDA_Link" "https://www.snapeda.com/parts/BK-18650-PC2/Memory+Protection+Devices/view-part/?ref=snap"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "MP" "BK-18650-PC2"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "Description_1" "Battery Holder (Open) 18650 1 Cell PC Pin"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "Availability" "In Stock"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "AVAILABILITY" "In Stock"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(property "PURCHASE-URL" "https://www.ktron.in/product/18650-battery-holder-1s-pcb-mounted/"
-			(at 275.59 31.75 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify bottom)
-				(hide yes)
-			)
-		)
-		(pin "+"
-			(uuid "ed7db265-c747-4c40-bce9-817967d4de72")
-		)
-		(pin "-"
-			(uuid "b61c8f13-7f26-4d03-8fbf-c446a9390bee")
-		)
-		(instances
-			(project ""
-				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
-					(reference "BT1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "Transistor_BJT:PN2222A")
 		(at 119.38 157.48 0)
 		(unit 1)
@@ -8922,7 +8596,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 251.46 43.18 0)
+		(at 251.46 40.64 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -8931,7 +8605,7 @@
 		(fields_autoplaced yes)
 		(uuid "1911dee4-3a46-4fc4-a51a-4c5d2c90e132")
 		(property "Reference" "#PWR027"
-			(at 251.46 49.53 0)
+			(at 251.46 46.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8940,7 +8614,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 251.46 48.26 0)
+			(at 251.46 45.72 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8948,7 +8622,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 251.46 43.18 0)
+			(at 251.46 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8957,7 +8631,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 251.46 43.18 0)
+			(at 251.46 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -8966,7 +8640,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 251.46 43.18 0)
+			(at 251.46 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9602,6 +9276,75 @@
 		)
 	)
 	(symbol
+		(lib_id "Connector:Conn_01x02_Socket")
+		(at 276.86 29.21 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "40d08cae-9161-41dd-af60-29e21fa42653")
+		(property "Reference" "J5"
+			(at 278.13 29.2099 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "Batterry"
+			(at 273.05 33.528 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical"
+			(at 276.86 29.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 276.86 29.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x02, script generated"
+			(at 276.86 29.21 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "65cc0823-356b-4fbe-959a-19b82be3890a")
+		)
+		(pin "2"
+			(uuid "f2197dc7-b79e-4dfd-9ab8-f7a772faca33")
+		)
+		(instances
+			(project ""
+				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
+					(reference "J5")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:C")
 		(at 260.35 31.75 0)
 		(unit 1)
@@ -10132,7 +9875,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 275.59 43.18 0)
+		(at 271.78 40.64 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -10141,7 +9884,7 @@
 		(fields_autoplaced yes)
 		(uuid "5fe431f8-fa57-4339-a30d-43137c7634c0")
 		(property "Reference" "#PWR025"
-			(at 275.59 49.53 0)
+			(at 271.78 46.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10150,7 +9893,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 275.59 48.26 0)
+			(at 271.78 45.72 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10158,7 +9901,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 275.59 43.18 0)
+			(at 271.78 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10167,7 +9910,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 275.59 43.18 0)
+			(at 271.78 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10176,7 +9919,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 275.59 43.18 0)
+			(at 271.78 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11088,7 +10831,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 260.35 43.18 0)
+		(at 260.35 40.64 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -11097,7 +10840,7 @@
 		(fields_autoplaced yes)
 		(uuid "8a4ca984-62f3-4c12-8fa8-b5f1cafc2949")
 		(property "Reference" "#PWR028"
-			(at 260.35 49.53 0)
+			(at 260.35 46.99 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11106,7 +10849,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 260.35 48.26 0)
+			(at 260.35 45.72 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11114,7 +10857,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 260.35 43.18 0)
+			(at 260.35 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11123,7 +10866,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 260.35 43.18 0)
+			(at 260.35 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11132,7 +10875,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 260.35 43.18 0)
+			(at 260.35 40.64 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11473,7 +11216,7 @@
 	)
 	(symbol
 		(lib_id "power:GND")
-		(at 182.88 104.14 0)
+		(at 185.42 104.14 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -11481,7 +11224,7 @@
 		(dnp no)
 		(uuid "91700a4a-0258-47af-a5a8-2990c16e4478")
 		(property "Reference" "#PWR03"
-			(at 182.88 110.49 0)
+			(at 185.42 110.49 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11490,7 +11233,7 @@
 			)
 		)
 		(property "Value" "GND"
-			(at 177.8 106.426 0)
+			(at 188.722 105.918 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11498,7 +11241,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 182.88 104.14 0)
+			(at 185.42 104.14 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11507,7 +11250,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 182.88 104.14 0)
+			(at 185.42 104.14 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -11516,7 +11259,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
-			(at 182.88 104.14 0)
+			(at 185.42 104.14 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13214,7 +12957,7 @@
 	)
 	(symbol
 		(lib_id "power:+BATT")
-		(at 275.59 20.32 0)
+		(at 271.78 20.32 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -13222,7 +12965,7 @@
 		(dnp no)
 		(uuid "dcd15141-5d34-4dcf-a5bf-726c0f83de1f")
 		(property "Reference" "#PWR026"
-			(at 275.59 24.13 0)
+			(at 271.78 24.13 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13231,7 +12974,7 @@
 			)
 		)
 		(property "Value" "+Vbus"
-			(at 275.59 16.256 0)
+			(at 271.78 16.256 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13239,7 +12982,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 275.59 20.32 0)
+			(at 271.78 20.32 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13248,7 +12991,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 275.59 20.32 0)
+			(at 271.78 20.32 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13257,7 +13000,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+BATT\""
-			(at 275.59 20.32 0)
+			(at 271.78 20.32 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13550,10 +13293,9 @@
 		(in_bom no)
 		(on_board yes)
 		(dnp no)
-		(fields_autoplaced yes)
 		(uuid "e53c39b3-2992-4441-ae44-72fe09836b45")
 		(property "Reference" "JP1"
-			(at 135.89 134.62 0)
+			(at 138.176 127.762 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -13561,7 +13303,7 @@
 			)
 		)
 		(property "Value" "Si4732 I2C Address"
-			(at 135.89 137.16 0)
+			(at 136.398 133.096 0)
 			(effects
 				(font
 					(size 1.27 1.27)
