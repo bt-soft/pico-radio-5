@@ -2426,7 +2426,7 @@
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
-			(property "Reference" "U?"
+			(property "Reference" "U2"
 				(at 20.32 25.4001 0)
 				(effects
 					(font
@@ -2444,13 +2444,14 @@
 					(justify left)
 				)
 			)
-			(property "Footprint" "z_Devices:TFT-320x240"
+			(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x14_P2.54mm_Vertical"
 				(at 20.32 20.3201 0)
 				(effects
 					(font
 						(size 1.27 1.27)
 					)
 					(justify left)
+					(hide yes)
 				)
 			)
 			(property "Datasheet" ""
@@ -2569,7 +2570,7 @@
 						)
 					)
 				)
-				(pin bidirectional line
+				(pin passive line
 					(at -13.97 -2.54 90)
 					(length 2.54)
 					(name "GND"
@@ -2677,7 +2678,7 @@
 						)
 					)
 				)
-				(pin power_in line
+				(pin input line
 					(at 1.27 -2.54 90)
 					(length 2.54)
 					(name "LED"
@@ -4188,7 +4189,7 @@
 					)
 					(alternate "GND" passive line)
 				)
-				(pin power_out line
+				(pin passive line
 					(at 22.86 -21.59 180)
 					(length 3.81)
 					(name "AGND"
@@ -4222,8 +4223,8 @@
 			(exclude_from_sim no)
 			(in_bom yes)
 			(on_board yes)
-			(property "Reference" "U"
-				(at 30.48 10.16 0)
+			(property "Reference" "U1"
+				(at 24.384 -25.146 0)
 				(effects
 					(font
 						(size 1.524 1.524)
@@ -4231,14 +4232,14 @@
 				)
 			)
 			(property "Value" "SI4732-A10-GS"
-				(at 30.48 7.62 0)
+				(at 24.13 -27.686 0)
 				(effects
 					(font
 						(size 1.524 1.524)
 					)
 				)
 			)
-			(property "Footprint" "SOIC_A10-GS_SIL"
+			(property "Footprint" "Package_SO:SOIC_A10-GS_SIL"
 				(at 0 0 0)
 				(effects
 					(font
@@ -4342,7 +4343,7 @@
 						(type none)
 					)
 				)
-				(pin unspecified line
+				(pin output line
 					(at 0 0 0)
 					(length 7.62)
 					(name "LOUT/DFS"
@@ -4432,7 +4433,7 @@
 						)
 					)
 				)
-				(pin unspecified line
+				(pin input line
 					(at 0 -12.7 0)
 					(length 7.62)
 					(name "FMI"
@@ -4450,7 +4451,7 @@
 						)
 					)
 				)
-				(pin power_out line
+				(pin passive line
 					(at 0 -15.24 0)
 					(length 7.62)
 					(name "RFGND"
@@ -4468,7 +4469,7 @@
 						)
 					)
 				)
-				(pin unspecified line
+				(pin input line
 					(at 0 -17.78 0)
 					(length 7.62)
 					(name "AMI"
@@ -4486,7 +4487,7 @@
 						)
 					)
 				)
-				(pin unspecified line
+				(pin output line
 					(at 49.53 0 180)
 					(length 7.62)
 					(name "ROUT/DOUT"
@@ -4522,7 +4523,7 @@
 						)
 					)
 				)
-				(pin power_in line
+				(pin unspecified line
 					(at 49.53 -5.08 180)
 					(length 7.62)
 					(name "VDD"
@@ -11179,7 +11180,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Module:RaspberryPi_Pico_Common_Unspecified"
+		(property "Footprint" "Module:RaspberryPi_Pico_Common_THT-simple"
 			(at 187.96 107.95 0)
 			(effects
 				(font
