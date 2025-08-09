@@ -284,7 +284,7 @@ void RDSComponent::drawStationName() {
     // Terület törlése
     tft.fillRect(stationNameArea.x, stationNameArea.y, stationNameArea.width, stationNameArea.height, backgroundColor);
 
-#ifdef DRAW_DEBUG_FRAMES
+#ifdef DRAW_DEBUG_GUI_FRAMES
     // DEBUG KERET - piros
     tft.drawRect(stationNameArea.x, stationNameArea.y, stationNameArea.width, stationNameArea.height, TFT_RED);
 #endif
@@ -312,7 +312,7 @@ void RDSComponent::drawProgramType() {
     // Terület törlése
     tft.fillRect(programTypeArea.x, programTypeArea.y, programTypeArea.width, programTypeArea.height, backgroundColor);
 
-#ifdef DRAW_DEBUG_FRAMES
+#ifdef DRAW_DEBUG_GUI_FRAMES
     // DEBUG KERET - zöld
     tft.drawRect(programTypeArea.x, programTypeArea.y, programTypeArea.width, programTypeArea.height, TFT_GREEN);
 #endif
@@ -343,9 +343,10 @@ void RDSComponent::drawRadioText() {
     // Terület törlése
     tft.fillRect(radioTextArea.x, radioTextArea.y, radioTextArea.width, radioTextArea.height, backgroundColor);
 
+#ifdef DRAW_DEBUG_GUI_FRAMES
     // DEBUG KERET - sárga
     tft.drawRect(radioTextArea.x, radioTextArea.y, radioTextArea.width, radioTextArea.height, TFT_YELLOW);
-
+#endif
     if (processedRadioText.isEmpty()) {
         return;
     }
@@ -380,7 +381,7 @@ void RDSComponent::drawDateTime() {
     // Háttér törlése
     tft.fillRect(dateTimeArea.x, dateTimeArea.y, dateTimeArea.width, dateTimeArea.height, backgroundColor);
 
-#ifdef DRAW_DEBUG_FRAMES
+#ifdef DRAW_DEBUG_GUI_FRAMES
     // DEBUG KERET - kék
     tft.drawRect(dateTimeArea.x, dateTimeArea.y, dateTimeArea.width, dateTimeArea.height, TFT_BLUE);
 #endif
