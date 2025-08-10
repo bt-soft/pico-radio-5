@@ -28,7 +28,7 @@ A részletes kapcsolási rajzok, NYÁK-tervek a `doc/` mappában találhatók:
 - [NYÁK terv (PDF)](doc/pico-radio-5-pcb.pdf)
 ![NYÁK 3D)](doc/pcb-3d.png)
 
-![Készülék fotó](doc/20250502_175417.jpg)
+![Készülék fotó](doc/20250525_180713.jpg)
 ![Kijelző példa](doc/20250515_194428.jpg)
 
 
