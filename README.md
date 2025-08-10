@@ -1,6 +1,6 @@
 # Pico-Radio-5
 
-![Pico-Radio-5 készülék](doc/pico-radio-5-hw.jpg)
+![Pico-Radio-5 készülék](doc/20250525_180713.jpg)
 
 ## Hardver részletesen
 
@@ -24,10 +24,10 @@ A Pico-Radio-5 egy fejlett, több sávos rádióvevő, amely a Raspberry Pi Pico
   Nyomógombok, szenzorok (pl. hőmérséklet), LED-ek, opcionális bővítések.
 
 A részletes kapcsolási rajzok, NYÁK-tervek a `doc/` mappában találhatók:
-- [Kapcsolási rajz (PDF)](doc/RPI-PICO-R3-PUBLIC-SCHEMATIC.pdf)
-- [NYÁK terv (PDF)](kicad/pico-radio-5-pcb.pdf)
+- [Kapcsolási rajz (PDF)](doc/pico-radio-5-sch.pdf)
+- [NYÁK terv (PDF)](doc/pico-radio-5-pcb.pdf)
 
-![Kapcsolási rajz részlet](doc/samples/schematic-sample.png)
+![](doc/20250809_112400.jpg)
 
 ## Szoftver részletesen
 
@@ -86,4 +86,3 @@ A projekt szabadon felhasználható, módosítható, forrásmegjelöléssel. Lá
 
 ---
 
-*Az illusztrációk a `doc/` mappában találhatók. Ha saját képet szeretnél, nevezd el pl. `pico-radio-5-hw.jpg`-nak vagy `schematic-sample.png`-nek.*
