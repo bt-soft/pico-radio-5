@@ -1,6 +1,6 @@
 # Pico-Radio-5
 
-![Pico-Radio-5 készülék](doc/20250525_180713.jpg)
+![Pico-Radio-5 ](doc/20250525_180713.jpg)
 
 ## Hardver részletesen
 
