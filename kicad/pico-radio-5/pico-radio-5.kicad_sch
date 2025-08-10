@@ -5688,6 +5688,16 @@
 	)
 	(wire
 		(pts
+			(xy 251.46 105.41) (xy 251.46 109.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "0c04ae2c-27d9-4b64-b295-4088bd2d2b04")
+	)
+	(wire
+		(pts
 			(xy 168.91 121.92) (xy 168.91 120.65)
 		)
 		(stroke
@@ -6095,6 +6105,16 @@
 			(type default)
 		)
 		(uuid "4233492d-e4c7-445e-afca-9330e9c6e709")
+	)
+	(wire
+		(pts
+			(xy 251.46 97.79) (xy 251.46 100.33)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "433d9621-7c20-4640-a156-cb9a10fcec75")
 	)
 	(wire
 		(pts
@@ -6628,16 +6648,6 @@
 	)
 	(wire
 		(pts
-			(xy 259.08 100.33) (xy 259.08 105.41)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "80c3ebe5-84b1-4719-8150-f493cf09e01d")
-	)
-	(wire
-		(pts
 			(xy 168.91 111.76) (xy 168.91 113.03)
 		)
 		(stroke
@@ -6778,6 +6788,16 @@
 	)
 	(wire
 		(pts
+			(xy 241.3 114.3) (xy 243.84 114.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "98b1077e-0455-4d22-aca1-144d7be13220")
+	)
+	(wire
+		(pts
 			(xy 149.86 135.89) (xy 146.05 135.89)
 		)
 		(stroke
@@ -6785,16 +6805,6 @@
 			(type default)
 		)
 		(uuid "9a06c35b-4a88-45e5-aed6-66160028feeb")
-	)
-	(wire
-		(pts
-			(xy 259.08 105.41) (xy 265.43 105.41)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "9ad3f081-10c9-4dd4-8728-1effd99955ff")
 	)
 	(bus
 		(pts
@@ -7328,13 +7338,13 @@
 	)
 	(wire
 		(pts
-			(xy 264.16 110.49) (xy 265.43 110.49)
+			(xy 251.46 119.38) (xy 251.46 123.19)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "e66fb469-7eeb-478d-bbb5-deceed0b2e95")
+		(uuid "e3489f91-d7cf-4d1c-8267-52fef53a4aa7")
 	)
 	(wire
 		(pts
@@ -7425,6 +7435,16 @@
 			(type default)
 		)
 		(uuid "eacb64f8-31e0-403b-9276-29f06b6f33b7")
+	)
+	(wire
+		(pts
+			(xy 231.14 114.3) (xy 233.68 114.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "eb0ad5ec-f86c-4603-99b8-ce2b4b51771d")
 	)
 	(wire
 		(pts
@@ -8128,7 +8148,7 @@
 	)
 	(global_label "BUZZER"
 		(shape input)
-		(at 264.16 110.49 180)
+		(at 231.14 114.3 180)
 		(fields_autoplaced yes)
 		(effects
 			(font
@@ -8138,7 +8158,7 @@
 		)
 		(uuid "784f9dec-1b9a-4ac9-aa7c-c8a90ed5dae7")
 		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 253.7363 110.49 0)
+			(at 220.7163 114.3 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9544,6 +9564,74 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 237.49 114.3 90)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "527ee09d-f1ab-4931-8ea4-07d51c259ca5")
+		(property "Reference" "R11"
+			(at 237.49 107.95 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "4.7k"
+			(at 237.49 110.49 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
+			(at 237.49 116.078 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 237.49 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 237.49 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "669db5b4-7525-4dac-9368-b363588be43a")
+		)
+		(pin "2"
+			(uuid "8460618d-338e-46b5-8ee0-203e36334cbe")
+		)
+		(instances
+			(project "pico-radio-5"
+				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
+					(reference "R11")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 214.63 82.55 90)
 		(unit 1)
@@ -9612,7 +9700,7 @@
 	)
 	(symbol
 		(lib_id "power:+3.3V")
-		(at 259.08 100.33 0)
+		(at 251.46 97.79 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -9620,7 +9708,7 @@
 		(dnp no)
 		(uuid "55b2fc67-9db6-43b9-b801-337a2b4f284c")
 		(property "Reference" "#PWR011"
-			(at 259.08 104.14 0)
+			(at 251.46 101.6 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9629,7 +9717,7 @@
 			)
 		)
 		(property "Value" "+3.3V"
-			(at 263.144 98.552 0)
+			(at 255.524 96.012 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9637,7 +9725,7 @@
 			)
 		)
 		(property "Footprint" ""
-			(at 259.08 100.33 0)
+			(at 251.46 97.79 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9646,7 +9734,7 @@
 			)
 		)
 		(property "Datasheet" ""
-			(at 259.08 100.33 0)
+			(at 251.46 97.79 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9655,7 +9743,7 @@
 			)
 		)
 		(property "Description" "Power symbol creates a global label with name \"+3.3V\""
-			(at 259.08 100.33 0)
+			(at 251.46 97.79 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9941,7 +10029,7 @@
 	)
 	(symbol
 		(lib_id "Device:Buzzer")
-		(at 267.97 107.95 0)
+		(at 254 102.87 0)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -9950,7 +10038,7 @@
 		(fields_autoplaced yes)
 		(uuid "61dddb7b-529a-412f-b593-dab6ede78328")
 		(property "Reference" "BZ1"
-			(at 271.78 106.6799 0)
+			(at 257.81 101.5999 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9959,7 +10047,7 @@
 			)
 		)
 		(property "Value" "Buzzer"
-			(at 271.78 109.2199 0)
+			(at 257.81 104.1399 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9968,7 +10056,7 @@
 			)
 		)
 		(property "Footprint" "Buzzer_Beeper:Buzzer_12x9.5RM7.6"
-			(at 267.335 105.41 90)
+			(at 253.365 100.33 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9977,7 +10065,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 267.335 105.41 90)
+			(at 253.365 100.33 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9986,7 +10074,7 @@
 			)
 		)
 		(property "Description" "Buzzer, polarized"
-			(at 267.97 107.95 0)
+			(at 254 102.87 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -12364,6 +12452,82 @@
 		)
 	)
 	(symbol
+		(lib_id "Transistor_BJT:PN2222A")
+		(at 248.92 114.3 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "baffa4d2-f744-41c3-8777-2437c4b4c767")
+		(property "Reference" "Q3"
+			(at 254 113.0299 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "PN2222A"
+			(at 254 115.5699 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "Package_TO_SOT_THT:TO-92_Inline"
+			(at 254 116.205 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+					(italic yes)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.onsemi.com/pub/Collateral/PN2222-D.PDF"
+			(at 248.92 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+				(hide yes)
+			)
+		)
+		(property "Description" "1A Ic, 40V Vce, NPN Transistor, General Purpose Transistor, TO-92"
+			(at 248.92 114.3 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "dce5a493-d9bd-4fad-b979-255fb8dd5004")
+		)
+		(pin "3"
+			(uuid "822ee103-4128-44b6-8248-c9fa24dac842")
+		)
+		(pin "1"
+			(uuid "77b3f09a-dff8-4617-8002-2d2f8bf184f5")
+		)
+		(instances
+			(project "pico-radio-5"
+				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
+					(reference "Q3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 204.47 156.21 0)
 		(unit 1)
@@ -12717,7 +12881,7 @@
 				)
 			)
 		)
-		(property "Footprint" "R_Axial_DIN0207_L6.3mm_D2.5mm_P7.62mm_Horizontal"
+		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"
 			(at 266.7 128.27 0)
 			(effects
 				(font
@@ -13595,6 +13759,72 @@
 			(project ""
 				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
 					(reference "U1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 251.46 123.19 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "f1ca57c9-f138-44e2-a28e-30791ffb7387")
+		(property "Reference" "#PWR031"
+			(at 251.46 129.54 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 251.46 128.27 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 251.46 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 251.46 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 251.46 123.19 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9eb6a4df-9a15-4705-b320-8c505f3232ad")
+		)
+		(instances
+			(project "pico-radio-5"
+				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
+					(reference "#PWR031")
 					(unit 1)
 				)
 			)
