@@ -1,6 +1,7 @@
 # Pico-Radio-5
 
-![Pico-Radio-5 ](doc/20250525_180713.jpg)
+![Készülék fotó](doc/20250502_175417.jpg)
+![Kijelző példa](doc/20250515_194428.jpg)
 
 ## Hardver részletesen
 
@@ -79,6 +80,16 @@ A szoftver PlatformIO környezetben, C++ nyelven, Arduino frameworkre épül. F�
 - A beállítások és állomásmemória EEPROM-ban tartósan tárolódik
 - A hardveres I2C lábak, rotary encoder, kijelző, stb. pinjei a `pins.h`-ban konfigurálhatók
 - Hibakereséshez a soros porton részletes log érhető el
+
+## TFT_eSPI beállítás
+
+A projekt a TFT_eSPI könyvtárat használja a kijelző kezeléséhez. A helyes működéshez a `doc/TFT_eSPI/User_Setup.h` fájlt be kell másolni a PlatformIO által használt TFT_eSPI könyvtár megfelelő mappájába. Ez általában:
+
+```
+.pio/libdeps/pico/TFT_eSPI/User_Setup.h
+```
+
+A másolás után a kijelző a projektben definiált beállításokkal fog működni. Ha másik kijelzőt használsz, módosítsd a `User_Setup.h`-t a saját hardveredhez.
 
 ## Licenc
 
