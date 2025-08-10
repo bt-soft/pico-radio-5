@@ -1,7 +1,6 @@
 # Pico-Radio-5
 
-![Készülék fotó](doc/20250502_175417.jpg)
-![Kijelző példa](doc/20250515_194428.jpg)
+![](doc/20250809_112400.jpg)
 
 ## Hardver részletesen
 
@@ -29,7 +28,9 @@ A részletes kapcsolási rajzok, NYÁK-tervek a `doc/` mappában találhatók:
 - [NYÁK terv (PDF)](doc/pico-radio-5-pcb.pdf)
 ![NYÁK 3D)](doc/pcb-3d.png)
 
-![](doc/20250809_112400.jpg)
+![Készülék fotó](doc/20250502_175417.jpg)
+![Kijelző példa](doc/20250515_194428.jpg)
+
 
 ## Szoftver részletesen
 
