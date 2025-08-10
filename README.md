@@ -27,6 +27,7 @@ A Pico-Radio-5 egy fejlett, több sávos rádióvevő, amely a Raspberry Pi Pico
 A részletes kapcsolási rajzok, NYÁK-tervek a `doc/` mappában találhatók:
 - [Kapcsolási rajz (PDF)](doc/pico-radio-5-sch.pdf)
 - [NYÁK terv (PDF)](doc/pico-radio-5-pcb.pdf)
+- ![NYÁK 3D)](doc/pcb-3d.png)
 
 ![](doc/20250809_112400.jpg)
 
