@@ -71,7 +71,9 @@ void setup() {
 
     // Beeper
     pinMode(PIN_BEEPER, OUTPUT);
-    digitalWrite(PIN_BEEPER, LOW); // TFT LED háttérvilágítás kimenet
+    digitalWrite(PIN_BEEPER, LOW);
+
+    // TFT LED háttérvilágítás kimenet
     pinMode(PIN_TFT_BACKGROUND_LED, OUTPUT);
     Utils::setTftBacklight(TFT_BACKGROUND_LED_MAX_BRIGHTNESS); // TFT inicializálása DC módban
     tft.init();
