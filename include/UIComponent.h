@@ -90,7 +90,7 @@ class UIComponent {
     /**
      * @brief A komponens jelezheti, hogy vizuális lenyomott visszajelzést ad-e
      * @details Ha true, akkor a komponens vizuális visszajelzést ad a lenyomásra (pl. színváltás).
-     * @note Alapértelmezett szerint true, de a származtatott osztályok felülírhatják, ha nem kívánják ezt a viselkedést.
+     * @note Alapértelmezett szerint false, de a származtatott osztályok felülírhatják, ha nem kívánják ezt a viselkedést.
      * pl.: az UIScreen osztály nem ad vizuális visszajelzést a lenyomásra, mert a képernyő nem interaktív elem.
      * Emiatt ő majd felülírja ezt a metódust, hogy false-t adjon vissza.
      */

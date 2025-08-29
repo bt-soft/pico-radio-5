@@ -2,8 +2,8 @@
 #define __SCREEN_MANAGER_H
 
 #include <functional>
-#include <map>    // Tartalmazva volt, de explicit jobb
-#include <queue>  // Tartalmazva volt, de explicit jobb
+#include <map>
+#include <queue>
 #include <vector> // Navigációs stack-hez
 
 #include "Config.h"

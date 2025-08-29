@@ -138,7 +138,7 @@ void setup() {
             amStationStore.checkSave();
 
             Utils::beepTick();
-            DEBUG("Default settings resored!\n");
+            DEBUG("Default settings restored!\n");
         }
     } else {
         // konfig betöltése
@@ -159,7 +159,9 @@ void setup() {
     }
 
     // Beállítjuk a touch scren-t
-    tft.setTouch(config.data.tftCalibrateData); // Állomáslisták és band adatok betöltése az EEPROM-ból (a config után!)
+    tft.setTouch(config.data.tftCalibrateData);
+
+    // Állomáslisták és band adatok betöltése az EEPROM-ból (a config után!)
     tft.drawString("Loading stations & bands...", tft.width() / 2, 200);
     bandStore.load(); // Band adatok betöltése
     fmStationStore.load();
@@ -194,13 +196,13 @@ void setup() {
     splash->updateProgress(3, 9, "Detecting SI4735...");
     int16_t si4735Addr = pSi4735Manager->getDeviceI2CAddress();
     if (si4735Addr == 0) {
+        Utils::beepError();
         tft.fillScreen(TFT_BLACK);
         tft.setTextColor(TFT_RED, TFT_BLACK);
         tft.setTextSize(2);
         tft.setTextDatum(MC_DATUM);
         tft.drawString("SI4735 NOT DETECTED!", tft.width() / 2, tft.height() / 2);
         DEBUG("Si4735 not detected");
-        Utils::beepError();
         while (true) // nem megyünk tovább
             ;
     } // Lépés 4: SI4735 konfigurálás
@@ -219,7 +221,7 @@ void setup() {
 
     // Kezdő képernyőtípus beállítása
     splash->updateProgress(5, 9, "Preparing display...");
-    const char *startScreeName = pSi4735Manager->getCurrentBandType() == FM_BAND_TYPE ? SCREEN_NAME_FM : SCREEN_NAME_AM;
+    const char *startScreenName = pSi4735Manager->getCurrentBandType() == FM_BAND_TYPE ? SCREEN_NAME_FM : SCREEN_NAME_AM;
     delay(100);
 
     //--------------------------------------------------------------------
@@ -249,7 +251,7 @@ void setup() {
         screenManager = new ScreenManager();
     }
 
-    screenManager->switchToScreen(startScreeName); // A kezdő képernyő
+    screenManager->switchToScreen(startScreenName); // A kezdő képernyő
 
     delay(100);
 

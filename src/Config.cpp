@@ -35,8 +35,8 @@ const Config_t DEFAULT_CONFIG = {
     .currentAGCgain = static_cast<uint8_t>(Si4735Runtime::AgcGainMode::Automatic), // -> 1
 
     //--- TFT
-    //.tftCalibrateData = {0, 0, 0, 0, 0}, // TFT touch kalibrációs adatok
-    .tftCalibrateData = {214, 3721, 239, 3606, 7},
+    .tftCalibrateData = {0, 0, 0, 0, 0}, // TFT touch kalibrációs adatok
+    //.tftCalibrateData = {214, 3721, 239, 3606, 7},
     .tftBackgroundBrightness = TFT_BACKGROUND_LED_MAX_BRIGHTNESS, // TFT Háttérvilágítás
     .tftDigitLigth = true,                                        // Inaktív szegmens látszódjon?
 

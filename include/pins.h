@@ -15,8 +15,8 @@
 #define PIN_VBUS_EXTERNAL_MEASURE_INPUT A1 // A1/GPIO27 a VBUS mérésének feszültségosztós bemenetéhez
 
 // Rotary Encoder
-#define PIN_ENCODER_DT 16
-#define PIN_ENCODER_CLK 17
+#define PIN_ENCODER_DT 17
+#define PIN_ENCODER_CLK 16
 #define PIN_ENCODER_SW 18
 
 // Others

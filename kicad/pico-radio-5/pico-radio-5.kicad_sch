@@ -2818,6 +2818,192 @@
 			)
 			(embedded_fonts no)
 		)
+		(symbol "Jumper:SolderJumper_2_Open"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+				(hide yes)
+			)
+			(exclude_from_sim no)
+			(in_bom no)
+			(on_board yes)
+			(property "Reference" "JP"
+				(at 0 2.032 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "SolderJumper_2_Open"
+				(at 0 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" ""
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Solder Jumper, 2-pole, open"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "solder jumper SPST"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "SolderJumper*Open*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "SolderJumper_2_Open_0_1"
+				(polyline
+					(pts
+						(xy -0.254 1.016) (xy -0.254 -1.016)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start -0.254 -1.016)
+					(mid -1.2656 0)
+					(end -0.254 1.016)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start -0.254 -1.016)
+					(mid -1.2656 0)
+					(end -0.254 1.016)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type outline)
+					)
+				)
+				(arc
+					(start 0.254 1.016)
+					(mid 1.2656 0)
+					(end 0.254 -1.016)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(arc
+					(start 0.254 1.016)
+					(mid 1.2656 0)
+					(end 0.254 -1.016)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type outline)
+					)
+				)
+				(polyline
+					(pts
+						(xy 0.254 1.016) (xy 0.254 -1.016)
+					)
+					(stroke
+						(width 0)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "SolderJumper_2_Open_1_1"
+				(pin passive line
+					(at -3.81 0 0)
+					(length 2.54)
+					(name "A"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 3.81 0 180)
+					(length 2.54)
+					(name "B"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
 		(symbol "Jumper:SolderJumper_3_Bridged12"
 			(pin_names
 				(offset 0)
@@ -5211,6 +5397,17 @@
 			(embedded_fonts no)
 		)
 	)
+	(text "A TFT SDO/MISO bekötése opcionális!\nAkkor kell, ha a TFT-ről pixel adatokat szeretnénk beolvasni"
+		(exclude_from_sim no)
+		(at 13.97 15.748 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left)
+		)
+		(uuid "c146e142-c7ca-45f3-96f8-943d8bc49757")
+	)
 	(junction
 		(at 168.91 111.76)
 		(diameter 0)
@@ -5429,6 +5626,15 @@
 		(uuid "468af676-dc52-42df-ac6f-2d9d14e8fadc")
 	)
 	(bus_entry
+		(at 102.87 49.53)
+		(size 2.54 2.54)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4be508f6-2780-4289-b704-b0c2b5a0a2ce")
+	)
+	(bus_entry
 		(at 88.9 71.12)
 		(size 2.54 2.54)
 		(stroke
@@ -5564,15 +5770,6 @@
 		(uuid "ab542563-b1c3-4934-9d1f-da351b2ec5e9")
 	)
 	(bus_entry
-		(at 99.06 71.12)
-		(size 2.54 2.54)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "b0cebc02-7fd5-4108-a5d7-461cacdd2c92")
-	)
-	(bus_entry
 		(at 104.14 71.12)
 		(size 2.54 2.54)
 		(stroke
@@ -5580,6 +5777,15 @@
 			(type default)
 		)
 		(uuid "b173b959-8e8b-4222-bdea-111caa7f3357")
+	)
+	(bus_entry
+		(at 139.7 64.77)
+		(size 2.54 2.54)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "c0490532-7f8d-4dab-8c7d-c480363d231c")
 	)
 	(bus_entry
 		(at 149.86 124.46)
@@ -5848,13 +6054,23 @@
 	)
 	(bus
 		(pts
-			(xy 128.27 43.18) (xy 128.27 73.66)
+			(xy 142.24 43.18) (xy 142.24 67.31)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
 		(uuid "1e85f228-c5a2-4e82-82a1-f409586735f7")
+	)
+	(wire
+		(pts
+			(xy 251.46 92.71) (xy 251.46 100.33)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "1f3ad99b-ed3f-47a9-858a-6ca475bfae38")
 	)
 	(wire
 		(pts
@@ -5915,6 +6131,16 @@
 			(type default)
 		)
 		(uuid "2917ccc0-1f74-43f1-bf2a-b497581ec996")
+	)
+	(wire
+		(pts
+			(xy 99.06 64.77) (xy 99.06 62.23)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2b88cf14-23b9-489d-9b38-7d2ea96084c2")
 	)
 	(wire
 		(pts
@@ -6108,16 +6334,6 @@
 	)
 	(wire
 		(pts
-			(xy 251.46 97.79) (xy 251.46 100.33)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "433d9621-7c20-4640-a156-cb9a10fcec75")
-	)
-	(wire
-		(pts
 			(xy 262.89 139.7) (xy 266.7 139.7)
 		)
 		(stroke
@@ -6236,6 +6452,16 @@
 		)
 		(uuid "5141599a-8a57-4bbb-ac2b-b84eb9ce360f")
 	)
+	(bus
+		(pts
+			(xy 142.24 67.31) (xy 142.24 73.66)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "55842fb4-3092-4d76-b528-5a5a9e9dc477")
+	)
 	(wire
 		(pts
 			(xy 271.78 24.13) (xy 271.78 29.21)
@@ -6318,6 +6544,16 @@
 	)
 	(wire
 		(pts
+			(xy 124.46 64.77) (xy 99.06 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6039246b-c536-4fd1-8541-8ac80e2f2ef7")
+	)
+	(wire
+		(pts
 			(xy 135.89 173.99) (xy 135.89 181.61)
 		)
 		(stroke
@@ -6368,7 +6604,7 @@
 	)
 	(bus
 		(pts
-			(xy 99.06 73.66) (xy 101.6 73.66)
+			(xy 99.06 73.66) (xy 104.14 73.66)
 		)
 		(stroke
 			(width 0)
@@ -6808,7 +7044,7 @@
 	)
 	(bus
 		(pts
-			(xy 128.27 73.66) (xy 111.76 73.66)
+			(xy 142.24 73.66) (xy 111.76 73.66)
 		)
 		(stroke
 			(width 0)
@@ -7176,16 +7412,6 @@
 		)
 		(uuid "c4b5f840-59a2-4854-a612-454e4b4c96be")
 	)
-	(bus
-		(pts
-			(xy 101.6 73.66) (xy 104.14 73.66)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "c4dd9d8e-2e87-450b-bb15-5f3ee632629c")
-	)
 	(wire
 		(pts
 			(xy 168.91 111.76) (xy 175.26 111.76)
@@ -7335,6 +7561,16 @@
 			(type default)
 		)
 		(uuid "df01eafa-e61c-4f21-b3d1-9429c23b60ec")
+	)
+	(wire
+		(pts
+			(xy 132.08 64.77) (xy 139.7 64.77)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e306b87c-2341-4936-b998-07ac987bb164")
 	)
 	(wire
 		(pts
@@ -7488,16 +7724,6 @@
 	)
 	(wire
 		(pts
-			(xy 99.06 62.23) (xy 99.06 71.12)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f33bbc7a-f1ee-421a-a719-620692445a11")
-	)
-	(wire
-		(pts
 			(xy 107.95 95.25) (xy 116.84 95.25)
 		)
 		(stroke
@@ -7588,7 +7814,7 @@
 	)
 	(bus
 		(pts
-			(xy 128.27 43.18) (xy 151.13 43.18)
+			(xy 142.24 43.18) (xy 151.13 43.18)
 		)
 		(stroke
 			(width 0)
@@ -7735,16 +7961,6 @@
 			(justify left bottom)
 		)
 		(uuid "2a31a155-0b3b-46c0-b694-68af80f54620")
-	)
-	(label "SDO"
-		(at 99.06 71.12 90)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "3a4660c8-8987-47d6-96b8-db8bad22945b")
 	)
 	(label "SDI"
 		(at 91.44 71.12 90)
@@ -7905,6 +8121,16 @@
 			(justify left bottom)
 		)
 		(uuid "c078df2e-e06c-4207-9019-151d00c371e5")
+	)
+	(label "SDO"
+		(at 135.89 64.77 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "cce013f9-652d-4df6-b6b1-089e2e3fc10f")
 	)
 	(label "SCK"
 		(at 101.6 71.12 90)
@@ -9699,71 +9925,6 @@
 		)
 	)
 	(symbol
-		(lib_id "power:+3.3V")
-		(at 251.46 97.79 0)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(uuid "55b2fc67-9db6-43b9-b801-337a2b4f284c")
-		(property "Reference" "#PWR011"
-			(at 251.46 101.6 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "+3.3V"
-			(at 255.524 96.012 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 251.46 97.79 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 251.46 97.79 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" "Power symbol creates a global label with name \"+3.3V\""
-			(at 251.46 97.79 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "5fe85ca6-4e62-45e8-959e-a54c90363d3c")
-		)
-		(instances
-			(project "pico-radio-5"
-				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
-					(reference "#PWR011")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
 		(lib_id "power:GND")
 		(at 22.86 73.66 0)
 		(unit 1)
@@ -10028,6 +10189,74 @@
 		)
 	)
 	(symbol
+		(lib_id "Jumper:SolderJumper_2_Open")
+		(at 128.27 64.77 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom no)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "61bc5a1f-f6af-4811-852e-3b6c881b747b")
+		(property "Reference" "JP3"
+			(at 128.27 58.42 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "TFT SDO - ha kell"
+			(at 128.27 60.96 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "Jumper:SolderJumper-2_P1.3mm_Open_RoundedPad1.0x1.5mm"
+			(at 128.27 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 128.27 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Solder Jumper, 2-pole, open"
+			(at 128.27 64.77 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "c94a5d47-1e71-40e6-9421-b61b70224ac4")
+		)
+		(pin "2"
+			(uuid "44086417-190e-4310-8cf6-06e6de999ec5")
+		)
+		(instances
+			(project ""
+				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
+					(reference "JP3")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "Device:Buzzer")
 		(at 254 102.87 0)
 		(unit 1)
@@ -10185,7 +10414,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "47uH"
+		(property "Value" "220uH"
 			(at 181.102 114.046 90)
 			(effects
 				(font
@@ -10454,7 +10683,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "200k"
+		(property "Value" "10k"
 			(at 240.03 69.8499 0)
 			(effects
 				(font
@@ -10656,7 +10885,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "100k"
+		(property "Value" "15k"
 			(at 240.03 81.2799 0)
 			(effects
 				(font
@@ -11886,7 +12115,7 @@
 				(justify left)
 			)
 		)
-		(property "Value" "270uH"
+		(property "Value" "220uH"
 			(at 55.626 76.454 0)
 			(effects
 				(font
@@ -13514,6 +13743,71 @@
 			(project ""
 				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
 					(reference "JP1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+BATT")
+		(at 251.46 92.71 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "e6e43dcf-10ed-4f91-bd39-74aa9c2523e3")
+		(property "Reference" "#PWR011"
+			(at 251.46 96.52 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+Vbus"
+			(at 251.46 88.646 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 251.46 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 251.46 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"+BATT\""
+			(at 251.46 92.71 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "d040dee4-d35f-43d6-968c-212828a37b63")
+		)
+		(instances
+			(project "pico-radio-5"
+				(path "/b9640508-dcc6-4f6b-830f-c53a732dcb5b"
+					(reference "#PWR011")
 					(unit 1)
 				)
 			)

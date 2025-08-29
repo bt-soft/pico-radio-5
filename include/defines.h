@@ -44,8 +44,8 @@
 #endif
 
 // Feszültségmérés
-#define VBUS_DIVIDER_R1 197.5f // Ellenállás VBUS és A0 között (kOhm)
-#define VBUS_DIVIDER_R2 99.5f  // Ellenállás A0 és GND között (kOhm)
+#define VBUS_DIVIDER_R1 10.0f // Ellenállás VBUS és A0 között (kOhm)
+#define VBUS_DIVIDER_R2 15.0f // Ellenállás A0 és GND között (kOhm)
 
 // Rotary Encoder
 #define __USE_ROTARY_ENCODER_IN_HW_TIMER

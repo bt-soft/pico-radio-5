@@ -189,4 +189,4 @@ class UIContainerComponent : public UIComponent {
     virtual void drawSelf() {}      // Pl. háttér vagy keret rajzolása a konténeren belül
 };
 
-#endif
+#endif // __UI_CONTAINER_COMPONENT_H

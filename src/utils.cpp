@@ -104,7 +104,7 @@ void tftTouchCalibrate(TFT_eSPI &tft, uint16_t (&calData)[5]) {
     tft.fillScreen(TFT_BLACK);
     tft.setTextFont(2);
     tft.setTextSize(2);
-    const char *txt = "TFT touch kalibrácio kell!\n";
+    const char *txt = "TFT touch kalibracio szukseges!\n";
     tft.setCursor((tft.width() - tft.textWidth(txt)) / 2, tft.height() / 2 - 60);
     tft.setTextColor(TFT_ORANGE, TFT_BLACK);
     tft.println(txt);
