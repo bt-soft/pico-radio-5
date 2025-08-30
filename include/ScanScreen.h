@@ -4,8 +4,7 @@
  * @details Grafikus frekvencia pásztázás RSSI/SNR megjelenítéssel
  */
 
-#ifndef __SCANSCREEN_H
-#define __SCANSCREEN_H
+#pragma once
 
 #include "Config.h"
 #include "Si4735Manager.h"
@@ -136,5 +135,3 @@ class ScanScreen : public UIScreen {
     void handleZoom(float newZoomLevel);
     bool isDataValid(uint16_t scanPos) const;
 };
-
-#endif // __SCANSCREEN_H

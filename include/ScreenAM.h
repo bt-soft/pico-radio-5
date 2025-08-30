@@ -1,5 +1,4 @@
-#ifndef __SCREEN_AM_H
-#define __SCREEN_AM_H
+#pragma once
 
 #include "CommonVerticalButtons.h"
 #include "CwDecoder.h" // Új include
@@ -198,5 +197,3 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
     std::shared_ptr<UITextBox> decodedTextBox;
     SpectrumVisualizationComponent::DisplayMode lastSpectrumMode_ = SpectrumVisualizationComponent::DisplayMode::Off;
 };
-
-#endif // __SCREEN_AM_H

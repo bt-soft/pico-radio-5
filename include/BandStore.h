@@ -1,5 +1,4 @@
-#ifndef __BAND_STORE_H
-#define __BAND_STORE_H
+#pragma once
 
 #include "DebugDataInspector.h" // Debug kiíráshoz
 #include "EepromLayout.h"       // EEPROM_BAND_DATA_ADDR konstanshoz
@@ -98,5 +97,3 @@ class BandStore : public StoreBase<BandStoreData_t> {
      */
     void saveFromBandTable(const BandTable *bandTable);
 };
-
-#endif // __BAND_STORE_H

@@ -1,5 +1,4 @@
-#ifndef __SI4735_RDS_H
-#define __SI4735_RDS_H
+#pragma once
 
 #include "Band.h"
 #include "Si4735Band.h"
@@ -144,5 +143,3 @@ class Si4735Rds : public Si4735Band {
     // Timeout értékek (milliszekundum)
     static const uint32_t RDS_DATA_TIMEOUT = 120000; // 120 másodperc
 };
-
-#endif // __SI4735_RDS_H

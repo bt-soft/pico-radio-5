@@ -1,5 +1,4 @@
-#ifndef DEFINES_H
-#define DEFINES_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -94,5 +93,3 @@
 
 // Egy másodperc mikroszekundumban
 #define ONE_SECOND_IN_MICROS 1000000.0f
-
-#endif // DEFINES_H

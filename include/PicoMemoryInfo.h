@@ -1,5 +1,4 @@
-#ifndef __PICOMEMORYINFO_H
-#define __PICOMEMORYINFO_H
+#pragma once
 
 #include <Arduino.h>
 #include <RP2040Support.h>
@@ -118,5 +117,3 @@ void debugMemoryInfo();
 #endif
 
 } // namespace PicoMemoryInfo
-
-#endif //__PICOMEMORYINFO_H

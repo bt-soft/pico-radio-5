@@ -1,5 +1,4 @@
-#ifndef __CW_DECODER_H
-#define __CW_DECODER_H
+#pragma once
 
 #include <Arduino.h>
 #include <cstring> // For strcmp
@@ -54,5 +53,3 @@ class CwDecoder {
     void pushChar(char c);
     void resetSymbol();
 };
-
-#endif // __CW_DECODER_H

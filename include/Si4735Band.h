@@ -1,5 +1,4 @@
-#ifndef __SI4735_BAND_H
-#define __SI4735_BAND_H
+#pragma once
 
 #include "Band.h"
 #include "Si4735Runtime.h"
@@ -64,5 +63,3 @@ class Si4735Band : public Si4735Runtime, public Band {
      */
     uint16_t stepFrequency(int16_t rotaryValue);
 };
-
-#endif // __SI4735_BAND_H

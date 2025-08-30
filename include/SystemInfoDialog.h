@@ -1,14 +1,4 @@
-/**
- * @file SystemInfoDialog.h
- * @brief Rendszer információ dialógus header fájl
- * @details A SystemInfoDialog egy többoldalas dialógus osztály definíciója,
- * amely részletes rendszer információkat jelenít meg kategóriákba rendezve.
- *
- * @author A projekt fejlesztője
- * @date 2025
- */
-#ifndef __SYSTEM_INFO_DIALOG_H
-#define __SYSTEM_INFO_DIALOG_H
+#pragma once
 
 #include "MessageDialog.h"
 #include "PicoMemoryInfo.h"
@@ -130,5 +120,3 @@ class SystemInfoDialog : public MessageDialog {
      */
     void updateNavigationButtons();
 };
-
-#endif // __SYSTEM_INFO_DIALOG_H

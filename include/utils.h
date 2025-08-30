@@ -1,5 +1,4 @@
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
 #include <TFT_eSPI.h>
 
@@ -20,7 +19,7 @@ String floatToString(float value, int decimalPlaces = 2);
  * @param val A mikroszekundum érték
  * @return Formázott idő string, pl. "1sec, 234msec, 567usec"
  */
-String usecToString(uint32_t val) ;
+String usecToString(uint32_t val);
 
 /**
  * @brief Elapsed time string formázása
@@ -193,5 +192,3 @@ template <typename T> uint16_t calcCRC16(const T &obj) {
 }
 
 } // namespace Utils
-
-#endif // UTILS_H

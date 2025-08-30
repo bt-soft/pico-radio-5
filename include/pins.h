@@ -1,5 +1,4 @@
-#ifndef __PINS_H
-#define __PINS_H
+#pragma once
 
 // TFT (A TFT_eSPI_User_Setup.h-ban a pinout)
 
@@ -23,5 +22,3 @@
 #define PIN_TFT_BACKGROUND_LED 1 // A NYÁK miatt áthelyezve a  GPIO1-es lábra
 #define PIN_AUDIO_MUTE 19
 #define PIN_BEEPER 20
-
-#endif // __PINS_H

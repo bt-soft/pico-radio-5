@@ -1,5 +1,4 @@
-#ifndef __BAND_H
-#define __BAND_H
+#pragma once
 
 #include "Config.h"
 #include "defines.h"
@@ -356,5 +355,3 @@ class Band {
      */
     static uint8_t getFilteredBandCount(bool isHamFilter);
 };
-
-#endif // __BAND_H

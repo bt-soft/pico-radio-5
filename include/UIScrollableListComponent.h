@@ -1,5 +1,4 @@
-#ifndef __UI_SCROLLABLE_LIST_COMPONENT_H
-#define __UI_SCROLLABLE_LIST_COMPONENT_H
+#pragma once
 
 #include "IScrollableListDataSource.h"
 #include "UIComponent.h"
@@ -432,5 +431,3 @@ class UIScrollableListComponent : public UIComponent {
         return handled;
     }
 };
-
-#endif // __UI_SCROLLABLE_LIST_COMPONENT_H

@@ -1,5 +1,4 @@
-#ifndef __SMETER_H
-#define __SMETER_H
+#pragma once
 
 #include <algorithm> // std::min miatt
 
@@ -213,5 +212,3 @@ class SMeter : public UIComponent {
      */
     virtual bool allowsVisualPressedFeedback() const override { return false; }
 };
-
-#endif // __SMETER_H

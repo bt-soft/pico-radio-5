@@ -1,5 +1,4 @@
-#ifndef __ROTARYENCODER_H
-#define __ROTARYENCODER_H
+#pragma once
 /**
  * Timer-based rotary encoder
  * Rotary Encoder Driver with Acceleration
@@ -11,14 +10,14 @@
 
 #include <Arduino.h>
 
-#define ROTARY_ENCODER_STEPS_PER_NOTCH 2  // Impulzusok száma egy lépéshez, Rotary függő ezt ki kell kísérletezni!!
+#define ROTARY_ENCODER_STEPS_PER_NOTCH 2 // Impulzusok száma egy lépéshez, Rotary függő ezt ki kell kísérletezni!!
 
-#define ROTARY_ENCODER_RECOMMENDED_SERVICE_INTERVAL_MSEC 1  // A javasolt service() hívás periódus idő = 1msec
+#define ROTARY_ENCODER_RECOMMENDED_SERVICE_INTERVAL_MSEC 1 // A javasolt service() hívás periódus idő = 1msec
 
 // ----------------------------------------------------------------------------
 
-#define ENC_NORMAL (1 << 1)  // use Peter Danneger's decoder
-#define ENC_FLAKY (1 << 2)   // use Table-based decoder
+#define ENC_NORMAL (1 << 1) // use Peter Danneger's decoder
+#define ENC_FLAKY (1 << 2)  // use Table-based decoder
 
 // ----------------------------------------------------------------------------
 
@@ -28,37 +27,37 @@
 
 #if ENC_DECODER == ENC_FLAKY
 #ifndef ENC_HALFSTEP
-#define ENC_HALFSTEP 1  // use table for half step per default
+#define ENC_HALFSTEP 1 // use table for half step per default
 #endif
 #endif
 
 class RotaryEncoder {
-   public:
+  public:
     // Forgás iránya
     enum Direction {
-        None,  // nincs irány
-        Up,    // jobbra/fel
-        Down   // balra/le
+        None, // nincs irány
+        Up,   // jobbra/fel
+        Down  // balra/le
     };
 
     // Gomb állapota
     enum ButtonState {
-        Open,          // nyitva
-        Pressed,       // lenyomva
-        Held,          // nyomva tartava
-        Released,      // elengedve
-        Clicked,       // klikk
-        DoubleClicked  // duplaklikk
+        Open,         // nyitva
+        Pressed,      // lenyomva
+        Held,         // nyomva tartava
+        Released,     // elengedve
+        Clicked,      // klikk
+        DoubleClicked // duplaklikk
     };
 
     // Encoder állapotát tároló struktúra
     struct EncoderState {
         Direction direction;
         ButtonState buttonState;
-        int16_t value;  // aktuális érték
+        int16_t value; // aktuális érték
     };
 
-   private:
+  private:
     const uint8_t pinA;
     const uint8_t pinB;
     const uint8_t pinBTN;
@@ -86,7 +85,7 @@ class RotaryEncoder {
      */
     ButtonState getButton(void);
 
-   public:
+  public:
     /**
      * Konstruktor
      */
@@ -121,5 +120,3 @@ class RotaryEncoder {
      */
     EncoderState read();
 };
-
-#endif  // ROTARYENCODER_H

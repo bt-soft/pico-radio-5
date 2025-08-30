@@ -1,5 +1,4 @@
-#ifndef SPECTRUM_VISUALIZATION_COMPONENT_H
-#define SPECTRUM_VISUALIZATION_COMPONENT_H
+#pragma once
 
 #include <TFT_eSPI.h>
 #include <vector>
@@ -254,5 +253,3 @@ class SpectrumVisualizationComponent : public UIComponent {
      */
     void setFftParametersForDisplayMode();
 };
-
-#endif // SPECTRUM_VISUALIZATION_COMPONENT_H

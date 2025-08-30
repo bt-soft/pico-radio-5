@@ -1,5 +1,4 @@
-#ifndef __RDS_COMPONENT_H
-#define __RDS_COMPONENT_H
+#pragma once
 
 #include "UIComponent.h"
 
@@ -204,5 +203,3 @@ class RDSComponent : public UIComponent {
      */
     void setRdsColors(uint16_t stationColor, uint16_t typeColor, uint16_t textColor, uint16_t timeColor, uint16_t bgColor);
 };
-
-#endif // __RDS_COMPONENT_H

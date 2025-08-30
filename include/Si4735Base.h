@@ -1,5 +1,4 @@
-#ifndef __SI4735_BASE_H
-#define __SI4735_BASE_H
+#pragma once
 
 #include <Arduino.h>
 #include <SI4735.h>
@@ -61,5 +60,3 @@ class Si4735Base {
      */
     inline void setAudioMuteMcuPin(uint8_t pin) { si4735.setAudioMuteMcuPin(pin); }
 };
-
-#endif // __SI4735_BASE_H

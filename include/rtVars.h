@@ -1,5 +1,4 @@
-#ifndef __RTVARS_H
-#define __RTVARS_H
+#pragma once
 
 #include <cstdint>
 
@@ -53,5 +52,3 @@ extern bool SEEK;
 extern bool CWShift;
 
 } // namespace rtv
-
-#endif //__RTVARS_H

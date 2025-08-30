@@ -1,5 +1,4 @@
-#ifndef __SCREEN_RADIO_BASE_H
-#define __SCREEN_RADIO_BASE_H
+#pragma once
 
 #include "SMeter.h"
 #include "ScreenFrequDisplayBase.h"
@@ -289,5 +288,3 @@ class ScreenRadioBase : public ScreenFrequDisplayBase {
     /// Flag annak jelzésére, hogy az utolsó dialógus band dialógus volt-e
     bool lastDialogWasBandDialog = false;
 };
-
-#endif // __SCREEN_RADIO_BASE_H

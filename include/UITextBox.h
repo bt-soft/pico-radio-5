@@ -1,5 +1,4 @@
-#ifndef __UI_TEXT_BOX_H
-#define __UI_TEXT_BOX_H
+#pragma once
 
 #include "UIComponent.h"
 #include <Arduino.h>
@@ -31,5 +30,3 @@ class UITextBox : public UIComponent {
     virtual void setBounds(const Rect &newBounds) override;
     virtual void draw() override;
 };
-
-#endif // __UI_TEXT_BOX_H

@@ -1,5 +1,4 @@
-#ifndef __STEREO_INDICATOR_H
-#define __STEREO_INDICATOR_H
+#pragma once
 
 #include "UIComponent.h"
 
@@ -36,5 +35,3 @@ class StereoIndicator : public UIComponent {
     virtual bool handleTouch(const TouchEvent &event) override { return false; }
     virtual bool handleRotary(const RotaryEvent &event) override { return false; }
 };
-
-#endif // __STEREO_INDICATOR_H

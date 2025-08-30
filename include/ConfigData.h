@@ -1,5 +1,4 @@
-#ifndef CONFIG_DATA_H
-#define CONFIG_DATA_H
+#pragma once
 
 #include <stdint.h> // uint8_t, uint16_t, stb.
 
@@ -72,5 +71,3 @@ struct Config_t {
     uint8_t audioModeFM; // Utolsó audio mód FM képernyőn (AudioComponentType)
     // float audioFftGain;    // Audio FFT erősítés (0.1 - 10.0)
 };
-
-#endif // CONFIG_DATA_H

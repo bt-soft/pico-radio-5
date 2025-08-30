@@ -1,5 +1,4 @@
-#ifndef __VALUE_CHANGE_DIALOG_H
-#define __VALUE_CHANGE_DIALOG_H
+#pragma once
 
 #include "MessageDialog.h"
 #include <functional>
@@ -165,9 +164,8 @@ class ValueChangeDialog : public MessageDialog {
      * @param bounds Dialógus mérete és pozíciója
      * @param cs Színséma
      */
-    ValueChangeDialog(UIScreen *parentScreen, const char *title, const char *message, int *valuePtr, int minValue, int maxValue, int stepValue = 1,
-                      ValueChangeCallback callback = nullptr, DialogCallback userDialogCb = nullptr, const Rect &bounds = {-1, -1, 0, 0},
-                      const ColorScheme &cs = ColorScheme::defaultScheme());
+    ValueChangeDialog(UIScreen *parentScreen, const char *title, const char *message, int *valuePtr, int minValue, int maxValue, int stepValue = 1, ValueChangeCallback callback = nullptr,
+                      DialogCallback userDialogCb = nullptr, const Rect &bounds = {-1, -1, 0, 0}, const ColorScheme &cs = ColorScheme::defaultScheme());
 
     /**
      * @brief Konstruktor float értékhez
@@ -183,9 +181,8 @@ class ValueChangeDialog : public MessageDialog {
      * @param bounds Dialógus mérete és pozíciója
      * @param cs Színséma
      */
-    ValueChangeDialog(UIScreen *parentScreen, const char *title, const char *message, float *valuePtr, float minValue, float maxValue, float stepValue = 1.0f,
-                      ValueChangeCallback callback = nullptr, DialogCallback userDialogCb = nullptr, const Rect &bounds = {-1, -1, 0, 0},
-                      const ColorScheme &cs = ColorScheme::defaultScheme());
+    ValueChangeDialog(UIScreen *parentScreen, const char *title, const char *message, float *valuePtr, float minValue, float maxValue, float stepValue = 1.0f, ValueChangeCallback callback = nullptr,
+                      DialogCallback userDialogCb = nullptr, const Rect &bounds = {-1, -1, 0, 0}, const ColorScheme &cs = ColorScheme::defaultScheme());
 
     /**
      * @brief Konstruktor boolean értékhez
@@ -198,8 +195,8 @@ class ValueChangeDialog : public MessageDialog {
      * @param bounds Dialógus mérete és pozíciója
      * @param cs Színséma
      */
-    ValueChangeDialog(UIScreen *parentScreen, const char *title, const char *message, bool *valuePtr, ValueChangeCallback callback = nullptr, DialogCallback userDialogCb = nullptr,
-                      const Rect &bounds = {-1, -1, 0, 0}, const ColorScheme &cs = ColorScheme::defaultScheme());
+    ValueChangeDialog(UIScreen *parentScreen, const char *title, const char *message, bool *valuePtr, ValueChangeCallback callback = nullptr, DialogCallback userDialogCb = nullptr, const Rect &bounds = {-1, -1, 0, 0},
+                      const ColorScheme &cs = ColorScheme::defaultScheme());
 
     /**
      * @brief Konstruktor uint8_t értékhez
@@ -215,13 +212,10 @@ class ValueChangeDialog : public MessageDialog {
      * @param bounds Dialógus mérete és pozíciója
      * @param cs Színséma
      */
-    ValueChangeDialog(UIScreen *parentScreen, const char *title, const char *message, uint8_t *valuePtr, uint8_t minValue, uint8_t maxValue, uint8_t stepValue = 1,
-                      ValueChangeCallback callback = nullptr, DialogCallback userDialogCb = nullptr, const Rect &bounds = {-1, -1, 0, 0},
-                      const ColorScheme &cs = ColorScheme::defaultScheme());
+    ValueChangeDialog(UIScreen *parentScreen, const char *title, const char *message, uint8_t *valuePtr, uint8_t minValue, uint8_t maxValue, uint8_t stepValue = 1, ValueChangeCallback callback = nullptr,
+                      DialogCallback userDialogCb = nullptr, const Rect &bounds = {-1, -1, 0, 0}, const ColorScheme &cs = ColorScheme::defaultScheme());
     /**
      * @brief Destruktor
      */
     virtual ~ValueChangeDialog() = default;
 };
-
-#endif // __VALUE_CHANGE_DIALOG_H

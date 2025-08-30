@@ -1,5 +1,4 @@
-#ifndef __UI_DIALOG_BASE_H
-#define __UI_DIALOG_BASE_H
+#pragma once
 
 #include <functional>
 
@@ -122,5 +121,3 @@ class UIDialogBase : public UIContainerComponent {
      */
     virtual std::vector<std::shared_ptr<UIButton>> getButtonsList() const { return {}; }
 };
-
-#endif // __UI_DIALOG_BASE_H

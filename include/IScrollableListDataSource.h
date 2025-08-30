@@ -1,5 +1,4 @@
-#ifndef __ISCROLLABLE_LIST_DATA_SOURCE_H
-#define __ISCROLLABLE_LIST_DATA_SOURCE_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -29,5 +28,3 @@ class IScrollableListDataSource {
      */
     virtual bool onItemClicked(int index) = 0;
 };
-
-#endif // __ISCROLLABLE_LIST_DATA_SOURCE_H

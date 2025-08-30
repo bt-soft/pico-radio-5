@@ -1,5 +1,4 @@
-#ifndef __Si4735_MANAGER_H
-#define __Si4735_MANAGER_H
+#pragma once
 
 #include "Config.h"
 #include "Si4735Rds.h"
@@ -27,5 +26,3 @@ class Si4735Manager : public Si4735Rds {
 };
 
 extern Si4735Manager *pSi4735Manager; // Globális pointer a Si4735Manager példányhoz, a main.cpp fájlban lesz inicializálva
-
-#endif // __Si4735_MANAGER_H

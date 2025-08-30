@@ -1,7 +1,4 @@
-
-
-#ifndef __SCREEN_SETUP_SYSTEM_H
-#define __SCREEN_SETUP_SYSTEM_H
+#pragma once
 
 #include "ScreenSetupBase.h"
 
@@ -51,5 +48,3 @@ class ScreenSetupSystem : public ScreenSetupBase {
     ScreenSetupSystem();
     virtual ~ScreenSetupSystem() = default;
 };
-
-#endif // __SCREEN_SETUP_SYSTEM_H

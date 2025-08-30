@@ -1,5 +1,4 @@
-#ifndef __SCREEN_FM
-#define __SCREEN_FM
+#pragma once
 
 #include "CommonVerticalButtons.h"
 #include "RDSComponent.h"
@@ -188,7 +187,6 @@ class ScreenFM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
         addChild(rdsComponent);
     }
 
-
     /**
      * @brief RDS cache törlése frekvencia változáskor
      * @details Biztonságos RDS cache törlés null pointer ellenőrzéssel
@@ -199,5 +197,3 @@ class ScreenFM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
         }
     }
 };
-
-#endif // __SCREEN_FM

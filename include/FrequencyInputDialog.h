@@ -18,8 +18,7 @@
  * @date 2025.12.06
  */
 
-#ifndef __FREQUENCY_INPUT_DIALOG_H
-#define __FREQUENCY_INPUT_DIALOG_H
+#pragma once
 
 #include <TFT_eSPI.h>
 
@@ -242,5 +241,3 @@ class FrequencyInputDialog : public UIDialogBase {
      */
     void setCurrentFrequency(uint16_t rawFrequency);
 };
-
-#endif // __FREQUENCY_INPUT_DIALOG_H

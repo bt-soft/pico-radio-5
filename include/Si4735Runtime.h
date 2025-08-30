@@ -1,5 +1,4 @@
-#ifndef __SI4735_RUNTIME_H
-#define __SI4735_RUNTIME_H
+#pragma once
 
 #include "Si4735Base.h"
 
@@ -81,5 +80,3 @@ class Si4735Runtime : public Si4735Base {
      */
     uint8_t getSNR();
 };
-
-#endif // __SI4735_RUNTIME_H

@@ -1,5 +1,4 @@
-#ifndef __SCREEN_FREQU_DISPLAY_BASE_H
-#define __SCREEN_FREQU_DISPLAY_BASE_H
+#pragma once
 
 #include "FreqDisplay.h"
 #include "UIScreen.h"
@@ -26,5 +25,3 @@ class ScreenFrequDisplayBase : public UIScreen {
      */
     inline std::shared_ptr<FreqDisplay> getFreqDisplayComp() const { return freqDisplayComp; }
 };
-
-#endif // __SCREEN_FREQU_DISPLAY_BASE_H

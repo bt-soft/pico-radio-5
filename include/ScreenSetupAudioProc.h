@@ -1,5 +1,4 @@
-#ifndef __SCREEN_SETUP_AUDIO_PROC_H
-#define __SCREEN_SETUP_AUDIO_PROC_H
+#pragma once
 
 #include "ScreenSetupBase.h"
 
@@ -48,5 +47,3 @@ class ScreenSetupAudioProc : public ScreenSetupBase {
     ScreenSetupAudioProc();
     virtual ~ScreenSetupAudioProc() = default;
 };
-
-#endif // __SCREEN_SETUP_AUDIO_PROC_H

@@ -1,5 +1,4 @@
-#ifndef __VIRTUAL_KEYBOARD_DIALOG_H
-#define __VIRTUAL_KEYBOARD_DIALOG_H
+#pragma once
 
 #include "UIButton.h"
 #include "UIDialogBase.h"
@@ -80,5 +79,3 @@ class VirtualKeyboardDialog : public UIDialogBase {
     char getKeyChar(char baseChar, bool shifted);
     void notifyTextChanged();
 };
-
-#endif // __VIRTUAL_KEYBOARD_DIALOG_H

@@ -1,5 +1,4 @@
-#ifndef STORE_BASE_H
-#define STORE_BASE_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -133,5 +132,3 @@ template <typename T> class StoreBase {
      */
     bool needsSave() const { return lastCRC != getCurrentCRC(); }
 };
-
-#endif // STORE_BASE_H

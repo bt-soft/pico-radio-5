@@ -1,5 +1,4 @@
-#ifndef __STATUSLINE_H
-#define __STATUSLINE_H
+#pragma once
 
 #include "UIComponent.h"
 
@@ -83,5 +82,3 @@ class StatusLine : public UIComponent {
     void updateVoltage();
     void updateStationInMemory(bool isInMemo);
 };
-
-#endif // __STATUSLINE_H

@@ -1,5 +1,4 @@
-#ifndef __BASE_STATION_STORE_H
-#define __BASE_STATION_STORE_H
+#pragma once
 
 #include "Band.h"
 #include "DebugDataInspector.h"
@@ -120,5 +119,3 @@ template <typename StationListType, uint8_t MaxStations> class BaseStationStore 
      */
     inline bool isSSBorCW(uint8_t modulation) const { return (modulation == LSB_DEMOD_TYPE || modulation == USB_DEMOD_TYPE || modulation == CW_DEMOD_TYPE); }
 };
-
-#endif // __BASE_STATION_STORE_H

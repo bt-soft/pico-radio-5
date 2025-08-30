@@ -1,5 +1,4 @@
-#ifndef __PICO_SENSOR_UTILS_H
-#define __PICO_SENSOR_UTILS_H
+#pragma once
 
 #include <Arduino.h>
 
@@ -67,5 +66,3 @@ void clearCache();
 void inline getCacheStatus(bool &vBusExtValid, bool &vBusIntValid, bool &temperatureValid);
 
 }; // namespace PicoSensorUtils
-
-#endif // __PICO_SENSOR_UTILS_H

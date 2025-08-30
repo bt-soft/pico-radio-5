@@ -1,5 +1,4 @@
-#ifndef __SCREEN_SCREENSAVER_H
-#define __SCREEN_SCREENSAVER_H
+#pragma once
 
 #include "FreqDisplay.h"
 #include "ScreenFrequDisplayBase.h"
@@ -141,5 +140,3 @@ class ScreenScreenSaver : public ScreenFrequDisplayBase {
      */
     virtual bool handleRotary(const RotaryEvent &event) override;
 };
-
-#endif // __SCREEN_SCREENSAVER_H

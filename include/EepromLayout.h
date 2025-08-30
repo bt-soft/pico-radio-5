@@ -1,5 +1,4 @@
-#ifndef __EEPROM_LAYOUT_H
-#define __EEPROM_LAYOUT_H
+#pragma once
 
 #include "ConfigData.h"  // Config_t struktúra
 #include "StationData.h" // FmStationList_t, AmStationList_t struktúrák
@@ -67,5 +66,3 @@ constexpr size_t EEPROM_FREE_SPACE = EEPROM_SIZE - EEPROM_TOTAL_USED;
 
 /** Fordítási idejű ellenőrzés az EEPROM méretére */
 static_assert(EEPROM_TOTAL_USED <= EEPROM_SIZE, "EEPROM layout exceeds available space! Increase EEPROM_SIZE or reduce data structures.");
-
-#endif // __EEPROM_LAYOUT_H

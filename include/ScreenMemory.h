@@ -1,5 +1,4 @@
-#ifndef __SCREEN_MEMORY_H
-#define __SCREEN_MEMORY_H
+#pragma once
 
 #include "IScrollableListDataSource.h"
 #include "StationData.h"
@@ -94,5 +93,3 @@ class ScreenMemory : public UIScreen, public IScrollableListDataSource {
     // Konstansok
     static constexpr const char *CURRENT_TUNED_ICON = "> ";
 };
-
-#endif // __SCREEN_MEMORY_H

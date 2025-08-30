@@ -1,5 +1,4 @@
-#ifndef __SCREEN_EMPTYH
-#define __SCREEN_EMPTYH
+#pragma once
 
 #include "UIButton.h"
 #include "UIScreen.h"
@@ -62,5 +61,3 @@ class ScreenEmpty : public UIScreen {
      */
     void layoutComponents() {}
 };
-
-#endif // __SCREEN_EMPTYH

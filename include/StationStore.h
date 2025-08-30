@@ -1,5 +1,4 @@
-#ifndef __STATIONSTORE_H
-#define __STATIONSTORE_H
+#pragma once
 
 // Először a típusdefiníciók kellenek
 #include "BaseStationStore.h"
@@ -90,5 +89,3 @@ class AmStationStore : public BaseStationStore<AmStationList_t, MAX_AM_STATIONS>
 // Globális példányok deklarációja (definíció a .cpp fájlban)
 extern FmStationStore fmStationStore;
 extern AmStationStore amStationStore;
-
-#endif // __STATIONSTORE_H

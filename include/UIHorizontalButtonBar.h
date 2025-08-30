@@ -1,5 +1,4 @@
-#ifndef __UI_HORIZONTAL_BUTTON_BAR_H
-#define __UI_HORIZONTAL_BUTTON_BAR_H
+#pragma once
 
 #include "UIButton.h"
 #include "UIContainerComponent.h"
@@ -86,5 +85,3 @@ class UIHorizontalButtonBar : public UIContainerComponent {
      */
     uint16_t calculateRequiredRows(uint16_t totalButtons) const;
 };
-
-#endif // __UI_HORIZONTAL_BUTTON_BAR_H

@@ -1,5 +1,4 @@
-#ifndef __FREQDISPLAY_H
-#define __FREQDISPLAY_H
+#pragma once
 
 #include "Config.h"
 #include "Si4735Manager.h"
@@ -188,5 +187,3 @@ class FreqDisplay : public UIComponent {
     virtual void draw() override;
     virtual bool handleTouch(const TouchEvent &event) override;
 };
-
-#endif // __FREQDISPLAY_H

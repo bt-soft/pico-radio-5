@@ -1,5 +1,4 @@
-#ifndef STORE_EEPROM_BASE_H
-#define STORE_EEPROM_BASE_H
+#pragma once
 
 #include <EEPROM.h>
 
@@ -122,5 +121,3 @@ template <typename T> class StoreEepromBase {
      */
     static constexpr size_t getRequiredSize() { return sizeof(T) + sizeof(uint16_t); }
 };
-
-#endif // STORE_EEPROM_BASE_H

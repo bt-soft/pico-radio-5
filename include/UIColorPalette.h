@@ -1,5 +1,4 @@
-#ifndef __UI_COLOR_PALETTE_H
-#define __UI_COLOR_PALETTE_H
+#pragma once
 
 #include <TFT_eSPI.h>
 
@@ -203,5 +202,3 @@ class UIColorPalette {
     static constexpr uint16_t audioSpectrumSecondary = TFT_YELLOW; // Másodlagos szín
     static constexpr uint16_t audioSpectrumBackground = TFT_BLACK; // Háttérszín
 };
-
-#endif // __UI_COLOR_PALETTE_H

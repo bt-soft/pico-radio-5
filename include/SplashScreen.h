@@ -1,5 +1,4 @@
-#ifndef __SPLASHSCREEN_H
-#define __SPLASHSCREEN_H
+#pragma once
 
 #include <Arduino.h>
 #include <SI4735.h>
@@ -61,5 +60,3 @@ class SplashScreen {
      */
     void hide();
 };
-
-#endif // __SPLASHSCREEN_H

@@ -1,5 +1,4 @@
-#ifndef __SCREEN_SETUP_SI4735_H
-#define __SCREEN_SETUP_SI4735_H
+#pragma once
 
 #include "ScreenSetupBase.h"
 
@@ -40,5 +39,3 @@ class ScreenSetupSi4735 : public ScreenSetupBase {
     ScreenSetupSi4735();
     virtual ~ScreenSetupSi4735() = default;
 };
-
-#endif // __SCREEN_SETUP_SI4735_H

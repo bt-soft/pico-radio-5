@@ -1,5 +1,4 @@
-#ifndef __SCREEN_SETUP_BASE_H
-#define __SCREEN_SETUP_BASE_H
+#pragma once
 
 #include "IScrollableListDataSource.h"
 #include "UIScreen.h"
@@ -80,5 +79,3 @@ class ScreenSetupBase : public UIScreen, public IScrollableListDataSource {
     virtual String getItemValueAt(int index) const override;
     virtual bool onItemClicked(int index) override;
 };
-
-#endif // __SCREEN_SETUP_BASE_H

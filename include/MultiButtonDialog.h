@@ -1,5 +1,4 @@
-#ifndef __MULTI_BUTTON_DIALOG_H
-#define __MULTI_BUTTON_DIALOG_H
+#pragma once
 
 #include "ButtonsGroupManager.h"
 #include "UIDialogBase.h"
@@ -127,5 +126,3 @@ class MultiButtonDialog : public UIDialogBase, public ButtonsGroupManager<MultiB
      */
     virtual std::vector<std::shared_ptr<UIButton>> getButtonsList() const override { return _buttonsList; }
 };
-
-#endif // __MULTI_BUTTON_DIALOG_H

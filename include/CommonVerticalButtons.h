@@ -1,5 +1,4 @@
-#ifndef __COMMON_VERTICAL_BUTTONS_H
-#define __COMMON_VERTICAL_BUTTONS_H
+#pragma once
 
 #include "FrequencyInputDialog.h"
 #include "ScreenRadioBase.h"
@@ -407,5 +406,3 @@ class CommonVerticalButtons {
         }
     };
 };
-
-#endif // __COMMON_VERTICAL_BUTTONS_H
