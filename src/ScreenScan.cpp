@@ -16,6 +16,11 @@
 #include "defines.h"
 #include "rtVars.h"
 
+// Az állomás detektálásához szükséges SNR (jel-zaj viszony) küszöbértéket.
+// Ez azt jelenti, hogy csak azoknál a mérési pontoknál lesz állomásnak jelölve a frekvencia, ahol az SNR érték legalább ennyi.
+// Ez a küszöbérték határozza meg, hogy mennyire legyen érzékeny az állomáskeresés.
+constexpr uint8_t MIN_STATION_SNR_VALUE = 8;
+
 // ===================================================================
 // Konstruktor és inicializálás
 // ===================================================================
@@ -46,7 +51,12 @@ ScreenScan::ScreenScan() : UIScreen(SCREEN_NAME_SCAN) { // Scan állapot inicial
     // Sáv határok inicializálása
     scanBeginBand = -1;
     scanEndBand = SCAN_RESOLUTION;
-    scanMarkSNR = 3;
+
+    // Az állomás detektálásához szükséges SNR (jel-zaj viszony) küszöbértéket.
+    // Ez azt jelenti, hogy csak azoknál a mérési pontoknál lesz állomásnak jelölve a frekvencia, ahol az SNR érték legalább ennyi.
+    // Ez a küszöbérték határozza meg, hogy mennyire legyen érzékeny az állomáskeresés.
+    scanMarkSNR = MIN_STATION_SNR_VALUE;
+
     scanEmpty = true;
 
     // Mérési konfiguráció
@@ -757,8 +767,9 @@ void ScreenScan::drawSpectrumLine(uint16_t pixelX) {
         }
 
         // Állomás jelzés ellenőrzése
-        if (scanMark[i])
+        if (scanMark[i]) {
             hasStation = true;
+        }
 
         // Frekvencia számítás az adatponthoz
         uint32_t freq = scanStartFreq + (uint32_t)(i * scanStep);
