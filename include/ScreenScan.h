@@ -1,5 +1,5 @@
 /**
- * @file ScanScreen.h
+ * @file ScreenScan.h
  * @brief Spektrum analizátor scan képernyő
  * @details Grafikus frekvencia pásztázás RSSI/SNR megjelenítéssel
  */
@@ -35,18 +35,18 @@ enum class ScanMode {
  * @brief Spektrum analizátor scan képernyő
  * @details Grafikus frekvencia pásztázás valós idejű RSSI/SNR megjelenítéssel
  */
-class ScanScreen : public UIScreen {
+class ScreenScan : public UIScreen {
   public:
     /**
-     * @brief ScanScreen konstruktor
+     * @brief ScreenScan konstruktor
      * @param tft TFT display referencia
      * @param si4735Manager Si4735Manager referencia
      */
-    ScanScreen();
+    ScreenScan();
     /**
      * @brief Destruktor
      */
-    virtual ~ScanScreen() = default;
+    virtual ~ScreenScan() = default;
 
     // UIScreen interface implementáció
     void activate() override;

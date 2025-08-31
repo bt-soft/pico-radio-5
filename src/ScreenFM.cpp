@@ -77,10 +77,10 @@ void ScreenFM::layoutComponents() {
 
     // RDS Program típus közvetlenül az állomásnév alatt
     currentY += 32 + 5; // 18px magasság + 5px kisebb hézag
-    rdsComponent->setProgramTypeArea(Rect(2, currentY, 135, 18));
+    rdsComponent->setProgramTypeArea(Rect(0, currentY, 135, 18));
 
     // Dátum/idő
-    rdsComponent->setDateTimeArea(Rect(2 + 130 + 5, currentY, 105, 18)); // Ugyanaz az Y pozíció, mint a program típus
+    rdsComponent->setDateTimeArea(Rect(0 + 130 + 5, currentY, 105, 18)); // Ugyanaz az Y pozíció, mint a program típus
 
     // RDS Radio text
     currentY += 18 + 5;

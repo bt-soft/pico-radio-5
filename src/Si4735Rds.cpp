@@ -4,32 +4,50 @@
 
 #define VALID_STATION_NAME_MIN_LENGHT 3 // Minimális hossz az érvényes állomásnévhez
 
-// /**
-//  * @brief Lekérdezi az aktuális RDS Program Service (PS) nevet.
-//  * @note Csak a MemmoryDisplay.cpp fájlban használjuk.
-//  * @return String Az állomásnév, vagy üres String, ha nem elérhető.
-//  */
-// String Si4735Rds::getCurrentRdsProgramService() {
+// ===================================================================
+// PTY (Program Type) tábla - Statikus definíciók
+// ===================================================================
 
-//     // Csak FM módban van értelme RDS-t keresni
-//     if (!isCurrentBandFM()) {
-//         return "";
-//     }
+/**
+ * @brief RDS Program Type (PTY) nevek táblája
+ * @details Az RDS standard 32 különböző program típust definiál (0-31).
+ */
+const char *Si4735Rds::RDS_PTY_NAMES[] = {
+    "No defined",            // 0
+    "News",                  // 1
+    "Current affairs",       // 2
+    "Information",           // 3
+    "Sport",                 // 4
+    "Education",             // 5
+    "Drama",                 // 6
+    "Culture",               // 7
+    "Science",               // 8
+    "Varied",                // 9
+    "Pop Music",             // 10
+    "Rock Music",            // 11
+    "Easy Listening",        // 12
+    "Light Classical",       // 13
+    "Serious Classical",     // 14
+    "Other Music",           // 15
+    "Weather",               // 16
+    "Finance",               // 17
+    "Children's Programmes", // 18
+    "Social Affairs",        // 19
+    "Religion",              // 20
+    "Phone-in",              // 21
+    "Travel",                // 22
+    "Leisure",               // 23
+    "Jazz Music",            // 24
+    "Country Music",         // 25
+    "National Music",        // 26
+    "Oldies Music",          // 27
+    "Folk Music",            // 28
+    "Documentary",           // 29
+    "Alarm Test",            // 30
+    "Alarm"                  // 31
+};
 
-//     si4735.getRdsStatus();                                // Frissítsük az RDS állapotát
-//     if (si4735.getRdsReceived() && si4735.getRdsSync()) { // Csak ha van érvényes RDS jel
-//         char *rdsPsName = si4735.getRdsText0A();          // Program Service Name (állomásnév)
-//         if (rdsPsName != nullptr && strlen(rdsPsName) > 0) {
-//             char tempRdsName[STATION_NAME_BUFFER_SIZE]; // STATION_NAME_BUFFER_SIZE a StationData.h-ból
-//             strncpy(tempRdsName, rdsPsName, STATION_NAME_BUFFER_SIZE - 1);
-//             tempRdsName[STATION_NAME_BUFFER_SIZE - 1] = '\0'; // Biztos null-terminálás
-//             Utils::trimSpaces(tempRdsName);                   // Esetleges felesleges szóközök eltávolítása mindkét oldalról
-//             return String(tempRdsName);
-//         }
-//     }
-
-//         return ""; // Nincs érvényes RDS PS név
-// }
+const uint8_t Si4735Rds::RDS_PTY_COUNT = sizeof(Si4735Rds::RDS_PTY_NAMES) / sizeof(Si4735Rds::RDS_PTY_NAMES[0]);
 
 /**
  * @brief Lekérdezi az RDS állomásnevet (Program Service)

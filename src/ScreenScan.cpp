@@ -1,5 +1,5 @@
 /**
- * @file ScanScreen.cpp
+ * @file ScreenScan.cpp
  * @brief Spektrum analizátor scan képernyő implementáció
  *
  * Ez az osztály a spektrum analizátor fő funkcionalitását valósítja meg:
@@ -11,7 +11,7 @@
  * - Intelligens adatmegőrzés zoom műveletekkor
  */
 
-#include "ScanScreen.h"
+#include "ScreenScan.h"
 #include "ScreenManager.h"
 #include "defines.h"
 #include "rtVars.h"
@@ -21,14 +21,14 @@
 // ===================================================================
 
 /**
- * @brief ScanScreen konstruktor
+ * @brief ScreenScan konstruktor
  * @param tft TFT kijelző referencia
  * @param si4735Manager Si4735 rádió chip kezelő
  *
  * Inicializálja az összes scan paraméter alapértelmezett értékével,
  * létrehozza a scan adattömböket és beállítja a UI komponenseket.
  */
-ScanScreen::ScanScreen() : UIScreen(SCREEN_NAME_SCAN) { // Scan állapot inicializálása
+ScreenScan::ScreenScan() : UIScreen(SCREEN_NAME_SCAN) { // Scan állapot inicializálása
     scanState = ScanState::Idle;
     scanMode = ScanMode::Spectrum;
     scanPaused = true;
@@ -80,7 +80,7 @@ ScanScreen::ScanScreen() : UIScreen(SCREEN_NAME_SCAN) { // Scan állapot inicial
  * Inicializálja a scan paramétereket és visszaállítja az alapállapotot,
  * de megőrzi a meglévő scan adatokat ha vannak (pl. screensaver után).
  */
-void ScanScreen::activate() {
+void ScreenScan::activate() {
     UIScreen::activate();
     initializeScan();
     calculateScanParameters();
@@ -98,7 +98,7 @@ void ScanScreen::activate() {
  * Meghívódik amikor elhagyjuk ezt a képernyőt.
  * Leállítja a scant és felszabadítja az erőforrásokat.
  */
-void ScanScreen::deactivate() {
+void ScreenScan::deactivate() {
     stopScan();
     UIScreen::deactivate();
 }
@@ -108,7 +108,7 @@ void ScanScreen::deactivate() {
  *
  * Létrehozza a vízszintes gombsort a képernyő alján.
  */
-void ScanScreen::layoutComponents() {
+void ScreenScan::layoutComponents() {
     // Vízszintes gombsor létrehozása
     createHorizontalButtonBar();
 }
@@ -119,7 +119,7 @@ void ScanScreen::layoutComponents() {
  * Létrehozza a Start/Pause, Zoom+, Zoom-, Reset és Back gombokat
  * a képernyő alján megfelelő eseménykezelőkkel.
  */
-void ScanScreen::createHorizontalButtonBar() {
+void ScreenScan::createHorizontalButtonBar() {
     constexpr int16_t margin = 5;
     uint16_t buttonHeight = UIButton::DEFAULT_BUTTON_HEIGHT;
     uint16_t buttonY = ::SCREEN_H - UIButton::DEFAULT_BUTTON_HEIGHT - margin;
@@ -129,58 +129,88 @@ void ScanScreen::createHorizontalButtonBar() {
     // Start/Pause gomb - scan indítása/megállítása
     uint16_t playPauseX = margin;
     Rect playPauseRect(playPauseX, buttonY, buttonWidth, buttonHeight);
-    playPauseButton = std::make_shared<UIButton>(PLAY_PAUSE_BUTTON_ID, playPauseRect, "Start", UIButton::ButtonType::Pushable, UIButton::ButtonState::Off, [this](const UIButton::ButtonEvent &event) {
-        if (event.state == UIButton::EventButtonState::Clicked) {
-            if (scanPaused) {
-                startScan();
-            } else {
-                pauseScan();
+    playPauseButton = std::make_shared<UIButton>( //
+        PLAY_PAUSE_BUTTON_ID,                     //
+        playPauseRect,                            //
+        "Start",                                  //
+        UIButton::ButtonType::Pushable,           //
+        UIButton::ButtonState::Off,               //
+        [this](const UIButton::ButtonEvent &event) {
+            if (event.state == UIButton::EventButtonState::Clicked) {
+                if (scanPaused) {
+                    startScan();
+                } else {
+                    pauseScan();
+                }
             }
-        }
-    });
+        });
     addChild(playPauseButton);
 
     // Zoom In gomb - spektrum nagyítása
     uint16_t zoomInX = playPauseX + buttonWidth + buttonSpacing;
     Rect zoomInRect(zoomInX, buttonY, buttonWidth, buttonHeight);
-    zoomInButton = std::make_shared<UIButton>(ZOOM_IN_BUTTON_ID, zoomInRect, "Zoom+", UIButton::ButtonType::Pushable, UIButton::ButtonState::Off, [this](const UIButton::ButtonEvent &event) {
-        if (event.state == UIButton::EventButtonState::Clicked) {
-            zoomIn();
-        }
-    });
+    zoomInButton = std::make_shared<UIButton>( //
+        ZOOM_IN_BUTTON_ID,                     //
+        zoomInRect,                            //
+        "Zoom+",                               //
+        UIButton::ButtonType::Pushable,        //
+        UIButton::ButtonState::Off,            //
+        [this](const UIButton::ButtonEvent &event) {
+            if (event.state == UIButton::EventButtonState::Clicked) {
+                zoomIn();
+            }
+        });
     addChild(zoomInButton);
 
     // Zoom Out gomb - spektrum kicsinyítése
     uint16_t zoomOutX = zoomInX + buttonWidth + buttonSpacing;
     Rect zoomOutRect(zoomOutX, buttonY, buttonWidth, buttonHeight);
-    zoomOutButton = std::make_shared<UIButton>(ZOOM_OUT_BUTTON_ID, zoomOutRect, "Zoom-", UIButton::ButtonType::Pushable, UIButton::ButtonState::Off, [this](const UIButton::ButtonEvent &event) {
-        if (event.state == UIButton::EventButtonState::Clicked) {
-            zoomOut();
-        }
-    });
+    zoomOutButton = std::make_shared<UIButton>( //
+        ZOOM_OUT_BUTTON_ID,                     //
+        zoomOutRect,                            //
+        "Zoom-",                                //
+        UIButton::ButtonType::Pushable,         //
+        UIButton::ButtonState::Off,             //
+        [this](const UIButton::ButtonEvent &event) {
+            if (event.state == UIButton::EventButtonState::Clicked) {
+                zoomOut();
+            }
+        });
     addChild(zoomOutButton);
 
     // Reset gomb - teljes visszaállítás
     uint16_t resetX = zoomOutX + buttonWidth + buttonSpacing;
     Rect resetRect(resetX, buttonY, buttonWidth, buttonHeight);
-    resetButton = std::make_shared<UIButton>(RESET_BUTTON_ID, resetRect, "Reset", UIButton::ButtonType::Pushable, UIButton::ButtonState::Off, [this](const UIButton::ButtonEvent &event) {
-        if (event.state == UIButton::EventButtonState::Clicked) {
-            resetScan();
-        }
-    });
+    resetButton = std::make_shared<UIButton>( //
+        RESET_BUTTON_ID,                      //
+        resetRect,                            //
+        "Reset",                              //
+        UIButton::ButtonType::Pushable,       //
+        UIButton::ButtonState::Off,           //
+        [this](const UIButton::ButtonEvent &event) {
+            if (event.state == UIButton::EventButtonState::Clicked) {
+                resetScan();
+            }
+        });
     addChild(resetButton);
 
     // Back gomb - visszalépés a főmenübe (jobbra igazítva)
     uint16_t backButtonWidth = 60;
     uint16_t backButtonX = ::SCREEN_W - backButtonWidth - margin;
     Rect backButtonRect(backButtonX, buttonY, backButtonWidth, buttonHeight);
-    backButton = std::make_shared<UIButton>(BACK_BUTTON_ID, backButtonRect, "Back", UIButton::ButtonType::Pushable, UIButton::ButtonState::Off, [this](const UIButton::ButtonEvent &event) {
-        if (event.state == UIButton::EventButtonState::Clicked) {
-            if (getScreenManager()) {
-                getScreenManager()->goBack();
+    backButton = std::make_shared<UIButton>( //
+        BACK_BUTTON_ID,                      //
+        backButtonRect,                      //
+        "Back",                              //
+        UIButton::ButtonType::Pushable,      //
+        UIButton::ButtonState::Off,          //
+        [this](const UIButton::ButtonEvent &event) {
+            if (event.state == UIButton::EventButtonState::Clicked) {
+                if (getScreenManager()) {
+                    getScreenManager()->goBack();
+                }
             }
-        }
-    });
+        });
     addChild(backButton);
 }
 
@@ -193,7 +223,7 @@ void ScanScreen::createHorizontalButtonBar() {
  * - Frekvencia címkék és sáv határok
  * - Információs panel statikus és dinamikus elemei
  */
-void ScanScreen::drawContent() {
+void ScreenScan::drawContent() {
     tft.fillScreen(TFT_BLACK);
 
     // Cím rajzolása
@@ -231,10 +261,11 @@ void ScanScreen::drawContent() {
  * 50ms-enként frissíti a scant ha aktív.
  * Ez biztosítja a folyamatos spektrum pásztázást.
  */
-void ScanScreen::handleOwnLoop() {
+void ScreenScan::handleOwnLoop() {
     if (scanState == ScanState::Scanning && !scanPaused) {
         uint32_t currentTime = millis();
-        if (currentTime - lastScanTime > 50) { // 50ms késleltetés a mérések között
+        // 50ms késleltetés a mérések között
+        if (currentTime - lastScanTime > 50) {
             updateScan();
             lastScanTime = currentTime;
         }
@@ -255,7 +286,7 @@ void ScanScreen::handleOwnLoop() {
  * - Csak érvényes adatpontokra mozgatja a kurzort
  * - Frissíti a frekvenciát és a kijelzést
  */
-bool ScanScreen::handleTouch(const TouchEvent &event) {
+bool ScreenScan::handleTouch(const TouchEvent &event) {
     // Spektrum terület érintésének ellenőrzése (prioritás!)
     if (event.pressed && event.x >= SCAN_AREA_X && event.x < SCAN_AREA_X + SCAN_AREA_WIDTH && event.y >= SCAN_AREA_Y && event.y < SCAN_AREA_Y + SCAN_AREA_HEIGHT) {
 
@@ -335,7 +366,7 @@ bool ScanScreen::handleTouch(const TouchEvent &event) {
  * - Down (balra): előző pozíció/alacsonyabb frekvencia
  * - Click: zoom nagyítás
  */
-bool ScanScreen::handleRotary(const RotaryEvent &event) {
+bool ScreenScan::handleRotary(const RotaryEvent &event) {
     // Rotary encoder klikk kezelése - zoom in funkció
     if (event.buttonState == RotaryEvent::ButtonState::Clicked) {
         zoomIn(); // Ugyanaz a funkció mint a Zoom+ gomb
@@ -453,7 +484,7 @@ bool ScanScreen::handleRotary(const RotaryEvent &event) {
  * Lekéri az aktuális sáv paramétereit a Si4735Manager-ből
  * és beállítja a scan frekvencia tartományát.
  */
-void ScanScreen::initializeScan() {
+void ScreenScan::initializeScan() {
     if (!pSi4735Manager)
         return;
 
@@ -471,7 +502,7 @@ void ScanScreen::initializeScan() {
  * Kiszámítja a scan lépésközt az aktuális frekvencia tartomány
  * és a felbontás alapján.
  */
-void ScanScreen::calculateScanParameters() {
+void ScreenScan::calculateScanParameters() {
     // Scan lépésköz számítása az aktuális tartomány alapján
     uint32_t totalBandwidth = scanEndFreq - scanStartFreq;
     scanStep = (float)totalBandwidth / SCAN_RESOLUTION;
@@ -490,7 +521,7 @@ void ScanScreen::calculateScanParameters() {
  * - Visszaállítja a zoom szintet 1.0x-ra
  * - Visszaállítja a teljes sáv tartományt
  */
-void ScanScreen::resetScan() {
+void ScreenScan::resetScan() {
     // Scan állapot teljes visszaállítása
     scanState = ScanState::Idle;
     scanPaused = true;
@@ -549,7 +580,7 @@ void ScanScreen::resetScan() {
  * - Frissíti a gomb feliratát "Pause"-ra
  * - Azonnal frissíti a státusz kijelzést
  */
-void ScanScreen::startScan() {
+void ScreenScan::startScan() {
     scanPaused = false;
     scanState = ScanState::Scanning;
     lastScanTime = millis();
@@ -575,7 +606,7 @@ void ScanScreen::startScan() {
  * - Frissíti a gomb feliratát "Start"-ra
  * - Azonnal frissíti a státusz kijelzést
  */
-void ScanScreen::pauseScan() {
+void ScreenScan::pauseScan() {
     scanPaused = true;
 
     // Hang visszakapcsolása pause módban, hogy hallhassuk az aktuális frekvenciát
@@ -596,7 +627,7 @@ void ScanScreen::pauseScan() {
  * Teljesen leállítja a spektrum pásztázást és idle állapotba kapcsol.
  * Ez általában a képernyő elhagyásakor hívódik meg.
  */
-void ScanScreen::stopScan() {
+void ScreenScan::stopScan() {
     scanState = ScanState::Idle;
     scanPaused = true;
     if (playPauseButton) {
@@ -617,7 +648,7 @@ void ScanScreen::stopScan() {
  * - Frissíti a spektrum megjelenítést
  * - Léptet a következő pozícióra
  */
-void ScanScreen::updateScan() {
+void ScreenScan::updateScan() {
     if (!pSi4735Manager || scanPaused || currentScanPos >= SCAN_RESOLUTION) {
         return;
     }
@@ -677,7 +708,7 @@ void ScanScreen::updateScan() {
  * Kirajzolja az összes spektrum vonalat pixel-enkénti felbontásban.
  * Minden pixel reprezentálja egy vagy több mérési pontot.
  */
-void ScanScreen::drawSpectrum() {
+void ScreenScan::drawSpectrum() {
     // Spektrum terület törlése
     tft.fillRect(SCAN_AREA_X, SCAN_AREA_Y, SCAN_AREA_WIDTH, SCAN_AREA_HEIGHT, TFT_COLOR_BACKGROUND);
 
@@ -698,7 +729,7 @@ void ScanScreen::drawSpectrum() {
  * - Állomás jelzők (zöld pontok)
  * - Kurzor pozíció (piros vonal)
  */
-void ScanScreen::drawSpectrumLine(uint16_t pixelX) {
+void ScreenScan::drawSpectrumLine(uint16_t pixelX) {
     if (pixelX >= SCAN_AREA_WIDTH)
         return;
 
@@ -882,7 +913,7 @@ void ScanScreen::drawSpectrumLine(uint16_t pixelX) {
  *
  * Kirajzolja a vízszintes skála vonalat a spektrum alatt.
  */
-void ScanScreen::drawScale() {
+void ScreenScan::drawScale() {
     // Skála vonal a spektrum alatt
     tft.drawLine(SCAN_AREA_X, SCAN_AREA_Y + SCAN_AREA_HEIGHT + 5, SCAN_AREA_X + SCAN_AREA_WIDTH, SCAN_AREA_Y + SCAN_AREA_HEIGHT + 5, TFT_WHITE);
 }
@@ -894,7 +925,7 @@ void ScanScreen::drawScale() {
  * A címkék intelligensen igazodnak: első balra, utolsó jobbra, közepesek középre.
  * MHz és kHz egységeket használ a frekvencia nagyságától függően.
  */
-void ScanScreen::drawFrequencyLabels() {
+void ScreenScan::drawFrequencyLabels() {
     // Régi címkék törlése
     tft.fillRect(SCAN_AREA_X, SCAN_AREA_Y + SCAN_AREA_HEIGHT + 10, SCAN_AREA_WIDTH, 20, TFT_BLACK);
 
@@ -932,7 +963,7 @@ void ScanScreen::drawFrequencyLabels() {
     }
 }
 
-void ScanScreen::drawBandBoundaries() {
+void ScreenScan::drawBandBoundaries() {
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.setFreeFont();
     tft.setTextSize(1);
@@ -959,7 +990,7 @@ void ScanScreen::drawBandBoundaries() {
     }
 }
 
-void ScanScreen::drawScanInfoStatic() {
+void ScreenScan::drawScanInfoStatic() {
     tft.setTextColor(TFT_WHITE, TFT_COLOR_BACKGROUND);
     tft.setFreeFont();
     tft.setTextSize(1);
@@ -983,7 +1014,7 @@ void ScanScreen::drawScanInfoStatic() {
     tft.drawString("dB", 380, INFO_AREA_Y + 15); // dB egység fix helyen
 }
 
-void ScanScreen::drawScanInfo() {
+void ScreenScan::drawScanInfo() {
     tft.setTextColor(TFT_WHITE, TFT_COLOR_BACKGROUND);
     tft.setFreeFont();
     tft.setTextSize(1);
@@ -1039,7 +1070,7 @@ void ScanScreen::drawScanInfo() {
 // ===================================================================
 
 // Közös jel mérés - egyszerre RSSI és SNR
-void ScanScreen::getSignalQuality(int16_t &rssiY, uint8_t &snr) {
+void ScreenScan::getSignalQuality(int16_t &rssiY, uint8_t &snr) {
     if (!pSi4735Manager) {
         rssiY = SCAN_AREA_Y + SCAN_AREA_HEIGHT - 20;
         snr = 0;
@@ -1069,7 +1100,7 @@ void ScanScreen::getSignalQuality(int16_t &rssiY, uint8_t &snr) {
     snr = snrSum / countScanSignal;
 }
 
-void ScanScreen::setFrequency(uint32_t freq) {
+void ScreenScan::setFrequency(uint32_t freq) {
     currentScanFreq = freq;
     // Spektrum analizátor hangol át minden frekvenciára a méréshez!
     if (pSi4735Manager) {
@@ -1085,7 +1116,7 @@ void ScanScreen::setFrequency(uint32_t freq) {
 // Zoom és pozíció számítások
 // ===================================================================
 
-void ScanScreen::zoomIn() {
+void ScreenScan::zoomIn() {
     float newZoom;
 
     // Intelligens zoom szintek: 1.0 → 1.5 → 2.25 → 3.4 → 5.1
@@ -1105,7 +1136,7 @@ void ScanScreen::zoomIn() {
     handleZoom(newZoom);
 }
 
-void ScanScreen::zoomOut() {
+void ScreenScan::zoomOut() {
     float newZoom;
 
     // Intelligens zoom szintek visszafelé: 5.1 → 3.4 → 2.25 → 1.5 → 1.0
@@ -1125,7 +1156,7 @@ void ScanScreen::zoomOut() {
     handleZoom(newZoom);
 }
 
-void ScanScreen::handleZoom(float newZoomLevel) {
+void ScreenScan::handleZoom(float newZoomLevel) {
     if (!pSi4735Manager)
         return;
 
@@ -1339,7 +1370,7 @@ void ScanScreen::handleZoom(float newZoomLevel) {
     }
 }
 
-uint32_t ScanScreen::positionToFreq(uint16_t dataPos) {
+uint32_t ScreenScan::positionToFreq(uint16_t dataPos) {
     if (dataPos >= SCAN_RESOLUTION)
         return scanEndFreq;
 
@@ -1348,7 +1379,7 @@ uint32_t ScanScreen::positionToFreq(uint16_t dataPos) {
     return scanStartFreq + (uint32_t)(ratio * totalBandwidth);
 }
 
-uint16_t ScanScreen::freqToPosition(uint32_t freq) {
+uint16_t ScreenScan::freqToPosition(uint32_t freq) {
     if (freq <= scanStartFreq)
         return 0;
     if (freq >= scanEndFreq)
@@ -1359,7 +1390,7 @@ uint16_t ScanScreen::freqToPosition(uint32_t freq) {
     return (uint16_t)(ratio * SCAN_RESOLUTION);
 }
 
-bool ScanScreen::isDataValid(uint16_t scanPos) const {
+bool ScreenScan::isDataValid(uint16_t scanPos) const {
     // Bounds check
     if (scanPos >= SCAN_RESOLUTION) {
         return false;

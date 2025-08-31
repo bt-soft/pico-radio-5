@@ -125,7 +125,20 @@ class Si4735Rds : public Si4735Band {
      */
     String convertPtyCodeToString(uint8_t ptyCode);
 
-  private: // RDS cache változók
+  private:
+    // ===================================================================
+    // PTY (Program Type) tábla
+    // ===================================================================
+
+    /**
+     * @brief RDS Program Type (PTY) nevek táblája
+     * @details Az RDS standard 32 különböző program típust definiál (0-31).
+     * Minden PTY kódhoz tartozik egy szöveges leírás.
+     */
+    static const char *RDS_PTY_NAMES[];
+    static const uint8_t RDS_PTY_COUNT;
+
+    // RDS cache változók
     String cachedStationName;
     String cachedProgramType;
     String cachedRadioText;

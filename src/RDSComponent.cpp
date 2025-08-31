@@ -2,67 +2,6 @@
 #include "Si4735Manager.h"
 
 // ===================================================================
-// PTY (Program Type) tábla - Statikus definíciók
-// ===================================================================
-
-/**
- * @brief RDS Program Type (PTY) nevek táblája
- * @details Az RDS standard 32 különböző program típust definiál (0-31).
- */
-const char *RDSComponent::RDS_PTY_NAMES[] = {
-    "No defined",            // 0
-    "News",                  // 1
-    "Current affairs",       // 2
-    "Information",           // 3
-    "Sport",                 // 4
-    "Education",             // 5
-    "Drama",                 // 6
-    "Culture",               // 7
-    "Science",               // 8
-    "Varied",                // 9
-    "Pop Music",             // 10
-    "Rock Music",            // 11
-    "Easy Listening",        // 12
-    "Light Classical",       // 13
-    "Serious Classical",     // 14
-    "Other Music",           // 15
-    "Weather",               // 16
-    "Finance",               // 17
-    "Children's Programmes", // 18
-    "Social Affairs",        // 19
-    "Religion",              // 20
-    "Phone-in",              // 21
-    "Travel",                // 22
-    "Leisure",               // 23
-    "Jazz Music",            // 24
-    "Country Music",         // 25
-    "National Music",        // 26
-    "Oldies Music",          // 27
-    "Folk Music",            // 28
-    "Documentary",           // 29
-    "Alarm Test",            // 30
-    "Alarm"                  // 31
-};
-
-const uint8_t RDSComponent::RDS_PTY_COUNT = sizeof(RDSComponent::RDS_PTY_NAMES) / sizeof(RDSComponent::RDS_PTY_NAMES[0]);
-
-// ===================================================================
-// PTY konverzió
-// ===================================================================
-
-/**
- * @brief PTY kód konvertálása szöveges leírássá
- * @param ptyCode A PTY kód (0-31)
- * @return String A PTY szöveges leírása
- */
-String RDSComponent::convertPtyCodeToString(uint8_t ptyCode) {
-    if (ptyCode < RDS_PTY_COUNT) {
-        return String(RDS_PTY_NAMES[ptyCode]);
-    }
-    return "Unknown PTY";
-}
-
-// ===================================================================
 // Konstruktor és inicializálás
 // ===================================================================
 
@@ -321,7 +260,7 @@ void RDSComponent::drawProgramType() {
         return; // Nincs megjeleníthető adat
     }
     tft.setFreeFont();
-    tft.setTextSize(1);
+    tft.setTextSize(2);
     tft.setTextColor(programTypeColor, backgroundColor);
     tft.setTextDatum(MC_DATUM); // Middle Center - vízszintesen és függőlegesen is középre igazítva
 
