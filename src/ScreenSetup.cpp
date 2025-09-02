@@ -77,7 +77,7 @@ void ScreenSetup::handleItemAction(int index, int action) {
 void ScreenSetup::handleSystemInfoDialog() {
     auto systemInfoDialog = std::make_shared<SystemInfoDialog>( //
         this,                                                   //
-        Rect(-1, -1, ::SCREEN_W * 3 / 4, ::SCREEN_H * 3 / 4)    //
+        Rect(-1, -1, ::SCREEN_W * 3 / 4, (::SCREEN_H * 3 / 4) + 10)    //
     );
     this->showDialog(systemInfoDialog);
 }

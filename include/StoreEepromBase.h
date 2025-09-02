@@ -8,7 +8,7 @@
 #include "utils.h"
 
 #ifndef EEPROM_SIZE
-#define EEPROM_SIZE 2048 // Alapértelmezett 2K méret (512-4096 között módosítható)
+#define EEPROM_SIZE 3 * 1024 // Alapértelmezett 3K méret (512-4096 között módosítható)
 #endif
 
 /**
