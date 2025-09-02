@@ -1,6 +1,7 @@
 
 #include "SystemInfoDialog.h"
 #include "EepromLayout.h" // EEPROM konstansokhoz
+#include "utils.h"        // DEBUG makróhoz
 
 /**
  * @brief SystemInfoDialog konstruktor
@@ -107,11 +108,6 @@ String SystemInfoDialog::formatMemoryInfo() {
     // Aktuális memória állapot lekérése
     PicoMemoryInfo::MemoryStatus_t memStatus = PicoMemoryInfo::getMemoryStatus();
 
-    // EEPROM használat számítása
-    uint32_t eepromUsed = EEPROM_AM_STATIONS_ADDR + AM_STATIONS_REQUIRED_SIZE;
-    uint32_t eepromFree = EEPROM_SIZE - eepromUsed;
-    float eepromUsedPercent = (eepromUsed * 100.0f) / EEPROM_SIZE;
-
     String info = "";
     info += "=== Memory Information ===\n\n";
 
@@ -127,8 +123,8 @@ String SystemInfoDialog::formatMemoryInfo() {
 
     info += "EEPROM Storage:\n";
     info += "  Total: " + String(EEPROM_SIZE) + " B\n";
-    info += "  Used: " + String(eepromUsed) + " B (" + String(eepromUsedPercent, 1) + "%)\n";
-    info += "  Free: " + String(eepromFree) + " B";
+    info += "  Used: " + String(EEPROM_TOTAL_USED) + " B (" + String(((float)EEPROM_TOTAL_USED / (float)EEPROM_SIZE) * 100.0f, 1) + "%)\n";
+    info += "  Free: " + String(EEPROM_FREE_SPACE) + " B";
 
     return info;
 }
