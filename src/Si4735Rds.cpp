@@ -269,11 +269,7 @@ bool Si4735Rds::updateRdsDataWithCache() {
     // Timeout ellenőrzés - különböző időzítés a különböző RDS adatokhoz
     if (currentTime - lastValidRdsData > RDS_DATA_TIMEOUT) { // Hosszú timeout után ha nincs érvényes állomásnév, akkor töröljük a cache-t
         if (!cachedStationName.isEmpty()) {
-            cachedStationName = "";
-            cachedProgramType = "";
-            cachedRadioText = "";
-            cachedDate = "";
-            cachedTime = "";
+            // cachedStationName, cachedProgramType, cachedRadioText, cachedDate, cachedTime NEM törlődik timeout-ra, csak explicit adatvesztéskor vagy állomásváltáskor
             dataChanged = true;
         }
     }
