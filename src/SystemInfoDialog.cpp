@@ -83,8 +83,7 @@ String SystemInfoDialog::getCurrentPageContent() {
  * __DATE__ és __TIME__ makróiból származnak.
  */
 String SystemInfoDialog::formatProgramInfo() {
-    String info = "";
-    info += "=== Program Information ===\n";
+    String info = "              === Program Information ===\n";
     info += "Name: " PROGRAM_NAME "\n";
     info += "Version: " PROGRAM_VERSION "\n";
     info += "Author: " PROGRAM_AUTHOR "\n";
@@ -108,8 +107,7 @@ String SystemInfoDialog::formatMemoryInfo() {
     // Aktuális memória állapot lekérése
     PicoMemoryInfo::MemoryStatus_t memStatus = PicoMemoryInfo::getMemoryStatus();
 
-    String info = "";
-    info += "=== Memory Information ===\n\n";
+    String info = "              === Memory Information ===\n\n";
 
     info += "Flash Memory:\n";
     info += "  Total: " + String(FULL_FLASH_SIZE / 1024) + " kB\n";
@@ -138,8 +136,7 @@ String SystemInfoDialog::formatMemoryInfo() {
  * További hardware információk később bővíthetők.
  */
 String SystemInfoDialog::formatHardwareInfo() {
-    String info = "";
-    info += "=== Hardware Information ===\n";
+    String info = "              === Hardware Information ===\n";
     info += "MCU: RP2040 @ " + String(F_CPU / 1000000) + "MHz\n";
     info += "Display: TFT " + String(tft.width()) + "x" + String(tft.height()) + "\n\n";
     return info;
@@ -153,8 +150,7 @@ String SystemInfoDialog::formatHardwareInfo() {
  * valós chip státusz lekérdezéssel, verzió információkkal, stb.
  */
 String SystemInfoDialog::formatSi4735Info() {
-    String info = "";
-    info += "=== Radio Information ===\n";
+    String info = "              === Radio Information ===\n";
     info += "Chip: Si4735\n";
     info += "Status: (To be implemented)\n";
     return info;
