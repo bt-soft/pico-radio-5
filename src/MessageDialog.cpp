@@ -31,7 +31,7 @@ MessageDialog::MessageDialog(UIScreen *parentScreen, const char *title, const ch
         tft.setFreeFont(&FreeSansBold9pt7b);       // Üzenet fontja a magasság kalkulációhoz
         tft.setTextSize(1);                        // Üzenet szövegmérete a magasság kalkulációhoz
         int16_t textHeight = tft.fontHeight() * 2; // Durva becslés 2 sorra (állítható)
-        // IMPLEMENTÁLANDÓ: Pontosabb szövegmagasság számítás a layoutDialogContent-ben
+                // IMPLEMENTÁLANDÓ: Pontosabb szövegmagasság számítás a layoutDialogContent-ben
         uint16_t requiredHeight = getHeaderHeight() + PADDING + textHeight + PADDING + UIButton::DEFAULT_BUTTON_HEIGHT + (2 * PADDING); // Megduplázott alsó PADDING
         if (finalDialogBounds.height < requiredHeight) {
             finalDialogBounds.height = requiredHeight;

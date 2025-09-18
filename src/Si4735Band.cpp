@@ -331,16 +331,16 @@ void Si4735Band::setAfBandWidth() {
 
     } else if (isCurrentDemodFM()) { // FM mód
         /**
-         * @brief Sets the Bandwith on FM mode
-         * @details Selects bandwidth of channel filter applied at the demodulation stage. Default is automatic which means the device automatically selects proper
-         * channel filter. <BR>
-         * @details | Filter  | Description |
+         * @brief Beállítja a sávszélességet FM módban
+         * @details Kiválasztja a demodulációs fokozatban alkalmazott csatornaszűrő sávszélességét. Az alapértelmezett az automatikus, ami azt jelenti, hogy az eszköz automatikusan kiválasztja a megfelelő
+         * csatornaszűrőt. <BR>
+         * @details | Szűrő  | Leírás |
          * @details | ------- | -------------|
-         * @details |    0    | Automatically select proper channel filter (Default) |
-         * @details |    1    | Force wide (110 kHz) channel filter |
-         * @details |    2    | Force narrow (84 kHz) channel filter |
-         * @details |    3    | Force narrower (60 kHz) channel filter |
-         * @details |    4    | Force narrowest (40 kHz) channel filter |
+         * @details |    0    | Automatikusan kiválasztja a megfelelő csatornaszűrőt (Alapértelmezett) |
+         * @details |    1    | Széles (110 kHz) csatornaszűrő kényszerítése |
+         * @details |    2    | Keskeny (84 kHz) csatornaszűrő kényszerítése |
+         * @details |    3    | Keskenyebb (60 kHz) csatornaszűrő kényszerítése |
+         * @details |    4    | Legkeskenyebb (40 kHz) csatornaszűrő kényszerítése |
          *
          * @param filter_value
          */

@@ -83,7 +83,7 @@ class UIButton : public UIComponent {
             resultColors.border = this->currentButtonScheme.disabledBorder;
             resultColors.text = this->currentButtonScheme.disabledForeground;
             resultColors.led = this->currentButtonScheme.ledOffColor;
-            // IMPLEMENTÁLANDÓ: A disabled állapot LED-jének láthatóságát még átvezetni a kódon
+                        // IMPLEMENTÁLANDÓ: A disabled állapot LED-jének láthatóságát még átvezetni a kódon
 
         } else if (this->pressed) {
             resultColors.background = this->currentButtonScheme.pressedBackground; // Gradiens alapja

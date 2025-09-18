@@ -48,7 +48,7 @@ struct ButtonColorScheme : public ColorScheme {
     uint16_t ledOnColor = TFT_GREEN;     // Gomb LED színe ON állapotban (alapértelmezett: TFT_GREEN)
     uint16_t ledOffColor = TFT_DARKGREY; // Gomb LED színe OFF állapotban (alapértelmezett: TFT_DARKGREY)
 
-    // IMPLEMENTÁLANDÓ: A disabled állapot LED-jének láthatóságát még átvezetni a kódon
+        // IMPLEMENTÁLANDÓ: A disabled állapot LED-jének láthatóságát még átvezetni a kódon
     uint16_t disabledLedOnColor = TFT_DARKGREEN; // Letiltott gomb LED színe ON állapotban (ha szükséges, de alapértelmezett a ledOnColor)
     uint16_t disabledLedOffColor = TFT_BLACK;    // Letiltott gomb LED színe (ha szükséges, de alapértelmezett a ledOffColor)
 
