@@ -493,7 +493,7 @@ void ScreenMemory::showStationExistsDialog() {
     String freqStr = formatFrequency(currentStation.frequency, isFmMode);
     String modStr = getModulationName(currentStation.modulation);
 
-    String message = "Station already exists in memory:\n" + freqStr + " " + modStr;
+    String message = "Station already exists in memory:" + freqStr + " " + modStr;
     auto infoDialog = std::make_shared<MessageDialog>(this, "Station Exists", message.c_str(), MessageDialog::ButtonsType::Ok, Rect(-1, -1, 280, 0));
     infoDialog->setDialogCallback([this](UIDialogBase *dialog, UIDialogBase::DialogResult result) {
         // Nincs teendő, csak tájékoztatás
@@ -610,7 +610,7 @@ StationData ScreenMemory::getCurrentStationData() {
         station.bandIndex = config.data.currentBandIdx; // Band index a config-ból
         station.frequency = currentBand.currFreq;
         station.modulation = currentBand.currDemod;
-        station.bandwidthIndex = 0; // TODO: Ha van bandwidth index tárolás
+        station.bandwidthIndex = 0; // IMPLEMENTÁLANDÓ: Ha van bandwidth index tárolás
     }
 
     return station;

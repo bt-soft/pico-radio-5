@@ -1,4 +1,3 @@
-
 #include "ValueChangeDialog.h"
 #include "UIColorPalette.h"
 #include "UIScreen.h"
@@ -299,7 +298,7 @@ void ValueChangeDialog::drawSelf() {
         tft.setTextDatum(TC_DATUM);                             // Top-Center igazítás
         // Szélesség korlátozása a szövegnek, hogy ne lógjon ki
         // uint16_t messageMaxWidth = contentBounds.width - (2 * (PADDING + 5)); // 5px extra margó mindkét oldalon
-        // TODO: Szükség esetén szövegtördelés implementálása, ha a szöveg túl hosszú
+        // IMPLEMENTÁLANDÓ: Szükség esetén szövegtördelés implementálása, ha a szöveg túl hosszú
         tft.drawString(this->message, centerX, messageY); // A font már be van állítva a setFreeFont hívással
     }
 

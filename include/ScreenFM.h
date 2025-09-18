@@ -75,7 +75,7 @@ class ScreenFM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
      * Szinkronizálási pontok:
      * - Mute gomb <-> rtv::muteStat állapot
      * - AM gomb <-> aktuális band típus
-     * - AGC/Attenuator gombok <-> Si4735 állapotok (TODO)
+     * - AGC/Attenuator gombok <-> Si4735 állapotok (IMPLEMENTÁLANDÓ)
      */
     virtual void activate() override;
 

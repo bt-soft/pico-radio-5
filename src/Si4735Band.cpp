@@ -367,7 +367,7 @@ void Si4735Band::tuneMemoryStation(uint8_t bandIndex, uint16_t frequency, uint8_
     uint8_t savedMod = demodModIndex; // A demodulációs mód kiemelése
 
     if (savedMod != CW_DEMOD_TYPE and rtv::CWShift == true) {
-        // TODO: ezt még kidolgozni
+        // TODO: Ezt a részt még részletesebben ki kell dolgozni a CW és más módok közötti váltás kezelésére.
         rtv::CWShift = false;
     }
 

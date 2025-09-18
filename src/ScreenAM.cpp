@@ -103,21 +103,21 @@ ScreenAM::~ScreenAM() { DEBUG("ScreenAM::~ScreenAM() - Destruktor hívása\n"); 
  *
  * A dinamikus tartalom (pl. S-Meter érték, frekvencia) a loop()-ban frissül.
  *
- * **TODO implementációk**:
+ * **IMPLEMENTÁLANDÓ**:
  * - S-Meter skála: RSSI alapú AM skála (0-60 dB tartomány)
  * - Band indikátor: Aktuális band típus megjelenítése
  * - Frekvencia egység: kHz/MHz megfelelő formátumban
  */
 void ScreenAM::drawContent() {
-    // TODO: S-Meter statikus skála kirajzolása AM módban
+    // IMPLEMENTÁLANDÓ: S-Meter statikus skála kirajzolása AM módban
     // if (smeterComp) {
     //     smeterComp->drawAmeterScale(); // AM-specifikus skála
     // }
 
-    // TODO: Band információs terület kirajzolása
+    // IMPLEMENTÁLANDÓ: Band információs terület kirajzolása
     // drawBandInfoArea();
 
-    // TODO: Statikus címkék és UI elemek
+    // IMPLEMENTÁLANDÓ: Statikus címkék és UI elemek
     // drawStaticLabels();
 
     // Spektrum vizualizáció komponens border frissítése
@@ -142,8 +142,8 @@ void ScreenAM::drawContent() {
  *
  * **Szinkronizált állapotok**:
  * - MUTE gomb ↔ rtv::muteStat
- * - AGC gomb ↔ Si4735 AGC állapot (TODO)
- * - ATTENUATOR gomb ↔ Si4735 attenuator állapot (TODO)
+ * - AGC gomb ↔ Si4735 AGC állapot (IMPLEMENTÁLANDÓ)
+ * - ATTENUATOR gomb ↔ Si4735 attenuator állapot (IMPLEMENTÁLANDÓ)
  */
 void ScreenAM::activate() {
     DEBUG("ScreenAM::activate() - Képernyő aktiválása\n");
@@ -368,7 +368,7 @@ void ScreenAM::onDialogClosed(UIDialogBase *closedDialog) {
     if (!isDialogActive()) {
         updateAllVerticalButtonStates();      // Függőleges gombok szinkronizálása
         updateCommonHorizontalButtonStates(); // Közös gombok szinkronizálása
-        updateHorizontalButtonStates();       // AM specifikus gombok szinkronizálása
+        updateHorizontalButtonStates();       // AM-specifikus gombok szinkronizálása
         updateFreqDisplayWidth();             // FreqDisplay szélességének frissítése
 
         // A gombsor konténer teljes újrarajzolása, hogy biztosan megjelenjenek a gombok
@@ -576,7 +576,7 @@ void ScreenAM::handleBFOButton(const UIButton::ButtonEvent &event) {
 }
 
 /**
- * @brief AfBW gomb eseménykezelő - Audio Frequency Bandwidth
+ * @brief AfBW gomb eseménykezelő - Audio Filter Bandwidth
  * @param event Gomb esemény (Clicked)
  * @details AM specifikus funkcionalitás - sávszélesség váltás
  */

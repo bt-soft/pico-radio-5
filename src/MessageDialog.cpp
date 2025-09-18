@@ -1,4 +1,3 @@
-
 #include <vector>
 
 #include "MessageDialog.h"
@@ -15,7 +14,7 @@
  *          A gombok típusa meghatározza, hogy milyen gombok jelennek meg a dialógusban.
  */
 MessageDialog::MessageDialog(UIScreen *parentScreen, const char *title, const char *message, ButtonsType buttonsType, const Rect &initialInputBounds, const ColorScheme &cs,
-                             bool okClosesDialog)
+                             bool okClosesDialog) 
     : UIDialogBase(parentScreen, title, initialInputBounds, cs), message(message), buttonsType(buttonsType), _okClosesDialog(okClosesDialog) {
 
     // Dialógus tartalmának létrehozása és elrendezése
@@ -32,7 +31,7 @@ MessageDialog::MessageDialog(UIScreen *parentScreen, const char *title, const ch
         tft.setFreeFont(&FreeSansBold9pt7b);       // Üzenet fontja a magasság kalkulációhoz
         tft.setTextSize(1);                        // Üzenet szövegmérete a magasság kalkulációhoz
         int16_t textHeight = tft.fontHeight() * 2; // Durva becslés 2 sorra (állítható)
-        // TODO: Pontosabb szövegmagasság számítás a layoutDialogContent-ben
+        // IMPLEMENTÁLANDÓ: Pontosabb szövegmagasság számítás a layoutDialogContent-ben
         uint16_t requiredHeight = getHeaderHeight() + PADDING + textHeight + PADDING + UIButton::DEFAULT_BUTTON_HEIGHT + (2 * PADDING); // Megduplázott alsó PADDING
         if (finalDialogBounds.height < requiredHeight) {
             finalDialogBounds.height = requiredHeight;
@@ -86,7 +85,7 @@ MessageDialog::MessageDialog(UIScreen *parentScreen, const char *title, const ch
  * @param okClosesDialog Meghatározza, hogy az "OK" típusú gombok bezárják-e a dialógust.
  */
 MessageDialog::MessageDialog(UIScreen *parentScreen, const char *title, const char *message, const char *const *options, uint8_t numOptions, DialogCallback userDialogCb,
-                             const Rect &ctorInputBounds, const ColorScheme &cs, bool okClosesDialog)
+                             const Rect &ctorInputBounds, const ColorScheme &cs, bool okClosesDialog) 
     : UIDialogBase(parentScreen, title, ctorInputBounds, cs), // UIDialogBase kezeli a kezdeti x,y,w,h alapértelmezéseket
       message(message), buttonsType(ButtonsType::UserDefined), _okClosesDialog(okClosesDialog), _userOptions(options), _numUserOptions(numOptions),
       _userDialogCallback(userDialogCb) {
