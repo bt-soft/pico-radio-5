@@ -527,6 +527,11 @@ bool FreqDisplay::handleTouch(const TouchEvent &event) {
         return false;
     }
 
+    // Csak lenyomásnál reagálunk (press esemény), felengedésnél nem
+    if (!event.pressed) {
+        return false;
+    }
+
     // Digit érintés ellenőrzése
     for (int i = 0; i < 3; i++) {
         if (event.x >= ssbCwTouchDigitAreas[i][0] && event.x < ssbCwTouchDigitAreas[i][1]) {
@@ -551,7 +556,7 @@ bool FreqDisplay::handleTouch(const TouchEvent &event) {
                 markForRedraw();
             }
 
-            // Csippantunk egyet, ha az engedélyezve van
+            // Csippantunk egyet, de csak lenyomáskor (press esemény)
             if (config.data.beeperEnabled) {
                 Utils::beepTick();
             }
