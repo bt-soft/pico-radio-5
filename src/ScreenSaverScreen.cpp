@@ -263,7 +263,9 @@ bool ScreenScreenSaver::handleTouch(const TouchEvent &event) {
         return true;
     }
     return false;
-} /**
+} 
+
+/**
    * @brief Forgó encoder esemény kezelése
    * @param event Forgó encoder esemény adatok
    * @return true ha kezelte az eseményt (mindig), false egyébként
