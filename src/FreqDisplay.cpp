@@ -550,6 +550,12 @@ bool FreqDisplay::handleTouch(const TouchEvent &event) {
 
                 markForRedraw();
             }
+
+            // Csippantunk egyet, ha az engedélyezve van
+            if (config.data.beeperEnabled) {
+                Utils::beepTick();
+            }
+
             return true;
         }
     }

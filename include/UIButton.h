@@ -3,6 +3,8 @@
 #include <functional>
 
 #include "UIComponent.h"
+#include "utils.h"
+#include "Config.h"
 
 /**
  * @brief UI Button komponens
@@ -746,6 +748,11 @@ class UIButton : public UIComponent {
         pressStartTime = 0;
         longPressThresholdMet = false;
         // longPressEventFired már false, vagy ha true volt, fentebb kiléptünk
+
+        // Csippantunk egyet, ha az engedélyezve van
+        if (config.data.beeperEnabled) {
+            Utils::beepTick();
+        }
 
         return true; // Visszatérünk, hogy a kattintás kezelve lett
     }

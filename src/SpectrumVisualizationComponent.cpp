@@ -354,6 +354,12 @@ bool SpectrumVisualizationComponent::handleTouch(const TouchEvent &touch) {
     if (touch.pressed && isPointInside(touch.x, touch.y)) {
         lastTouchTime_ = millis();
         cycleThroughModes();
+
+        // Csippantunk egyet, ha az engedélyezve van
+        if (config.data.beeperEnabled) {
+            Utils::beepTick();
+        }
+
         return true;
     }
     return false;
