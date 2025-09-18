@@ -395,7 +395,7 @@ void RDSComponent::draw() {
     drawRadioText();
     drawDateTime();
 
-    // Clear the redraw flag after drawing
+    // Rajzolás után töröljük az újrarajzolási jelzőt
     needsRedraw = false;
 }
 

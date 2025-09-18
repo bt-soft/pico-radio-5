@@ -116,9 +116,9 @@ class SpectrumVisualizationComponent : public UIComponent {
     DisplayMode currentMode_;
     DisplayMode lastRenderedMode_;
     bool modeIndicatorVisible_;
-    bool modeIndicatorDrawn_;   // Flag to avoid redrawing the indicator unnecessarily
-    bool frequencyLabelsDrawn_; // Flag to avoid redrawing frequency labels unnecessarily
-    bool needBorderDrawn;       // Flag to indicate if the border needs to be redrawn
+    bool modeIndicatorDrawn_;   // flag, hogy elkerüljük a jelző felesleges újrarajzolását
+    bool frequencyLabelsDrawn_; // flag, hogy elkerüljük a frekvencia címkék felesleges újrarajzolását
+    bool needBorderDrawn;       // flag, ami jelzi, ha a keretet újra kell rajzolni
     uint32_t modeIndicatorHideTime_;
     uint32_t lastTouchTime_;
     uint32_t lastFrameTime_; // FPS limitáláshoz

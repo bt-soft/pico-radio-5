@@ -2,10 +2,10 @@
 
 #include <Arduino.h>
 
-struct Config_t;        // Forward declare Config_t to break the include cycle
-struct BandStoreData_t; // Forward declare BandStoreData_t for band debug
+struct Config_t;        // Elődeklaráció a Config_t-hez, hogy megszakítsuk az include ciklust
+struct BandStoreData_t; // Elődeklaráció a BandStoreData_t-hez a sáv debuggolásához
 
-// Include StationData for list types
+// StationData include a lista típusokhoz
 #include "StationData.h" // FmStationList_t, AmStationList_t, StationData definíciók
 
 // A Config.h-t itt már nem includoljuk, mert az körkörös függőséget okoz.

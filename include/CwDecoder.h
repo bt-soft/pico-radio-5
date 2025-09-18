@@ -1,11 +1,11 @@
 #pragma once
 
 #include <Arduino.h>
-#include <cstring> // For strcmp
-#include <map>     // For the Morse code table
-#include <string>  // For std::string in the map
+#include <cstring> // strcmp-hez
+#include <map>     // A morze kód táblához
+#include <string>  // std::string használatához a map-ben
 
-// Custom comparator for C-style strings (const char*)
+// Egyedi összehasonlító C-stílusú stringekhez (const char*)
 struct CStringCompare {
     bool operator()(const char *a, const char *b) const { return std::strcmp(a, b) < 0; }
 };
