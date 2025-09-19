@@ -191,7 +191,7 @@ void AudioCore1Manager::core1AudioLoop() {
                 static uint32_t lastDebugPrint = 0;
                 uint32_t nowDebug = millis();
                 if (nowDebug - lastDebugPrint >= 5000) {
-                    DEBUG("AudioCore1Manager: pAudioProcessor_->process(%s) futásidő: %s\n", collectOsci_ ? "true" : "false", Utils::elapsedUSecStr(t0, micros()).c_str());
+                    DEBUG("AudioCore1Manager: pAudioProcessor_->process(collectOsci_: %s) futásidő: %s\n", collectOsci_ ? "true" : "false", Utils::elapsedUSecStr(t0, micros()).c_str());
                     lastDebugPrint = nowDebug;
                 }
 

@@ -46,7 +46,7 @@ void ScreenAM::processAudioDecoder() {
 
             // Ha a CW dekóder mód aktív
             if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
-                // ScreenAM::that->cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
+                ScreenAM::that->cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
             }
         }
     }
