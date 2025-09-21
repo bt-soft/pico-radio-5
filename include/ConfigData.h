@@ -65,6 +65,7 @@ struct Config_t {
     // RTTY frekvenciák
     uint16_t rttyMarkFrequencyHz; // RTTY Mark frekvencia Hz-ben
     uint16_t rttyShiftHz;         // RTTY Shift Hz-ben
+    bool cwRttyLedDebugEnabled;   // CW/RTTY LED debug jelzés engedélyezése
 
     // Audio processing beállítások
     uint8_t audioModeAM; // Utolsó audio mód AM képernyőn (AudioComponentType)

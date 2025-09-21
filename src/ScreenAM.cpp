@@ -4,7 +4,7 @@
 
 #include <RPi_Pico_TimerInterrupt.h>
 extern RPI_PICO_Timer audioDecoderTimer;
-constexpr int AUDIO_DECODER_TIMER_INTERVAL = 10; // Audio dekóder időzítő intervallum (másodpercben)
+constexpr int AUDIO_DECODER_TIMER_INTERVAL = 3; // Audio dekóder időzítő intervallum (milliszekundumban) - javítva 10-ről 3-ra
 
 bool ScreenAM::audioDecoderRun = false;
 ScreenAM *ScreenAM::that = nullptr;
@@ -22,33 +22,70 @@ bool audioDecoderTimerHardwareInterruptHandler(struct repeating_timer *t) {
 }
 
 /**
- *
+ * @brief Javított audio dekóder feldolgozás - optimalizált és hibakezeléssel
  */
 void ScreenAM::processAudioDecoder() {
 
-    if (ScreenAM::that == nullptr || ScreenAM::that->spectrumComp == nullptr || ScreenAM::that->cwDecoder == nullptr) {
-        DEBUG("ScreenAM::processAudioDecoder() - ScreenAM::that vagy a spectrumComp vagy a cwDecoder nullptr\n");
+    // Null pointer ellenőrzések error handling-gel
+    if (ScreenAM::that == nullptr) {
+        DEBUG("ScreenAM::processAudioDecoder() - HIBA: ScreenAM::that nullptr\n");
         return;
     }
 
-    // Lekérjük a jelenlegi spektrum vizualizáció módot
+    if (ScreenAM::that->spectrumComp == nullptr) {
+        DEBUG("ScreenAM::processAudioDecoder() - HIBA: spectrumComp nullptr\n");
+        return;
+    }
+
+    if (ScreenAM::that->cwDecoder == nullptr) {
+        DEBUG("ScreenAM::processAudioDecoder() - HIBA: cwDecoder nullptr\n");
+        return;
+    }
+
+    // Lekérjük a jelenlegi spektrum vizualizáció módot (egyszeri ellenőrzés)
     SpectrumVisualizationComponent::DisplayMode currentMode = ScreenAM::that->spectrumComp->getCurrentMode();
 
-    // Csak akkor dolgozunk, ha a vizualizáció aktív
-    if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
-        const float *magnitudeData = nullptr;
-        uint16_t fftSize = 0;
-        float binWidth = 0.0f;
-        float autoGain = 1.0f;
+    // Csak CW Waterfall módban dolgozunk
+    if (currentMode != SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+        return; // Gyors kilépés ha nem CW mód
+    }
 
-        // ***  A nem-fogyasztó gettert használjuk a dekóderhez ***
-        if (AudioCore1Manager::getLatestSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
+    // FFT adatok lekérése
+    const float *magnitudeData = nullptr;
+    uint16_t fftSize = 0;
+    float binWidth = 0.0f;
+    float autoGain = 1.0f;
 
-            // Ha a CW dekóder mód aktív
-            if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
-                ScreenAM::that->cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
-            }
+    // Error handling az FFT adatok lekéréséhez
+    if (!AudioCore1Manager::getLatestSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
+        // Nincsenek új FFT adatok - ez normális lehet
+        static unsigned long lastWarning = 0;
+        unsigned long now = millis();
+        if (now - lastWarning > 5000) { // 5 másodpercenként egy figyelmeztetés
+            DEBUG("ScreenAM::processAudioDecoder() - Nincs új FFT adat 5 sec óta\n");
+            lastWarning = now;
         }
+        return;
+    }
+
+    // Validálás: FFT adatok érvényessége
+    if (magnitudeData == nullptr || fftSize == 0 || binWidth <= 0.0f) {
+        DEBUG("ScreenAM::processAudioDecoder() - HIBA: Érvénytelen FFT adatok (ptr:%p, size:%u, binWidth:%s)\n", magnitudeData, fftSize, Utils::floatToString(binWidth).c_str());
+        return;
+    }
+
+    // CW dekóder feldolgozás (az ellenőrzés már megtörtént)
+    ScreenAM::that->cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
+
+    // Performance monitoring (debug célokra)
+    static unsigned long callCount = 0;
+    static unsigned long lastPerfReport = millis();
+    callCount++;
+    unsigned long now = millis();
+    if (now - lastPerfReport > 10000) { // 10 másodpercenként
+        DEBUG("[PERF] processAudioDecoder hívások: %lu / 10sec (átlag: %s ms/hívás)\n", callCount, Utils::floatToString(10000.0f / callCount).c_str());
+        callCount = 0;
+        lastPerfReport = now;
     }
 }
 

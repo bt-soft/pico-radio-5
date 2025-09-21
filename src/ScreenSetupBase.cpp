@@ -44,6 +44,7 @@ void ScreenSetupBase::createCommonUI(const char *title) {
         exitButtonBounds, "Back", UIButton::ButtonType::Pushable, UIButton::ButtonState::Off, [this](const UIButton::ButtonEvent &event) {
             // Lambda callback: Back gomb megnyomásakor visszatérés az előző képernyőre
             if (event.state == UIButton::EventButtonState::Clicked && getScreenManager()) {
+                config.checkSave(); // Save config on exit
                 getScreenManager()->goBack();
             }
         });

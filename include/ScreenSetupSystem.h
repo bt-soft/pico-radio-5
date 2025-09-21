@@ -30,9 +30,6 @@ class ScreenSetupSystem : public ScreenSetupBase {
     void handleBrightnessDialog(int index);
     void handleSaverTimeoutDialog(int index);
     void handleToggleItem(int index, bool &configValue);
-    void handleContrastDialog(int index);
-    void handleColorSchemeDialog(int index);
-    void handleFontSizeDialog(int index);
 
   protected:
     // SetupScreenBase virtuális metódusok implementációja

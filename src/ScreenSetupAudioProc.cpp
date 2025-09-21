@@ -32,6 +32,8 @@ void ScreenSetupAudioProc::populateMenuItems() {
     settingItems.push_back(SettingItem("FFT Gain AM", decodeFFTGain(config.data.audioFftConfigAm), static_cast<int>(AudioProcItemAction::FFT_GAIN_AM)));
     settingItems.push_back(SettingItem("FFT Gain FM", decodeFFTGain(config.data.audioFftConfigFm), static_cast<int>(AudioProcItemAction::FFT_GAIN_FM)));
 
+    settingItems.push_back(SettingItem("CW/RTTY LED Debug", String(config.data.cwRttyLedDebugEnabled ? "ON" : "OFF"), static_cast<int>(AudioProcItemAction::CW_RTTY_LED_DEBUG)));
+
     // Lista komponens újrarajzolásának kérése, ha létezik
     if (menuList) {
         menuList->markForRedraw();
@@ -47,24 +49,34 @@ void ScreenSetupAudioProc::populateMenuItems() {
  * @param action Az akció azonosító
  */
 void ScreenSetupAudioProc::handleItemAction(int index, int action) {
+
     AudioProcItemAction audioProcAction = static_cast<AudioProcItemAction>(action);
 
     switch (audioProcAction) {
         case AudioProcItemAction::CW_RECEIVER_OFFSET:
             handleCwOffsetDialog(index);
             break;
+
         case AudioProcItemAction::RTTY_SHIFT:
             handleRttyShiftDialog(index);
             break;
+
         case AudioProcItemAction::RTTY_MARK_FREQUENCY:
             handleRttyMarkFrequencyDialog(index);
             break;
+
         case AudioProcItemAction::FFT_GAIN_AM:
             handleFFTGainDialog(index, true);
             break;
+
         case AudioProcItemAction::FFT_GAIN_FM:
             handleFFTGainDialog(index, false);
             break;
+
+        case AudioProcItemAction::CW_RTTY_LED_DEBUG:
+            handleToggleItem(index, config.data.cwRttyLedDebugEnabled);
+            break;
+
         case AudioProcItemAction::NONE:
         default:
             DEBUG("ScreenSetupAudioProc: Unknown action: %d\n", action);
@@ -242,4 +254,19 @@ void ScreenSetupAudioProc::handleFFTGainDialog(int index, bool isAM) {
         },
         false, defaultSelection, false, Rect(-1, -1, 340, 120));
     this->showDialog(fftDialog);
+}
+
+/**
+ * @brief Boolean beállítások váltása
+ *
+ * @param index A menüpont indexe
+ * @param configValue Referencia a módosítandó boolean értékre
+ */
+void ScreenSetupAudioProc::handleToggleItem(int index, bool &configValue) {
+    configValue = !configValue;
+
+    if (index >= 0 && index < settingItems.size()) {
+        settingItems[index].value = String(configValue ? "ON" : "OFF");
+        updateListItem(index);
+    }
 }

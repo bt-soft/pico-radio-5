@@ -23,6 +23,7 @@ class ScreenSetupAudioProc : public ScreenSetupBase {
         RTTY_MARK_FREQUENCY,
         FFT_GAIN_AM,
         FFT_GAIN_FM,
+        CW_RTTY_LED_DEBUG, // CW/RTTY LED debug jelzés engedélyezése
     };
 
     // Segédfüggvények
@@ -33,6 +34,7 @@ class ScreenSetupAudioProc : public ScreenSetupBase {
     void handleRttyShiftDialog(int index);
     void handleRttyMarkFrequencyDialog(int index);
     void handleFFTGainDialog(int index, bool isAM);
+    void handleToggleItem(int index, bool &configValue);
 
   protected:
     // SetupScreenBase virtuális metódusok implementációja
