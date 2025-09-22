@@ -1213,7 +1213,7 @@ uint16_t SpectrumVisualizationComponent::valueToWaterfallColor(float val, float 
  */
 void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
 
-    // CW: A config.data.cwReceiverOffsetHz +- 600 Hz körüli CW frekvencia a hangolássegéd sávszélessége
+    // CW: A config.data.cwToneFrequencyHz +- 600 Hz körüli CW frekvencia a hangolássegéd sávszélessége
     constexpr float CW_TUNING_AID_SPAN_HZ = 600.0f;
 
     // RTTY: A minimum frekvencia: min(f_mark, f_space) - 200 Hz, a maximum frekvencia: max(f_mark, f_space) + 200 Hz.
@@ -1229,7 +1229,7 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
 
         if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
             // CW: 600 Hz span a CW offset frekvencia körül
-            uint16_t centerFreq = config.data.cwReceiverOffsetHz;
+            uint16_t centerFreq = config.data.cwToneFrequencyHz;
             currentTuningAidMinFreqHz_ = centerFreq - CW_TUNING_AID_SPAN_HZ / 2;
             currentTuningAidMaxFreqHz_ = centerFreq + CW_TUNING_AID_SPAN_HZ / 2;
         } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
@@ -1364,7 +1364,7 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
                 uint16_t label_y = graphH > 2 ? graphH - 2 : 0;
                 sprite_->fillRect(line_x - 25, label_y - 8, 50, 10, TFT_BLACK);
                 sprite_->setTextColor(TUNING_AID_CW_TARGET_COLOR, TFT_BLACK);
-                sprite_->drawString(String(config.data.cwReceiverOffsetHz) + "Hz", line_x, label_y);
+                sprite_->drawString(String(config.data.cwToneFrequencyHz) + "Hz", line_x, label_y);
 
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
                 uint16_t f_mark = config.data.rttyMarkFrequencyHz;
@@ -1537,10 +1537,10 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
     switch (mode) {
         case DisplayMode::CWWaterfall:
-            return 1024; // Nagyobb felbontás a CW jel pontos detektálásához
+            return 64; // Kis FFT méret a CW jel gyors detektálásához (speed > felbontás)
 
         case DisplayMode::RTTYWaterfall:
-            return 256; // Maximum felbontás a spektrum analizáláshoz
+            return 256; // RTTY jelhez elegendő a közepes felbontás
 
         case DisplayMode::SpectrumHighRes:
             return 256; // Magas felbontású spektrum, ~150px széles a grafikon, így elég 256 FFT méret

@@ -232,7 +232,7 @@ void Si4735Band::useBand(bool useDefaults) {
             // BFO beállítása
 
             // CW mód: Fix BFO offset (pl. 700 Hz) + manuális finomhangolás
-            const int16_t cwBaseOffset = isCWMode ? config.data.cwReceiverOffsetHz : 0;
+            const int16_t cwBaseOffset = isCWMode ? config.data.cwToneFrequencyHz : 0;
             // Alap CW eltolás a configból
             si4735.setSSBBfo(cwBaseOffset + rtv::currentBFO + rtv::currentBFOmanu);
             rtv::CWShift = isCWMode; // Jelezzük a kijelzőnek
@@ -393,7 +393,7 @@ void Si4735Band::tuneMemoryStation(uint8_t bandIndex, uint16_t frequency, uint8_
 
     // BFO eltolás visszaállítása SSB/CW esetén ---
     if (demodModIndex == LSB_DEMOD_TYPE || demodModIndex == USB_DEMOD_TYPE || demodModIndex == CW_DEMOD_TYPE) {
-        const int16_t cwBaseOffset = (demodModIndex == CW_DEMOD_TYPE) ? config.data.cwReceiverOffsetHz : 0;
+        const int16_t cwBaseOffset = (demodModIndex == CW_DEMOD_TYPE) ? config.data.cwToneFrequencyHz : 0;
 
         si4735.setSSBBfo(cwBaseOffset);
         rtv::CWShift = (demodModIndex == CW_DEMOD_TYPE); // CW shift állapot frissítése

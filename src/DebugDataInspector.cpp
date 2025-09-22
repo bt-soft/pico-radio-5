@@ -88,7 +88,7 @@ void DebugDataInspector::printConfigData(const Config_t &configData) {
     } else {
         DEBUG("  miniAudioFftConfigRtty: Manual Gain %sx\n", Utils::floatToString(configData.miniAudioFftConfigRtty).c_str());
     }
-    DEBUG("  cwReceiverOffsetHz: %u\n", configData.cwReceiverOffsetHz);
+    DEBUG("  cwToneFrequencyHz: %u\n", configData.cwToneFrequencyHz);
     DEBUG("  rttyMarkFrequencyHz: %u\n", configData.rttyMarkFrequencyHz);
     DEBUG("  rttyShiftHz: %u\n", configData.rttyShiftHz);
     DEBUG("====================\n");

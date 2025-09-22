@@ -25,7 +25,7 @@ void ScreenSetupAudioProc::populateMenuItems() {
     // Korábbi menüpontok törlése
     settingItems.clear();
 
-    settingItems.push_back(SettingItem("CW Receiver Offset", String(config.data.cwReceiverOffsetHz) + " Hz", static_cast<int>(AudioProcItemAction::CW_RECEIVER_OFFSET)));
+    settingItems.push_back(SettingItem("CW Tone Frequency", String(config.data.cwToneFrequencyHz) + " Hz", static_cast<int>(AudioProcItemAction::CW_TONE_FREQUENCY)));
     settingItems.push_back(SettingItem("RTTY Shift", String(config.data.rttyShiftHz) + " Hz", static_cast<int>(AudioProcItemAction::RTTY_SHIFT)));
     settingItems.push_back(SettingItem("RTTY Mark Frequency", String(config.data.rttyMarkFrequencyHz) + " Hz", static_cast<int>(AudioProcItemAction::RTTY_MARK_FREQUENCY)));
 
@@ -53,8 +53,8 @@ void ScreenSetupAudioProc::handleItemAction(int index, int action) {
     AudioProcItemAction audioProcAction = static_cast<AudioProcItemAction>(action);
 
     switch (audioProcAction) {
-        case AudioProcItemAction::CW_RECEIVER_OFFSET:
-            handleCwOffsetDialog(index);
+        case AudioProcItemAction::CW_TONE_FREQUENCY:
+            handleCwToneFrequencyDialog(index);
             break;
 
         case AudioProcItemAction::RTTY_SHIFT:
@@ -85,34 +85,34 @@ void ScreenSetupAudioProc::handleItemAction(int index, int action) {
 }
 
 /**
- * @brief CW receiver offset beállítása dialógussal
+ * @brief CW tone frequency beállítása dialógussal
  *
  * @param index A menüpont indexe a lista frissítéséhez
  */
-void ScreenSetupAudioProc::handleCwOffsetDialog(int index) {
-    auto tempValuePtr = std::make_shared<int>(static_cast<int>(config.data.cwReceiverOffsetHz));
+void ScreenSetupAudioProc::handleCwToneFrequencyDialog(int index) {
+    auto tempValuePtr = std::make_shared<int>(static_cast<int>(config.data.cwToneFrequencyHz));
 
-    auto cwOffsetDialog = std::make_shared<ValueChangeDialog>(
-        this, "CW Offset", "CW Receiver Offset (Hz):", tempValuePtr.get(),
+    auto cwToneFrequencyDialog = std::make_shared<ValueChangeDialog>(
+        this, "CW Tone Frequency", "CW Tone Frequency (Hz):", tempValuePtr.get(),
         static_cast<int>(400),  // Min: 400Hz
         static_cast<int>(1900), // Max: 1900Hz
         static_cast<int>(10),   // Step: 10Hz
         [this, index](const std::variant<int, float, bool> &liveNewValue) {
             if (std::holds_alternative<int>(liveNewValue)) {
                 int currentDialogVal = std::get<int>(liveNewValue);
-                config.data.cwReceiverOffsetHz = static_cast<uint16_t>(currentDialogVal);
-                DEBUG("ScreenSetupAudioProc: Live CW offset preview: %u Hz\n", config.data.cwReceiverOffsetHz);
+                config.data.cwToneFrequencyHz = static_cast<uint16_t>(currentDialogVal);
+                DEBUG("ScreenSetupAudioProc: CW tone frequency: %u Hz\n", config.data.cwToneFrequencyHz);
             }
         },
         [this, index, tempValuePtr](UIDialogBase *sender, MessageDialog::DialogResult dialogResult) {
             if (dialogResult == MessageDialog::DialogResult::Accepted) {
-                config.data.cwReceiverOffsetHz = static_cast<uint16_t>(*tempValuePtr);
-                settingItems[index].value = String(config.data.cwReceiverOffsetHz) + " Hz";
+                config.data.cwToneFrequencyHz = static_cast<uint16_t>(*tempValuePtr);
+                settingItems[index].value = String(config.data.cwToneFrequencyHz) + " Hz";
                 updateListItem(index);
             }
         },
         Rect(-1, -1, 280, 0));
-    this->showDialog(cwOffsetDialog);
+    this->showDialog(cwToneFrequencyDialog);
 }
 
 /**

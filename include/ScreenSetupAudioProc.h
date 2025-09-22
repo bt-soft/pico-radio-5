@@ -18,19 +18,19 @@ class ScreenSetupAudioProc : public ScreenSetupBase {
      */
     enum class AudioProcItemAction {
         NONE = 0,
-        CW_RECEIVER_OFFSET = 400,
+        CW_TONE_FREQUENCY = 400,
+        CW_RTTY_LED_DEBUG, // CW/RTTY LED debug jelzés engedélyezése
         RTTY_SHIFT,
         RTTY_MARK_FREQUENCY,
         FFT_GAIN_AM,
         FFT_GAIN_FM,
-        CW_RTTY_LED_DEBUG, // CW/RTTY LED debug jelzés engedélyezése
     };
 
     // Segédfüggvények
     String decodeFFTGain(float value);
 
     // Audió feldolgozás specifikus dialógus kezelő függvények
-    void handleCwOffsetDialog(int index);
+    void handleCwToneFrequencyDialog(int index);
     void handleRttyShiftDialog(int index);
     void handleRttyMarkFrequencyDialog(int index);
     void handleFFTGainDialog(int index, bool isAM);

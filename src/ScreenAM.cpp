@@ -4,7 +4,7 @@
 
 #include <RPi_Pico_TimerInterrupt.h>
 extern RPI_PICO_Timer audioDecoderTimer;
-constexpr int AUDIO_DECODER_TIMER_INTERVAL = 3; // Audio dekóder időzítő intervallum (milliszekundumban) - javítva 10-ről 3-ra
+constexpr int AUDIO_DECODER_TIMER_INTERVAL = 20; // Audio dekóder időzítő intervallum (milliszekundumban) - gyorsabb CW válaszért
 
 bool ScreenAM::audioDecoderRun = false;
 ScreenAM *ScreenAM::that = nullptr;
@@ -26,6 +26,17 @@ bool audioDecoderTimerHardwareInterruptHandler(struct repeating_timer *t) {
  */
 void ScreenAM::processAudioDecoder() {
 
+    // Debug: timer számláló
+    static unsigned long debugCallCount = 0;
+    static unsigned long lastDebugReport = millis();
+    debugCallCount++;
+    unsigned long now = millis();
+    if (now - lastDebugReport > 5000) { // 5 másodpercenként
+        DEBUG("[CW-DEBUG] processAudioDecoder hívások: %lu / 5sec\n", debugCallCount);
+        debugCallCount = 0;
+        lastDebugReport = now;
+    }
+
     // Null pointer ellenőrzések error handling-gel
     if (ScreenAM::that == nullptr) {
         DEBUG("ScreenAM::processAudioDecoder() - HIBA: ScreenAM::that nullptr\n");
@@ -44,6 +55,13 @@ void ScreenAM::processAudioDecoder() {
 
     // Lekérjük a jelenlegi spektrum vizualizáció módot (egyszeri ellenőrzés)
     SpectrumVisualizationComponent::DisplayMode currentMode = ScreenAM::that->spectrumComp->getCurrentMode();
+
+    // Debug: spektrum mód ellenőrzése
+    static SpectrumVisualizationComponent::DisplayMode lastDebugMode = static_cast<SpectrumVisualizationComponent::DisplayMode>(-1);
+    if (currentMode != lastDebugMode) {
+        DEBUG("[CW-DEBUG] Spektrum mód változás: %d -> %d (CWWaterfall=%d)\n", (int)lastDebugMode, (int)currentMode, (int)SpectrumVisualizationComponent::DisplayMode::CWWaterfall);
+        lastDebugMode = currentMode;
+    }
 
     // Csak CW Waterfall módban dolgozunk
     if (currentMode != SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
@@ -75,18 +93,18 @@ void ScreenAM::processAudioDecoder() {
     }
 
     // CW dekóder feldolgozás (az ellenőrzés már megtörtént)
-    ScreenAM::that->cwDecoder->processFftData(magnitudeData, fftSize, binWidth);
+    ScreenAM::that->cwDecoder->processCwFftData(magnitudeData, fftSize, binWidth);
 
-    // Performance monitoring (debug célokra)
-    static unsigned long callCount = 0;
-    static unsigned long lastPerfReport = millis();
-    callCount++;
-    unsigned long now = millis();
-    if (now - lastPerfReport > 10000) { // 10 másodpercenként
-        DEBUG("[PERF] processAudioDecoder hívások: %lu / 10sec (átlag: %s ms/hívás)\n", callCount, Utils::floatToString(10000.0f / callCount).c_str());
-        callCount = 0;
-        lastPerfReport = now;
-    }
+    // // Performance monitoring (debug célokra)
+    // static unsigned long callCount = 0;
+    // static unsigned long lastPerfReport = millis();
+    // callCount++;
+    // unsigned long perfNow = millis();
+    // if (perfNow - lastPerfReport > 10000) { // 10 másodpercenként
+    //     DEBUG("[PERF] processAudioDecoder hívások: %lu / 10sec (átlag: %s ms/hívás)\n", callCount, Utils::floatToString(10000.0f / callCount).c_str());
+    //     callCount = 0;
+    //     lastPerfReport = perfNow;
+    // }
 }
 
 // ===================================================================
@@ -449,7 +467,7 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     // Spektrum vizualizáció komponens létrehozása
     // ===================================================================
-    AudioCore1Manager::setFftSize(AudioProcessorConstants::DEFAULT_FFT_SAMPLES); // Alapértelmezett FFT méret beállítása
+    AudioCore1Manager::setFftSize(64); // Még kisebb FFT méret CW-hez a maximális gyorsaságért
 
     Rect spectrumBounds(255, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT - 10, 150, 80);
     createSpectrumComponent(spectrumBounds, RadioMode::AM);
