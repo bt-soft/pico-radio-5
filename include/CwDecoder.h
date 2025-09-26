@@ -36,17 +36,22 @@ class CwDecoder {
     void updateAdaptiveThreshold(bool toneDetected, float currentSnr);
     char morseToChar(const String &morseCode);
 
+    // Adaptív dekódolás segédfüggvények
+    void updateAdaptiveWordGap(unsigned long pauseLength);
+    void discardCurrentPattern(const char *reason);
+
     // === ÁLLAPOTGÉP VÁLTOZÓK ===
     CwState currentState_;
     unsigned long toneStartTime_;
     unsigned long lastToneEndTime_;
 
     // === IDŐZÍTÉSI KONSTANSOK ===
-    uint16_t dotLengthMs_;  // Pont hossza ms-ben
-    uint16_t dashLengthMs_; // Vonal hossza ms-ben
-    uint16_t elementGapMs_; // Elemek közti szünet
-    uint16_t letterGapMs_;  // Betűk közti szünet
-    uint16_t wordGapMs_;    // Szavak közti szünet
+    uint16_t dotLengthMs_;     // Pont hossza ms-ben
+    uint16_t dashLengthMs_;    // Vonal hossza ms-ben
+    uint16_t elementGapMs_;    // Elemek közti szünet
+    uint16_t letterGapMs_;     // Betűk közti szünet
+    uint16_t wordGapMs_;       // Szavak közti szünet (alapértelmezett)
+    uint16_t adaptiveWordGap_; // Adaptív szavak közti szünet
 
     // Tolerancia értékek
     uint16_t dotMinMs_, dotMaxMs_;
@@ -57,9 +62,15 @@ class CwDecoder {
     uint16_t recentToneCount_;
     uint16_t recentNoiseCount_;
 
+    // === ADAPTÍV SZÓKÖZ MEGHATÁROZÁS ===
+    unsigned long lastPauseLength_;
+    float averagePauseLength_;
+    uint16_t pauseCount_;
+
     // === DEKÓDOLT ADATOK ===
-    String currentMorseBuffer_; // Aktuális morze betű
-    String decodedText_;        // Dekódolt szöveg
+    String currentMorseBuffer_;     // Aktuális morze betű
+    String decodedText_;            // Dekódolt szöveg
+    uint16_t maxDecodedTextLength_; // Max szöveg hossz (scroll-hoz)
 
     // === STATISZTIKÁK ===
     uint32_t detectedDotsCount_;

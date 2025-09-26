@@ -189,13 +189,13 @@ void AudioCore1Manager::core1AudioLoop() {
                 uint32_t t0 = micros();
                 pAudioProcessor_->process(collectOsci_);
 
-                // Csak 5 másodpercenként írjuk ki a futásidőt
-                static uint32_t lastDebugPrint = 0;
-                uint32_t nowDebug = millis();
-                if (nowDebug - lastDebugPrint >= 5000) {
-                    DEBUG("AudioCore1Manager: pAudioProcessor_->process(collectOsci_: %s) futásidő: %s\n", collectOsci_ ? "true" : "false", Utils::elapsedUSecStr(t0, micros()).c_str());
-                    lastDebugPrint = nowDebug;
-                }
+                // // Csak 5 másodpercenként írjuk ki a futásidőt
+                // static uint32_t lastDebugPrint = 0;
+                // uint32_t nowDebug = millis();
+                // if (nowDebug - lastDebugPrint >= 5000) {
+                //     DEBUG("AudioCore1Manager: pAudioProcessor_->process(collectOsci_: %s) futásidő: %s\n", collectOsci_ ? "true" : "false", Utils::elapsedUSecStr(t0, micros()).c_str());
+                //     lastDebugPrint = nowDebug;
+                // }
 
                 // Mutex használata a megosztott adatok biztonságos eléréséhez
                 if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
@@ -231,17 +231,17 @@ void AudioCore1Manager::core1AudioLoop() {
                             pSharedData_->cwDataAvailable = false; // Reset előző adat
                             pSharedData_->cwDataAvailable = true;  // Új adat jelzése
 
-                            // Debug CW FFT generálás
-                            static unsigned long cwDebugCount = 0;
-                            static unsigned long lastCwDebugReport = millis();
-                            cwDebugCount++;
-                            unsigned long nowCw = millis();
-                            if (nowCw - lastCwDebugReport > 5000) {
-                                DEBUG("[CW-FFT] CW FFT generálva: %lu / 5sec (%s FPS), decimation: %d, binWidth: %s Hz\n", cwDebugCount, Utils::floatToString(cwDebugCount / 5.0f).c_str(), decimationFactor,
-                                      Utils::floatToString(pSharedData_->cwBinWidthHz).c_str());
-                                cwDebugCount = 0;
-                                lastCwDebugReport = nowCw;
-                            }
+                            // // Debug CW FFT generálás
+                            // static unsigned long cwDebugCount = 0;
+                            // static unsigned long lastCwDebugReport = millis();
+                            // cwDebugCount++;
+                            // unsigned long nowCw = millis();
+                            // if (nowCw - lastCwDebugReport > 5000) {
+                            //     DEBUG("[CW-FFT] CW FFT generálva: %lu / 5sec (%s FPS), decimation: %d, binWidth: %s Hz\n", cwDebugCount, Utils::floatToString(cwDebugCount / 5.0f).c_str(), decimationFactor,
+                            //           Utils::floatToString(pSharedData_->cwBinWidthHz).c_str());
+                            //     cwDebugCount = 0;
+                            //     lastCwDebugReport = nowCw;
+                            // }
                         } else {
                             // CW mód nincs engedélyezve - töröljük a flag-et
                             pSharedData_->cwDataAvailable = false;
@@ -552,7 +552,7 @@ bool AudioCore1Manager::getFastCwData(const float **outData, float *outBinWidth)
             cwGetCount++;
             unsigned long nowGet = millis();
             if (nowGet - lastCwGetReport > 5000) {
-                DEBUG("[CW-GET] CW FFT lekérve: %lu / 5sec (%s FPS)\n", cwGetCount, Utils::floatToString(cwGetCount / 5.0f).c_str());
+                // DEBUG("[CW-GET] CW FFT lekérve: %lu / 5sec (%s FPS)\n", cwGetCount, Utils::floatToString(cwGetCount / 5.0f).c_str());
                 cwGetCount = 0;
                 lastCwGetReport = nowGet;
             }
