@@ -410,9 +410,26 @@ void ScreenAM::handleOwnLoop() {
             if (cwDecoder) {
                 String newText = cwDecoder->getDecodedText();
                 if (newText.length() > 0) {
-                    // Hozzáfűzzük az új szöveget a meglévőhöz
+                    // Duplikált szóközök szűrése az új szövegből
+                    String filteredNewText = "";
+                    for (int i = 0; i < newText.length(); i++) {
+                        char currentChar = newText.charAt(i);
+                        if (currentChar == ' ' && filteredNewText.length() > 0 && filteredNewText.charAt(filteredNewText.length() - 1) == ' ') {
+                            // Duplikált szóköz, kihagyjuk
+                            continue;
+                        }
+                        filteredNewText += currentChar;
+                    }
+
+                    // Hozzáfűzzük a szűrt új szöveget a meglévőhöz
                     String currentText = decodedTextBox->getText();
-                    String updatedText = currentText + newText;
+
+                    // Duplikált szóköz ellenőrzése a csatlakozási pontnál is
+                    if (filteredNewText.length() > 0 && currentText.length() > 0 && currentText.charAt(currentText.length() - 1) == ' ' && filteredNewText.charAt(0) == ' ') {
+                        filteredNewText = filteredNewText.substring(1); // Első szóköz eltávolítása
+                    }
+
+                    String updatedText = currentText + filteredNewText;
 
                     // Egyszerű karakterszám alapú scrollozás
                     const int maxChars = 160; // Maximum karakterszám (kb. 4 sor x 40 karakter)

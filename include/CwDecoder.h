@@ -23,6 +23,7 @@ class CwDecoder {
     void clear();
     void processCwFftData(const float *fftData, uint16_t fftSize, float binWidth);
     String getDecodedText();
+    void clearDecodedText(); // Manuális szöveg törlés
 
     // Kalibrálás és konfiguráció
     void calibrateTimingFromWpm(uint8_t wpm);
@@ -68,9 +69,9 @@ class CwDecoder {
     uint16_t pauseCount_;
 
     // === DEKÓDOLT ADATOK ===
-    String currentMorseBuffer_;     // Aktuális morze betű
-    String decodedText_;            // Dekódolt szöveg
-    uint16_t maxDecodedTextLength_; // Max szöveg hossz (scroll-hoz)
+    String currentMorseBuffer_; // Aktuális morze betű
+    String decodedText_;        // Dekódolt szöveg (csak új karakterek)
+    bool newCharacterAdded_;    // Jelzi, hogy új karakter lett hozzáadva
 
     // === STATISZTIKÁK ===
     uint32_t detectedDotsCount_;

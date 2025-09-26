@@ -29,9 +29,8 @@ void CwDecoder::calibrateTimingFromWpm(uint8_t wpm) {
     dashMinMs_ = (uint16_t)(dashLengthMs_ * 0.6f);
     dashMaxMs_ = (uint16_t)(dashLengthMs_ * 1.4f);
 
-    // Adaptív szöveg límit inicializálása
+    // Adaptív szóköz inicializálása
     adaptiveWordGap_ = wordGapMs_;
-    maxDecodedTextLength_ = 200; // Max 200 karakter a memóriában
 
     DEBUG("[CW-TIMING] Kalibrálva %u WPM-re: dot=%u ms, dash=%u ms, elem_gap=%u ms, betű_gap=%u ms, szó_gap=%u ms (adaptív=%u)\n", wpm, dotLengthMs_, dashLengthMs_, elementGapMs_, letterGapMs_, wordGapMs_,
           adaptiveWordGap_);
@@ -57,6 +56,7 @@ void CwDecoder::clear() {
     // Dekódolt adatok törlése
     currentMorseBuffer_ = "";
     decodedText_ = "";
+    newCharacterAdded_ = false;
 
     // Statisztikák
     detectedDotsCount_ = 0;
@@ -190,45 +190,62 @@ char CwDecoder::morseToChar(const String &morseCode) {
     return '?';
 }
 /**
- * dekódolt szöveg visszaadása és törlése
+ * dekódolt szöveg visszaadása - csak az új karakterek
  */
 String CwDecoder::getDecodedText() {
-    String result = decodedText_;
-
-    // Szöveg görgetés - ha túl hosszú, csak az utolsó részt tartjuk meg
-    if (decodedText_.length() > maxDecodedTextLength_) {
-        // Az utolsó 150 karaktert megtartjuk, hogy lássunk kontextust
-        int keepLength = maxDecodedTextLength_ - 50;
-        decodedText_ = decodedText_.substring(decodedText_.length() - keepLength);
-        DEBUG("[CW-SCROLL] Szöveg levágva %d karakterre\n", keepLength);
-    } else {
-        decodedText_ = ""; // Dekódolt szöveg törlése
+    // Ha nincs új karakter, üres stringet adunk vissza
+    if (newCharacterAdded_ == false) {
+        return "";
     }
 
+    // Az összes új karaktert visszaadjuk
+    String result = decodedText_;
+
+    // A szöveget töröljük, mert a UI már átmásolta
+    decodedText_ = "";
+    newCharacterAdded_ = false;
+
+    DEBUG("[CW-GET] Szöveg átadva UI-nak: '%s' (hossz: %d)\n", result.c_str(), result.length());
+
     return result;
+} /**
+   * dekódolt szöveg törlése (manuális használatra)
+   */
+void CwDecoder::clearDecodedText() {
+    decodedText_ = "";
+    newCharacterAdded_ = false;
+    DEBUG("[CW-CLEAR] Dekódolt szöveg törölve\n");
 }
 
 /**
  * Adaptív szóköz időzítés frissítése a megfigyelt szünetekhez
  */
 void CwDecoder::updateAdaptiveWordGap(unsigned long pauseLength) {
-    if (pauseLength >= letterGapMs_ && pauseLength < wordGapMs_ * 3) { // Csak reális szüneteket számoljuk
+    // Minden szünetet számolunk, ami legalább betű gap
+    if (pauseLength >= letterGapMs_) {
         pauseCount_++;
+
         if (pauseCount_ == 1) {
             averagePauseLength_ = pauseLength;
         } else {
-            // Exponenciális átlag
-            averagePauseLength_ = (averagePauseLength_ * 0.8f) + (pauseLength * 0.2f);
+            // Exponenciális átlag - gyorsabban reagál a változásokra
+            averagePauseLength_ = (averagePauseLength_ * 0.7f) + (pauseLength * 0.3f);
         }
 
-        // Adaptív szó gap: 1.5x az átlagos betű-szünet hossz
-        adaptiveWordGap_ = (uint16_t)(averagePauseLength_ * 1.8f);
+        // Adaptív szó gap: Ha az átlagos szünet > betű gap, akkor valószínűleg szó gap-ek vannak
+        if (averagePauseLength_ > letterGapMs_ * 1.5f) {
+            // Magas átlag = vannak hosszabb szünetek, tehát csökkentjük a szó gap-et
+            adaptiveWordGap_ = (uint16_t)(averagePauseLength_ * 1.3f);
+        } else {
+            // Alacsony átlag = csak betű gap-ek, növeljük a szó gap-et
+            adaptiveWordGap_ = (uint16_t)(letterGapMs_ * 2.2f);
+        }
 
-        // Biztonsági határok
-        adaptiveWordGap_ = max(wordGapMs_, adaptiveWordGap_);                 // Min a fix értéknél
-        adaptiveWordGap_ = min((uint16_t)(wordGapMs_ * 3), adaptiveWordGap_); // Max 3x a fix érték
+        // Biztonsági határok - reálisabb értékek
+        adaptiveWordGap_ = max((uint16_t)(letterGapMs_ * 1.8f), adaptiveWordGap_); // Min 1.8x betű gap
+        adaptiveWordGap_ = min((uint16_t)(letterGapMs_ * 4.0f), adaptiveWordGap_); // Max 4x betű gap
 
-        DEBUG("[CW-ADAPTIVE] Átlag szünet: %u ms, adaptív szó gap: %u ms (alapértelmezett: %u ms)\n", (uint16_t)averagePauseLength_, adaptiveWordGap_, wordGapMs_);
+        DEBUG("[CW-ADAPTIVE] Átlag szünet: %u ms, adaptív szó gap: %u ms (alapértelmezett: %u ms), szünet_szám: %u\n", (uint16_t)averagePauseLength_, adaptiveWordGap_, wordGapMs_, pauseCount_);
     }
 }
 
@@ -255,6 +272,31 @@ void CwDecoder::processCwStateMachine(bool tonePresent) {
                 toneStartTime_ = currentTime;
                 currentState_ = CW_TONE;
                 DEBUG("[CW-STATE] IDLE -> TONE (jel kezdete)\n");
+            } else {
+                // IDLE állapotban is ellenőrizzük a nagyon hosszú szüneteket (mondatok közötti)
+                if (lastToneEndTime_ > 0) { // Csak ha volt már előzőleg jel
+                    unsigned long idleDuration = currentTime - lastToneEndTime_;
+
+                    // Nagyon hosszú szünet = mondat vége (2 másodpercnél hosszabb)
+                    if (idleDuration >= 2000) {
+                        DEBUG("[CW-IDLE] Mondat szünet detektálva: %lu ms - új sor\n", idleDuration);
+                        decodedText_ += "\n";
+                        newCharacterAdded_ = true;
+                        DEBUG("[CW-DECODE] Új sor hozzáadva (teljes hossz: %d)\n", decodedText_.length());
+                        // Reset, hogy ne ismétlődjön
+                        lastToneEndTime_ = 0;
+                    }
+                    // Közepes hosszú szünet = szó vége (adaptív szó gap alapján)
+                    else if (idleDuration >= adaptiveWordGap_ && idleDuration < 2000) {
+                        DEBUG("[CW-IDLE] Szó szünet detektálva IDLE-ban: %lu ms >= %u ms\n", idleDuration, adaptiveWordGap_);
+                        // Szóköz hozzáadása - nem vizsgáljuk a decodedText_ hosszát
+                        decodedText_ += " ";
+                        newCharacterAdded_ = true;
+                        DEBUG("[CW-DECODE] Szóköz hozzáadva IDLE-ban (teljes: '%s')\n", decodedText_.c_str());
+                        // Frissítsük a lastToneEndTime_-ot, hogy ne ismétlődjön
+                        lastToneEndTime_ = currentTime - adaptiveWordGap_ + 100; // Kis offset
+                    }
+                }
             }
             break;
 
@@ -274,6 +316,7 @@ void CwDecoder::processCwStateMachine(bool tonePresent) {
                                 discardCurrentPattern("túl hosszú és ismeretlen");
                             } else {
                                 decodedText_ += decodedChar;
+                                newCharacterAdded_ = true;
                                 DEBUG("[CW-DECODE] Betű lezárva hossz miatt (5+): '%s' -> '%c'\n", currentMorseBuffer_.c_str(), decodedChar);
                             }
                             currentMorseBuffer_ = "";
@@ -292,6 +335,7 @@ void CwDecoder::processCwStateMachine(bool tonePresent) {
                                 discardCurrentPattern("túl hosszú és ismeretlen");
                             } else {
                                 decodedText_ += decodedChar;
+                                newCharacterAdded_ = true;
                                 DEBUG("[CW-DECODE] Betű lezárva hossz miatt (5+): '%s' -> '%c'\n", currentMorseBuffer_.c_str(), decodedChar);
                             }
                             currentMorseBuffer_ = "";
@@ -311,6 +355,7 @@ void CwDecoder::processCwStateMachine(bool tonePresent) {
                                 discardCurrentPattern("túl hosszú és ismeretlen");
                             } else {
                                 decodedText_ += decodedChar;
+                                newCharacterAdded_ = true;
                                 DEBUG("[CW-DECODE] Betű lezárva hossz miatt (5+): '%s' -> '%c'\n", currentMorseBuffer_.c_str(), decodedChar);
                             }
                             currentMorseBuffer_ = "";
@@ -365,6 +410,7 @@ void CwDecoder::processCwStateMachine(bool tonePresent) {
                             discardCurrentPattern("ismeretlen morse kód betű gap után");
                         } else {
                             decodedText_ += decodedChar;
+                            newCharacterAdded_ = true;
                             DEBUG("[CW-DECODE] Betű dekódolva: '%s' -> '%c' (teljes: '%s')\n", currentMorseBuffer_.c_str(), decodedChar, decodedText_.c_str());
                         }
                         currentMorseBuffer_ = "";
@@ -376,20 +422,18 @@ void CwDecoder::processCwStateMachine(bool tonePresent) {
                     // Szó vége ellenőrzése - adaptív szünet használata
                     if (pauseDuration >= adaptiveWordGap_) {
                         DEBUG("[CW-PAUSE] Adaptív szó gap detektálva: %lu ms >= %u ms (fix: %u ms)\n", pauseDuration, adaptiveWordGap_, wordGapMs_);
-                        // Szó vége - szóköz hozzáadása (duplikáció elkerülésével)
-                        if (decodedText_.length() > 0 && decodedText_.charAt(decodedText_.length() - 1) != ' ') {
-                            decodedText_ += " ";
-                            DEBUG("[CW-DECODE] Szóköz hozzáadva (teljes: '%s')\n", decodedText_.c_str());
-                        }
+                        // Szó vége - szóköz hozzáadása
+                        decodedText_ += " ";
+                        newCharacterAdded_ = true;
+                        DEBUG("[CW-DECODE] Szóköz hozzáadva (teljes: '%s')\n", decodedText_.c_str());
                     }
 
                     // Nagyon hosszú szünet esetén (3x az adaptív érték) - mintha szó vége lenne
                     if (pauseDuration >= adaptiveWordGap_ * 3) {
                         DEBUG("[CW-PAUSE] Nagyon hosszú szünet detektálva: %lu ms >= %u ms - szó vége\n", pauseDuration, adaptiveWordGap_ * 3);
-                        if (decodedText_.length() > 0 && decodedText_.charAt(decodedText_.length() - 1) != ' ') {
-                            decodedText_ += " ";
-                            DEBUG("[CW-DECODE] Szóköz hozzáadva hosszú szünet után\n");
-                        }
+                        decodedText_ += " ";
+                        newCharacterAdded_ = true;
+                        DEBUG("[CW-DECODE] Szóköz hozzáadva hosszú szünet után\n");
                     }
 
                     currentState_ = CW_IDLE;
