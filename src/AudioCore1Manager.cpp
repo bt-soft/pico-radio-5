@@ -38,6 +38,8 @@ bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int
     pSharedData_->spectrumDataReady = false;
     pSharedData_->oscilloscopeDataReady = false;
     pSharedData_->latestSpectrumDataAvailable = false;
+    pSharedData_->cwDataAvailable = false; // CW dekóder FFT inicializálása
+    pSharedData_->cwModeEnabled = false;   // CW mód alapértelmezetten ki van kapcsolva
     pSharedData_->core1Running = false;
     pSharedData_->core1ShouldStop = false;
     pSharedData_->configChanged = false;
@@ -212,6 +214,39 @@ void AudioCore1Manager::core1AudioLoop() {
                         pSharedData_->latestCurrentAutoGain = pAudioProcessor_->getCurrentAutoGain();
                         pSharedData_->latestSpectrumDataAvailable = true;
 
+                        // 3. Gyors CW dekóder FFT (CW_DECODER_FFT_SIZE elemre lecsempézett) - CSAK CW módban
+                        if (pSharedData_->cwModeEnabled) {
+                            uint16_t decimationFactor = fftSize / CW_DECODER_FFT_SIZE; // pl. 512/128 = 4
+                            for (uint16_t i = 0; i < CW_DECODER_FFT_SIZE; ++i) {
+                                uint16_t srcIndex = i * decimationFactor;
+                                if (srcIndex < fftSize) {
+                                    pSharedData_->cwDecoderBuffer[i] = magnitudeData[srcIndex];
+                                } else {
+                                    pSharedData_->cwDecoderBuffer[i] = 0.0f;
+                                }
+                            }
+                            pSharedData_->cwBinWidthHz = pAudioProcessor_->getBinWidthHz() * decimationFactor;
+
+                            // Törljük az előző CW flag-et az új adatok előtt
+                            pSharedData_->cwDataAvailable = false; // Reset előző adat
+                            pSharedData_->cwDataAvailable = true;  // Új adat jelzése
+
+                            // Debug CW FFT generálás
+                            static unsigned long cwDebugCount = 0;
+                            static unsigned long lastCwDebugReport = millis();
+                            cwDebugCount++;
+                            unsigned long nowCw = millis();
+                            if (nowCw - lastCwDebugReport > 5000) {
+                                DEBUG("[CW-FFT] CW FFT generálva: %lu / 5sec (%s FPS), decimation: %d, binWidth: %s Hz\n", cwDebugCount, Utils::floatToString(cwDebugCount / 5.0f).c_str(), decimationFactor,
+                                      Utils::floatToString(pSharedData_->cwBinWidthHz).c_str());
+                                cwDebugCount = 0;
+                                lastCwDebugReport = nowCw;
+                            }
+                        } else {
+                            // CW mód nincs engedélyezve - töröljük a flag-et
+                            pSharedData_->cwDataAvailable = false;
+                        }
+
                         if (!pSharedData_->configChanged) {
                             pSharedData_->fftSize = fftSize;
                             pSharedData_->samplingFrequency = pAudioProcessor_->getSamplingFrequency();
@@ -259,6 +294,17 @@ bool AudioCore1Manager::getCollectOsci() {
 }
 
 /**
+ * @brief CW mód engedélyezése/tiltása (Core0 -> Core1 kommunikáció)
+ * @param enabled true ha CW mód aktív, false egyébként
+ */
+void AudioCore1Manager::setCwModeEnabled(bool enabled) {
+    if (!initialized_ || !pSharedData_) {
+        return;
+    }
+    pSharedData_->cwModeEnabled = enabled;
+}
+
+/**
  * @brief FFT mintavételezési frekvencia  váltása (core0-ból hívható)
  * @param newSamplingFrequency Az új FFT mintavételezési frekvencia
  * @return true ha sikeres, false egyébként
@@ -303,6 +349,7 @@ bool AudioCore1Manager::setFftSize(uint16_t newSize) {
     }
 
     // DEBUG("AudioCore1Manager::setFftSize: FFT méret beállítása %d-re\n", newSize);
+    DEBUG("AudioCore1Manager::setFftSize: FFT méret beállítása %d-re\n", newSize);
 
     // Biztonságos konfiguráció váltás
     if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
@@ -475,6 +522,47 @@ bool AudioCore1Manager::getLatestSpectrumData(const float **outData, uint16_t *o
 
     return dataAvailable;
 }
+
+/**
+ * @brief Gyors CW dekóder FFT adatok lekérése (CW_DECODER_FFT_SIZE samples, optimalizált sebességre)
+ * @param outData Kimeneti buffer a gyors CW FFT adatoknak
+ * @param outBinWidth Kimeneti bin szélesség Hz-ben
+ * @return true ha friss adat érhető el, false egyébként
+ */
+bool AudioCore1Manager::getFastCwData(const float **outData, float *outBinWidth) {
+    if (!initialized_ || !pSharedData_) {
+        return false;
+    }
+
+    bool dataAvailable = false;
+
+    if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+        if (pSharedData_->cwDataAvailable) {
+            *outData = pSharedData_->cwDecoderBuffer;
+            *outBinWidth = pSharedData_->cwBinWidthHz;
+
+            // CW flag NEM nullázódik - több fogyasztó is hozzáférhet ugyanazokhoz az adatokhoz
+            // A flag csak akkor nullázódik, amikor új adatok érkeznek az AudioProcessor-től
+
+            dataAvailable = true;
+
+            // Debug: CW adatok lekérése
+            static unsigned long cwGetCount = 0;
+            static unsigned long lastCwGetReport = millis();
+            cwGetCount++;
+            unsigned long nowGet = millis();
+            if (nowGet - lastCwGetReport > 5000) {
+                DEBUG("[CW-GET] CW FFT lekérve: %lu / 5sec (%s FPS)\n", cwGetCount, Utils::floatToString(cwGetCount / 5.0f).c_str());
+                cwGetCount = 0;
+                lastCwGetReport = nowGet;
+            }
+        }
+        mutex_exit(&pSharedData_->dataMutex);
+    }
+
+    return dataAvailable;
+}
+
 /**
  * @brief Oszcilloszkóp adatok lekérése (core0-ból hívható)
  */

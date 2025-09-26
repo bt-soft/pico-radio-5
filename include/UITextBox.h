@@ -15,6 +15,7 @@ class UITextBox : public UIComponent {
     uint8_t textDatum; // A szöveg igazítása (word-wrap esetén korlátozottan használható)
     TFT_eSprite _sprite;
     bool _spriteCreated;
+    int maxCharsPerLine; // Karakterek száma soronként
 
   public:
     UITextBox(const Rect &bounds, const String &initialText);
@@ -26,6 +27,7 @@ class UITextBox : public UIComponent {
     void setTextColor(uint16_t fg, uint16_t bg);
     void setTextSize(uint8_t size);
     void setTextDatum(uint8_t datum);
+    void setMaxCharsPerLine(int maxChars); // Karakterszám alapú sortörés beállítása
 
     virtual void setBounds(const Rect &newBounds) override;
     virtual void draw() override;

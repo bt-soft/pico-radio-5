@@ -66,6 +66,7 @@
 #define CW_DECODER_DEFAULT_FREQUENCY 750 // Alapértelmezett CW dekóder frekvencia (Hz)
 #define CW_DECODER_MIN_FREQUENCY 600     // Minimum CW dekóder frekvencia (Hz)
 #define CW_DECODER_MAX_FREQUENCY 1500    // Maximum CW dekóder frekvencia (Hz)
+#define CW_DECODER_FFT_SIZE 128          // CW dekóder FFT mérete (samples)
 
 //--- RTTY mód adatai
 // #define RTTY_DEFAULT_MARKER_FREQUENCY 2295.0f                                      // RTTY jelölő frekvencia (Hz)

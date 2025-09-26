@@ -5,6 +5,7 @@
 #include <pico/mutex.h>
 
 #include "AudioProcessor.h"
+#include "defines.h"
 
 /**
  * @brief Core1 dedikált audio feldolgozó manager
@@ -21,11 +22,11 @@ class AudioCore1Manager {
         volatile bool core1Running;
         volatile bool core1ShouldStop;
 
-        // Spektrum adatok
-        float spectrumBuffer[2048];          // Max FFT size
+        // Spektrum adatok - mindig a megjelenítéshez optimalizált méret
+        float spectrumBuffer[2048];          // Max FFT size - megjelenítés
         volatile uint16_t samplingFrequency; // Aktuális mintavételezési frekvencia
-        volatile uint16_t fftSize;           // Aktuális FFT méret
-        volatile float binWidthHz;
+        volatile uint16_t fftSize;           // Megjelenítési FFT méret
+        volatile float binWidthHz;           // Megjelenítési bin szélesség
         volatile float currentAutoGain;
 
         // Cache a legutóbbi FFT adatokhoz, amit a dekóder használhat (nem fogyasztó)
@@ -34,6 +35,12 @@ class AudioCore1Manager {
         volatile float latestBinWidthHz;
         volatile float latestCurrentAutoGain;
         volatile bool latestSpectrumDataAvailable;
+
+        // Dedikált gyors CW dekóder FFT (CW_DECODER_FFT_SIZE samples)
+        float cwDecoderBuffer[CW_DECODER_FFT_SIZE]; // Kis, gyors FFT a CW dekóderhez
+        volatile float cwBinWidthHz;
+        volatile bool cwDataAvailable;
+        volatile bool cwModeEnabled; // Flag: CW mód aktív-e (Core0 -> Core1 kommunikáció)
 
         // Oszcilloszkóp adatok
         int oscilloscopeBuffer[320];     // MAX_INTERNAL_WIDTH
@@ -133,6 +140,14 @@ class AudioCore1Manager {
     static bool getLatestSpectrumData(const float **outData, uint16_t *outFftSize, float *outBinWidth, float *outAutoGain);
 
     /**
+     * @brief Gyors CW dekóder FFT adatok lekérése
+     * @param outData Kimeneti buffer a gyors CW FFT adatoknak
+     * @param outBinWidth Kimeneti bin szélesség Hz-ben
+     * @return true ha friss adat érhető el, false egyébként
+     */
+    static bool getFastCwData(const float **outData, float *outBinWidth);
+
+    /**
      * @brief FFT méret váltása (core0-ból hívható)
      * @param newSize Új FFT méret
      * @return true ha sikeres, false egyébként
@@ -156,6 +171,12 @@ class AudioCore1Manager {
      */
     static void setCollectOsci(bool collectOsci);
     static bool getCollectOsci();
+
+    /**
+     * @brief CW mód engedélyezése/tiltása (Core0 -> Core1 kommunikáció)
+     * @param enabled true ha CW mód aktív, false egyébként
+     */
+    static void setCwModeEnabled(bool enabled);
 
     /**
      * @brief Debug információk kiírása

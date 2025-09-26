@@ -10,14 +10,332 @@ CwDecoder::CwDecoder() {
 }
 
 /**
- * Minden állapot és változó alaphelyzetbe állítása
+ * Adaptív időzítési konstansok kalibrálása WPM alapján
  */
-void CwDecoder::clear() {}
+void CwDecoder::calibrateTimingFromWpm(uint8_t wpm) {
+    // Alapfomula: dot_length = 1200ms / WPM
+    float baseDotMs = 1200.0f / wpm;
+
+    // Időzítési konstansok kiszámítása (ms-ben)
+    dotLengthMs_ = (uint16_t)baseDotMs;
+    dashLengthMs_ = dotLengthMs_ * 3; // Vonal = 3 * pont
+    elementGapMs_ = dotLengthMs_;     // Elemek közti szünet = 1 * pont
+    letterGapMs_ = dotLengthMs_ * 3;  // Betűk közti szünet = 3 * pont
+    wordGapMs_ = dotLengthMs_ * 5;    // Szavak közti szünet = 5 * pont (csökkentve 7-ről)
+
+    // Tolerancia: ±40% az időzítésekben (relaxáltabb a generátor jel dekódolásához)
+    dotMinMs_ = (uint16_t)(dotLengthMs_ * 0.6f);
+    dotMaxMs_ = (uint16_t)(dotLengthMs_ * 1.4f);
+    dashMinMs_ = (uint16_t)(dashLengthMs_ * 0.6f);
+    dashMaxMs_ = (uint16_t)(dashLengthMs_ * 1.4f);
+
+    DEBUG("[CW-TIMING] Kalibrálva %u WPM-re: dot=%u ms, dash=%u ms, elem_gap=%u ms, betű_gap=%u ms, szó_gap=%u ms\n", wpm, dotLengthMs_, dashLengthMs_, elementGapMs_, letterGapMs_, wordGapMs_);
+}
 
 /**
- * dekódolt szöveg visszaadása
+ * Minden állapot és változó alaphelyzetbe állítása
  */
-String CwDecoder::getDecodedText() { return ""; }
+void CwDecoder::clear() {
+    // Alapértelmezett 15 WPM kalibrálás
+    calibrateTimingFromWpm(15);
+
+    // Állapotgép reset
+    currentState_ = CW_IDLE;
+    toneStartTime_ = 0;
+    lastToneEndTime_ = 0;
+
+    // Jeladaptáció
+    adaptiveSnrThreshold_ = 10.0f; // Kezdő SNR küszöb
+    recentToneCount_ = 0;
+    recentNoiseCount_ = 0;
+
+    // Dekódolt adatok törlése
+    currentMorseBuffer_ = "";
+    decodedText_ = "";
+
+    // Statisztikák
+    detectedDotsCount_ = 0;
+    detectedDashesCount_ = 0;
+
+    DEBUG("[CW-CLEAR] CW dekóder inicializálva 15 WPM-re\n");
+}
+
+/**
+ * Adaptív SNR küszöb frissítése
+ */
+void CwDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr) {
+    if (toneDetected) {
+        recentToneCount_++;
+        // Ha túl sok jel érkezett, csökkentjük a küszöböt
+        if (recentToneCount_ > 50) {
+            adaptiveSnrThreshold_ = max(6.0f, adaptiveSnrThreshold_ - 0.5f);
+            recentToneCount_ = 0;
+            recentNoiseCount_ = 0;
+        }
+    } else {
+        recentNoiseCount_++;
+        // Ha túl sok zaj, emeljük a küszöböt
+        if (recentNoiseCount_ > 100) {
+            adaptiveSnrThreshold_ = min(15.0f, adaptiveSnrThreshold_ + 1.0f);
+            recentToneCount_ = 0;
+            recentNoiseCount_ = 0;
+        }
+    }
+}
+
+/**
+ * Morze kód konvertálása karakterré
+ */
+char CwDecoder::morseToChar(const String &morseCode) {
+    // Alapvető morse karakterek
+    if (morseCode == ".-")
+        return 'A';
+    if (morseCode == "-...")
+        return 'B';
+    if (morseCode == "-.-.")
+        return 'C';
+    if (morseCode == "-..")
+        return 'D';
+    if (morseCode == ".")
+        return 'E';
+    if (morseCode == "..-.")
+        return 'F';
+    if (morseCode == "--.")
+        return 'G';
+    if (morseCode == "....")
+        return 'H';
+    if (morseCode == "..")
+        return 'I';
+    if (morseCode == ".---")
+        return 'J';
+    if (morseCode == "-.-")
+        return 'K';
+    if (morseCode == ".-..")
+        return 'L';
+    if (morseCode == "--")
+        return 'M';
+    if (morseCode == "-.")
+        return 'N';
+    if (morseCode == "---")
+        return 'O';
+    if (morseCode == ".--.")
+        return 'P';
+    if (morseCode == "--.-")
+        return 'Q';
+    if (morseCode == ".-.")
+        return 'R';
+    if (morseCode == "...")
+        return 'S';
+    if (morseCode == "-")
+        return 'T';
+    if (morseCode == "..-")
+        return 'U';
+    if (morseCode == "...-")
+        return 'V';
+    if (morseCode == ".--")
+        return 'W';
+    if (morseCode == "-..-")
+        return 'X';
+    if (morseCode == "-.--")
+        return 'Y';
+    if (morseCode == "--..")
+        return 'Z';
+
+    // Számjegyek
+    if (morseCode == "-----")
+        return '0';
+    if (morseCode == ".----")
+        return '1';
+    if (morseCode == "..---")
+        return '2';
+    if (morseCode == "...--")
+        return '3';
+    if (morseCode == "....-")
+        return '4';
+    if (morseCode == ".....")
+        return '5';
+    if (morseCode == "-....")
+        return '6';
+    if (morseCode == "--...")
+        return '7';
+    if (morseCode == "---..")
+        return '8';
+    if (morseCode == "----.")
+        return '9';
+
+    // Írásjel karakterek és prosign-ok
+    if (morseCode == ".-.-.-")
+        return '.';
+    if (morseCode == "--..--")
+        return ',';
+    if (morseCode == "..--..")
+        return '?';
+    if (morseCode == ".----.")
+        return '\'';
+    if (morseCode == "-.-.--")
+        return '!';
+    if (morseCode == "-..-.")
+        return '/';
+    if (morseCode == "-.--.")
+        return '(';
+    if (morseCode == "-.--.-")
+        return ')';
+    if (morseCode == ".-...")
+        return '&';
+    if (morseCode == "---...")
+        return ':';
+    if (morseCode == "-.-.-.")
+        return ';';
+    if (morseCode == "-...-")
+        return '=';
+    if (morseCode == ".-.-.")
+        return '+';
+    if (morseCode == "-....-")
+        return '-';
+    if (morseCode == "..--.-")
+        return '_';
+    if (morseCode == ".-..-.")
+        return '"';
+    if (morseCode == "...-..-")
+        return '$';
+    if (morseCode == ".--.-.")
+        return '@';
+
+    // Prosign-ok (procedural signals)
+    if (morseCode == ".-...")
+        return 'Ä'; // &
+    if (morseCode == "...-.")
+        return '+'; // KN - Go ahead, specific station
+    if (morseCode == ".-.-.")
+        return '+'; // AR - End of message
+    if (morseCode == "...-.-")
+        return '+'; // SK - End of contact
+
+    // Ha túl hosszú a kód, valószínűleg hiba
+    if (morseCode.length() > 8) {
+        DEBUG("[CW-MORSE] Túl hosszú morse kód: '%s' (%d karakter)\n", morseCode.c_str(), morseCode.length());
+        return '?';
+    }
+
+    // Ismeretlen kód
+    DEBUG("[CW-MORSE] Ismeretlen morse kód: '%s'\n", morseCode.c_str());
+    return '?';
+}
+
+/**
+ * dekódolt szöveg visszaadása és törlése
+ */
+String CwDecoder::getDecodedText() {
+    String result = decodedText_;
+    decodedText_ = ""; // Dekódolt szöveg törlése
+    return result;
+}
+
+/**
+ * CW állapotgép kezelése
+ */
+void CwDecoder::processCwStateMachine(bool tonePresent) {
+    unsigned long currentTime = millis();
+
+    switch (currentState_) {
+        case CW_IDLE:
+            if (tonePresent) {
+                // Jel kezdete
+                toneStartTime_ = currentTime;
+                currentState_ = CW_TONE;
+                DEBUG("[CW-STATE] IDLE -> TONE (jel kezdete)\n");
+            }
+            break;
+
+        case CW_TONE:
+            if (!tonePresent) {
+                // Jel vége - időzítés elemzése
+                unsigned long toneDuration = currentTime - toneStartTime_;
+                lastToneEndTime_ = currentTime;
+
+                // Morse buffer hossz ellenőrzése - maximálisan 8 elem egy karakterhez
+                if (currentMorseBuffer_.length() >= 8) {
+                    DEBUG("[CW-STATE] Morse buffer túl hosszú (%d), betű lezárása\n", currentMorseBuffer_.length());
+                    // Lezárjuk az aktuális karaktert
+                    if (currentMorseBuffer_.length() > 0) {
+                        char decodedChar = morseToChar(currentMorseBuffer_);
+                        decodedText_ += decodedChar;
+                        DEBUG("[CW-DECODE] Betű lezárva hossz miatt: '%s' -> '%c'\n", currentMorseBuffer_.c_str(), decodedChar);
+                        currentMorseBuffer_ = "";
+                    }
+                }
+
+                if (toneDuration >= dotMinMs_ && toneDuration <= dotMaxMs_) {
+                    // PONT detektálva
+                    currentMorseBuffer_ += ".";
+                    detectedDotsCount_++;
+                    DEBUG("[CW-STATE] PONT detektálva (%lu ms): '%s'\n", toneDuration, currentMorseBuffer_.c_str());
+                } else if (toneDuration >= dashMinMs_ && toneDuration <= dashMaxMs_) {
+                    // VONAL detektálva
+                    currentMorseBuffer_ += "-";
+                    detectedDashesCount_++;
+                    DEBUG("[CW-STATE] VONAL detektálva (%lu ms): '%s'\n", toneDuration, currentMorseBuffer_.c_str());
+                } else if (toneDuration > dotMaxMs_ && toneDuration < dashMinMs_) {
+                    // ÁTFEDŐ TARTOMÁNY - intelligens döntés
+                    // Ha közelebb van a pont felső határához, pont; ha a vonal alsó határához, vonal
+                    uint16_t distanceToMaxDot = toneDuration - dotMaxMs_;
+                    uint16_t distanceToMinDash = dashMinMs_ - toneDuration;
+
+                    if (distanceToMaxDot <= distanceToMinDash) {
+                        // Közelebb a ponthoz - pontként kezeljük
+                        currentMorseBuffer_ += ".";
+                        detectedDotsCount_++;
+                        DEBUG("[CW-STATE] PONT detektálva (átfedő, %lu ms): '%s'\n", toneDuration, currentMorseBuffer_.c_str());
+                    } else {
+                        // Közelebb a vonalhoz - vonalként kezeljük
+                        currentMorseBuffer_ += "-";
+                        detectedDashesCount_++;
+                        DEBUG("[CW-STATE] VONAL detektálva (átfedő, %lu ms): '%s'\n", toneDuration, currentMorseBuffer_.c_str());
+                    }
+                } else {
+                    DEBUG("[CW-STATE] Érvénytelen időzítés: %lu ms (pont: %u-%u, vonal: %u-%u)\n", toneDuration, dotMinMs_, dotMaxMs_, dashMinMs_, dashMaxMs_);
+                }
+
+                currentState_ = CW_PAUSE;
+                DEBUG("[CW-STATE] TONE -> PAUSE (jel vége)\n");
+            }
+            break;
+
+        case CW_PAUSE:
+            if (tonePresent) {
+                // Újabb jel kezdete
+                toneStartTime_ = currentTime;
+                currentState_ = CW_TONE;
+                DEBUG("[CW-STATE] PAUSE -> TONE (újabb jel)\n");
+            } else {
+                // Szünet folytatódik - időzítés ellenőrzése
+                unsigned long pauseDuration = currentTime - lastToneEndTime_;
+
+                if (pauseDuration >= letterGapMs_) {
+                    // Betű vége - ha van morse buffer tartalma
+                    if (currentMorseBuffer_.length() > 0) {
+                        char decodedChar = morseToChar(currentMorseBuffer_);
+                        decodedText_ += decodedChar;
+                        DEBUG("[CW-DECODE] Betű dekódolva: '%s' -> '%c' (teljes: '%s')\n", currentMorseBuffer_.c_str(), decodedChar, decodedText_.c_str());
+                        currentMorseBuffer_ = "";
+                    }
+
+                    // Szó vége ellenőrzése - jóval hosszabb szünet esetén
+                    if (pauseDuration >= wordGapMs_) {
+                        // Szó vége - szóköz hozzáadása (duplikáció elkerülésével)
+                        if (decodedText_.length() > 0 && decodedText_.charAt(decodedText_.length() - 1) != ' ') {
+                            decodedText_ += " ";
+                            DEBUG("[CW-DECODE] Szó vége detektálva (%lu ms >= %u ms) - szóköz hozzáadva\n", pauseDuration, wordGapMs_);
+                        }
+                    }
+
+                    currentState_ = CW_IDLE;
+                    DEBUG("[CW-STATE] PAUSE -> IDLE (betű/szó vége)\n");
+                }
+            }
+            break;
+    }
+}
 
 /**
  * Detektálja a CW hangot az FFT adatok alapján
@@ -52,37 +370,74 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
         }
     }
 
-    float peakMagnitude_ = maxMagnitude;                                    // Legnagyobb amplitúdó érték
-    float peakFrequencyHz_ = (peakBin != -1) ? (peakBin * binWidth) : 0.0f; // Detektált csúcsfrekvencia
+    float peakMagnitude_ = maxMagnitude; // Legnagyobb amplitúdó érték
 
     // --- Javított Noise level számítása: robusztusabb módszer ---
     float noiseSum = 0.0f;
     int noiseCount = 0;
-    // Több bin kihagyása a csúcs körül a pontosabb noise számításhoz
-    int excludeRange = 2; // +-2 bin kihagyása a csúcs körül
-    for (int i = startBin; i <= endBin; ++i) {
-        if (peakBin == -1 || abs(i - peakBin) > excludeRange) {
+
+    // Csak akkor zárjunk ki bin-eket a csúcs körül, ha van detektált csúcs
+    if (peakBin != -1) {
+        // Dinamikus excludeRange: a keresési ablak méretétől függően
+        int totalBins = endBin - startBin + 1;
+        int excludeRange = (totalBins > 10) ? 2 : 1; // Kis ablak esetén csak 1 bin kizárása
+
+        for (int i = startBin; i <= endBin; ++i) {
+            // Matematikai abszolút érték használata
+            if (i < (peakBin - excludeRange) || i > (peakBin + excludeRange)) {
+                noiseSum += fftData[i];
+                ++noiseCount;
+            }
+        }
+
+        // Ha túl kevés bin maradt a zajszámításhoz, használjunk alternatív módszert
+        if (noiseCount < 3) {
+            noiseSum = 0.0f;
+            noiseCount = 0;
+            // Alternatív módszer: csak a legkisebb excludeRange-t használjuk
+            for (int i = startBin; i <= endBin; ++i) {
+                if (i != peakBin) { // Csak a peak bin-t zárjuk ki
+                    noiseSum += fftData[i];
+                    ++noiseCount;
+                }
+            }
+        }
+    } else {
+        // Ha nincs csúcs detektálva, minden bin-t vegyünk figyelembe zajként
+        for (int i = startBin; i <= endBin; ++i) {
             noiseSum += fftData[i];
             ++noiseCount;
         }
     }
 
-    // Kiszámítjuk a mért zajszintet
-    float measuredNoise = (noiseCount > 0) ? (noiseSum / noiseCount) : 0.0f;
+    // Kiszámítjuk a mért zajszintet - garantáltan pozitív érték
+    float measuredNoise = 1e-6f; // Alapértelmezett minimum zajszint
+    if (noiseCount > 0 && noiseSum > 0.0f) {
+        measuredNoise = noiseSum / noiseCount;
+        // További biztosíték: ha túl kicsi, akkor állítsunk be minimum értéket
+        if (measuredNoise < 1e-6f) {
+            measuredNoise = 1e-6f;
+        }
+    }
 
-    // Egyszerű SNR számítás
-    float snrDb = 10.0f * log10(peakMagnitude_ / (measuredNoise + 1e-6f)); // +1e-6 a nulla elkerüléséhez
+    // Egyszerű SNR számítás - robosztusabb megoldás
+    float snrDb = 0.0f;
+    if (measuredNoise > 1e-9f && peakMagnitude_ > 0.0f) {
+        snrDb = 10.0f * log10(peakMagnitude_ / measuredNoise);
+    } else {
+        // Ha valamelyik érték túl kicsi, akkor nagy negatív SNR-t adunk
+        snrDb = -60.0f;
+    }
 
-    // DEBUG("[CW Decoder] CW: %dHz, ablak: [%d Hz - %d Hz], Peak: %s Hz,  SNR: %s dB, (Ampl: %s, Noise: %s)\n", //
-    //       centerFreqHz, startFreqHz, endFreqHz,                                                               //
-    //       Utils::floatToString(peakFrequencyHz_).c_str(),                                                     //
-    //       Utils::floatToString(snrDb).c_str(),                                                                //
-    //       Utils::floatToString(peakMagnitude_).c_str(),                                                       //
-    //       Utils::floatToString(measuredNoise).c_str()                                                         //
-    // );
+    // DEBUG üzenet visszaengedése a diagnosztizáláshoz
+    // DEBUG("[CW Decoder] CW: %dHz, ablak: [%d Hz - %d Hz], Peak: %s Hz,  SNR: %s dB, (Ampl: %s, Noise: %s)\n", centerFreqHz, startFreqHz, endFreqHz, Utils::floatToString(peakFrequencyHz_).c_str(),
+    //      Utils::floatToString(snrDb).c_str(), Utils::floatToString(peakMagnitude_).c_str(), Utils::floatToString(measuredNoise).c_str());
 
-    // SNR küszöb 20 dB és minimális amplitúdó 10000.00
-    bool isToneDetected = (snrDb >= 20.0f) && (peakMagnitude_ >= 10000.00f);
+    // JAVÍTOTT küszöbök: adaptív SNR és reális amplitúdó 70000 felett
+    bool isToneDetected = (snrDb >= adaptiveSnrThreshold_) && (peakMagnitude_ >= 70000.0f);
+
+    // Adaptív küszöb frissítése
+    updateAdaptiveThreshold(isToneDetected, snrDb);
 
     return isToneDetected;
 }
@@ -95,22 +450,31 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
  */
 void CwDecoder::processCwFftData(const float *fftData, uint16_t fftSize, float binWidth) {
 
-    // Debug: új FFT adatok érkezése
-    static unsigned long debugDataCount = 0;
-    static unsigned long lastDebugDataReport = millis();
-    debugDataCount++;
-    unsigned long now = millis();
-    if (now - lastDebugDataReport > 5000) { // 5 másodpercenként
-        DEBUG("[CW-DEBUG] Új FFT adatok: %lu / 5sec (%s FPS)\n", debugDataCount, Utils::floatToString(debugDataCount / 5.0f).c_str());
-        debugDataCount = 0;
-        lastDebugDataReport = now;
+    // Debug: CW dekóder adat érkezése
+    static unsigned long cwProcessCount = 0;
+    static unsigned long lastCwProcessReport = millis();
+    cwProcessCount++;
+    unsigned long nowProcess = millis();
+    if (nowProcess - lastCwProcessReport > 5000) { // 5 másodpercenként
+        DEBUG("[CW-PROCESS] CW dekóder feldolgozás: %lu / 5sec (%s FPS), adaptív SNR: %s dB\n", cwProcessCount, Utils::floatToString(cwProcessCount / 5.0f).c_str(), Utils::floatToString(adaptiveSnrThreshold_).c_str());
+        cwProcessCount = 0;
+        lastCwProcessReport = nowProcess;
     }
 
     // Megkeressük a CW hang frekvenciájának megfelelő bin index
-    bool toneDetected = detectTone(fftData, fftSize, binWidth);
+    bool currentToneDetected = detectTone(fftData, fftSize, binWidth);
 
-    // LED frissítés minden FFT feldolgozáskor (nincs szükség állapot követésre CW-nél)
+    // CW állapotgép futtatása
+    processCwStateMachine(currentToneDetected);
+
     if (config.data.cwRttyLedDebugEnabled) {
-        digitalWrite(LED_BUILTIN, toneDetected ? HIGH : LOW);
+        digitalWrite(LED_BUILTIN, currentToneDetected ? HIGH : LOW);
+    }
+
+    // Statisztikák periodikus kiírása
+    static unsigned long lastStatsReport = millis();
+    if (nowProcess - lastStatsReport > 10000) { // 10 másodpercenként
+        DEBUG("[CW-STATS] Pontok: %u, vonalak: %u, dekódolt: '%s'\n", detectedDotsCount_, detectedDashesCount_, decodedText_.c_str());
+        lastStatsReport = nowProcess;
     }
 }

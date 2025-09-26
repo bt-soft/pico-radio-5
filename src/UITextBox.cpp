@@ -2,7 +2,7 @@
 #include "defines.h" // For DEBUG
 
 UITextBox::UITextBox(const Rect &bounds, const String &initialText)
-    : UIComponent(bounds), text(initialText), textColor(TFT_WHITE), bgColor(TFT_BLACK), textSize(2), textDatum(TL_DATUM), _sprite(&tft), _spriteCreated(false) {
+    : UIComponent(bounds), text(initialText), textColor(TFT_WHITE), bgColor(TFT_BLACK), textSize(2), textDatum(TL_DATUM), _sprite(&tft), _spriteCreated(false), maxCharsPerLine(40) {
     // Sprite létrehozása a konstruktorban
     if (bounds.width > 0 && bounds.height > 0) {
         _sprite.setColorDepth(16);
@@ -65,6 +65,11 @@ void UITextBox::setTextDatum(uint8_t datum) {
     markForRedraw();
 }
 
+void UITextBox::setMaxCharsPerLine(int maxChars) {
+    maxCharsPerLine = maxChars;
+    markForRedraw();
+}
+
 void UITextBox::draw() {
     if (!needsRedraw || !_spriteCreated) {
         return;
@@ -80,39 +85,46 @@ void UITextBox::draw() {
     _sprite.setFreeFont();
     _sprite.setTextSize(textSize);
 
-    // 3. Szótördelés és rajzolás a sprite-ra
+    // 3. Karakterszám alapú sortörés és rajzolás a sprite-ra
     if (!text.isEmpty()) {
         int16_t cursorX = 5; // Belső padding
         int16_t cursorY = 5;
-        int16_t lineHeight = _sprite.fontHeight() * textSize;
+        int16_t lineHeight = _sprite.fontHeight() + 2; // Kis extra térköz a sorok között
         String currentLine = "";
-        String word = "";
 
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
-            if (c == ' ' || c == '\n' || i == text.length() - 1) {
-                if (c != '\n' && i == text.length() - 1)
-                    word += c;
 
-                if (_sprite.textWidth(currentLine + word) > bounds.width - 10) {
-                    _sprite.drawString(currentLine, cursorX, cursorY);
-                    cursorY += lineHeight;
-                    currentLine = word + (c == ' ' ? " " : "");
-                } else {
-                    currentLine += word + (c == ' ' ? " " : "");
+            if (c == '\n') {
+                // Explicit új sor
+                _sprite.drawString(currentLine, cursorX, cursorY);
+                cursorY += lineHeight;
+                currentLine = "";
+
+                // Ha kilógnánk a sprite-ból, stop
+                if (cursorY + lineHeight > bounds.height) {
+                    break;
                 }
-                word = "";
+            } else {
+                // Karakter hozzáadása a sorhoz
+                currentLine += c;
 
-                if (c == '\n') {
+                // Ha elértük a karakterlimitet, új sort kezdünk
+                if (currentLine.length() >= maxCharsPerLine) {
                     _sprite.drawString(currentLine, cursorX, cursorY);
                     cursorY += lineHeight;
                     currentLine = "";
+
+                    // Ha kilógnánk a sprite-ból, stop
+                    if (cursorY + lineHeight > bounds.height) {
+                        break;
+                    }
                 }
-            } else {
-                word += c;
             }
         }
-        if (!currentLine.isEmpty()) {
+
+        // Az utolsó sor kirajzolása (ha van és még elfér)
+        if (!currentLine.isEmpty() && cursorY < bounds.height) {
             _sprite.drawString(currentLine, cursorX, cursorY);
         }
     }

@@ -1535,33 +1535,41 @@ float SpectrumVisualizationComponent::getCore1BinWidthHz() {
  * @brief Optimal FFT méret meghatározása a megjelenítési módhoz
  */
 uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mode) const {
+    uint16_t size;
     switch (mode) {
         case DisplayMode::CWWaterfall:
-            return 64; // Kis FFT méret a CW jel gyors detektálásához (speed > felbontás)
+            size = 512; // Szép spektrum megjelenítés CW-ben is - dekóder külön gyors FFT-t kap
+            break;
 
         case DisplayMode::RTTYWaterfall:
-            return 256; // RTTY jelhez elegendő a közepes felbontás
+            size = 512; // RTTY jelhez elegendő a közepes felbontás
+            break;
 
         case DisplayMode::SpectrumHighRes:
-            return 256; // Magas felbontású spektrum, ~150px széles a grafikon, így elég 256 FFT méret
+            size = 512; // Magas felbontású spektrum
+            break;
 
         case DisplayMode::Waterfall:
-            return 256; // Vízfolyás, ~80px magas a grafikon, így elég lenne a 128 FFT méret, de a 256 szebb képet ad
+            size = 256; // Vízfolyás
+            break;
 
         case DisplayMode::SpectrumLowRes:
         case DisplayMode::Oscilloscope:
         case DisplayMode::Envelope:
         default:
-            return 256; // 64 is elég lenne, de az a lowresben foghijjas képet ad, ha csökken a HF sávszélesség
+            size = 256;
+            break;
 
         case DisplayMode::Off:
-            return 0;
+            size = 0;
+            break;
     }
-}
 
-/**
- * @brief Spektrum mód dekódolása szöveggé
- */
+    DEBUG("SpectrumVisualizationComponent::getOptimalFftSizeForMode: Mód=%d, FFT méret=%d\n", (int)mode, size);
+    return size;
+} /**
+   * @brief Spektrum mód dekódolása szöveggé
+   */
 const char *SpectrumVisualizationComponent::decodeModeToStr() {
 
     const char *modeText = "";

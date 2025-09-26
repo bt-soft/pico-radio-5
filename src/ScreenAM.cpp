@@ -56,34 +56,56 @@ void ScreenAM::processAudioDecoder() {
     // Lekérjük a jelenlegi spektrum vizualizáció módot (egyszeri ellenőrzés)
     SpectrumVisualizationComponent::DisplayMode currentMode = ScreenAM::that->spectrumComp->getCurrentMode();
 
+    // CW mód flag beállítása a Core1 számára (Core0 -> Core1 kommunikáció)
+    static SpectrumVisualizationComponent::DisplayMode lastCwMode = static_cast<SpectrumVisualizationComponent::DisplayMode>(-1);
+    bool isCwMode = (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall);
+
+    if (currentMode != lastCwMode) {
+        AudioCore1Manager::setCwModeEnabled(isCwMode);
+        // DEBUG("[CW-DEBUG] CW mód flag beállítva: %s (mód: %d -> %d)\n", isCwMode ? "ENABLE" : "DISABLE", (int)lastCwMode, (int)currentMode);
+        lastCwMode = currentMode;
+    }
+
     // Debug: spektrum mód ellenőrzése
     static SpectrumVisualizationComponent::DisplayMode lastDebugMode = static_cast<SpectrumVisualizationComponent::DisplayMode>(-1);
     if (currentMode != lastDebugMode) {
-        DEBUG("[CW-DEBUG] Spektrum mód változás: %d -> %d (CWWaterfall=%d)\n", (int)lastDebugMode, (int)currentMode, (int)SpectrumVisualizationComponent::DisplayMode::CWWaterfall);
+        // DEBUG("[CW-DEBUG] Spektrum mód változás: %d -> %d (CWWaterfall=%d)\n", (int)lastDebugMode, (int)currentMode, (int)SpectrumVisualizationComponent::DisplayMode::CWWaterfall);
         lastDebugMode = currentMode;
     }
 
     // Csak CW Waterfall módban dolgozunk
-    if (currentMode != SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+    if (!isCwMode) {
         return; // Gyors kilépés ha nem CW mód
     }
 
-    // FFT adatok lekérése
+    // FFT adatok lekérése - DUPLEX rendszer használata
     const float *magnitudeData = nullptr;
-    uint16_t fftSize = 0;
+    uint16_t fftSize = 512; // Waterfall FFT méret
     float binWidth = 0.0f;
     float autoGain = 1.0f;
 
-    // Error handling az FFT adatok lekéréséhez
+    // WATERFALL FFT adatok (mindig 512-es, minden módban)
     if (!AudioCore1Manager::getLatestSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
-        // Nincsenek új FFT adatok - ez normális lehet
         static unsigned long lastWarning = 0;
         unsigned long now = millis();
-        if (now - lastWarning > 5000) { // 5 másodpercenként egy figyelmeztetés
-            DEBUG("ScreenAM::processAudioDecoder() - Nincs új FFT adat 5 sec óta\n");
+        if (now - lastWarning > 5000) {
+            DEBUG("ScreenAM::processAudioDecoder() - Nincs új waterfall FFT adat 5 sec óta\n");
             lastWarning = now;
         }
         return;
+    }
+
+    // CW DEKÓDER FFT adatok (csak CW módban, külön CW_DECODER_FFT_SIZE-as)
+    if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+        const float *cwMagnitudeData = nullptr;
+        float cwBinWidth = 0.0f;
+
+        if (AudioCore1Manager::getFastCwData(&cwMagnitudeData, &cwBinWidth)) {
+            // CW dekóder feldolgozás (CW_DECODER_FFT_SIZE-as FFT)
+            if (ScreenAM::that && ScreenAM::that->cwDecoder) {
+                ScreenAM::that->cwDecoder->processCwFftData(cwMagnitudeData, CW_DECODER_FFT_SIZE, cwBinWidth);
+            }
+        }
     }
 
     // Validálás: FFT adatok érvényessége
@@ -91,20 +113,6 @@ void ScreenAM::processAudioDecoder() {
         DEBUG("ScreenAM::processAudioDecoder() - HIBA: Érvénytelen FFT adatok (ptr:%p, size:%u, binWidth:%s)\n", magnitudeData, fftSize, Utils::floatToString(binWidth).c_str());
         return;
     }
-
-    // CW dekóder feldolgozás (az ellenőrzés már megtörtént)
-    ScreenAM::that->cwDecoder->processCwFftData(magnitudeData, fftSize, binWidth);
-
-    // // Performance monitoring (debug célokra)
-    // static unsigned long callCount = 0;
-    // static unsigned long lastPerfReport = millis();
-    // callCount++;
-    // unsigned long perfNow = millis();
-    // if (perfNow - lastPerfReport > 10000) { // 10 másodpercenként
-    //     DEBUG("[PERF] processAudioDecoder hívások: %lu / 10sec (átlag: %s ms/hívás)\n", callCount, Utils::floatToString(10000.0f / callCount).c_str());
-    //     callCount = 0;
-    //     lastPerfReport = perfNow;
-    // }
 }
 
 // ===================================================================
@@ -236,6 +244,9 @@ void ScreenAM::deactivate() {
     // --- Stop audioDecoderTimer ha a képernyő deaktiválódik
     audioDecoderTimer.detachInterrupt();
     ScreenAM::that = nullptr; // töröljük a statikus pointert
+
+    // CW mód flag kikapcsolása
+    AudioCore1Manager::setCwModeEnabled(false);
 
     // Szülő osztály deaktiválása
     ScreenRadioBase::deactivate();
@@ -395,11 +406,31 @@ void ScreenAM::handleOwnLoop() {
         // Ha a CW dekóder mód aktív
         if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
 
-            // A Dekódolt szöveg (vagy debug állapot) lekérése és megjelenítése
+            // A Dekódolt szöveg lekérése és megjelenítése
             if (cwDecoder) {
                 String newText = cwDecoder->getDecodedText();
-                if (newText != decodedTextBox->getText()) {
-                    decodedTextBox->setText(newText);
+                if (newText.length() > 0) {
+                    // Hozzáfűzzük az új szöveget a meglévőhöz
+                    String currentText = decodedTextBox->getText();
+                    String updatedText = currentText + newText;
+
+                    // Egyszerű karakterszám alapú scrollozás
+                    const int maxChars = 160; // Maximum karakterszám (kb. 4 sor x 40 karakter)
+
+                    // Ha túl hosszú, akkor elölről vágunk le
+                    if (updatedText.length() > maxChars) {
+                        // Az első szó végéig keresünk egy szóközt a vágáshoz
+                        int cutPos = updatedText.length() - maxChars + 20; // Egy kicsit több helyet hagyunk
+                        int spacePos = updatedText.indexOf(' ', cutPos);
+                        if (spacePos > 0) {
+                            updatedText = updatedText.substring(spacePos + 1);
+                        } else {
+                            // Ha nincs szóköz, akkor durván vágjuk
+                            updatedText = updatedText.substring(cutPos);
+                        }
+                    }
+
+                    decodedTextBox->setText(updatedText);
                 }
             }
         }
@@ -467,7 +498,8 @@ void ScreenAM::layoutComponents() {
     // ===================================================================
     // Spektrum vizualizáció komponens létrehozása
     // ===================================================================
-    AudioCore1Manager::setFftSize(64); // Még kisebb FFT méret CW-hez a maximális gyorsaságért
+    // FFT méret beállítása: duplex rendszer használata (512 + CW_DECODER_FFT_SIZE decimált)
+    AudioCore1Manager::setFftSize(512); // Nagy FFT a jó minőségű waterfall-hez
 
     Rect spectrumBounds(255, FreqDisplayY + FreqDisplay::FREQDISPLAY_HEIGHT - 10, 150, 80);
     createSpectrumComponent(spectrumBounds, RadioMode::AM);
@@ -485,8 +517,9 @@ void ScreenAM::layoutComponents() {
     // Dekódolt szöveg doboz létrehozása
     Rect textBoxBounds(2, 165, 405, 75); // Pozíció
     decodedTextBox = std::make_shared<UITextBox>(textBoxBounds, "");
-    decodedTextBox->setTextSize(1);
     decodedTextBox->setTextColor(TFT_CYAN, TFT_BLACK);
+    decodedTextBox->setTextSize(2);
+    decodedTextBox->setMaxCharsPerLine(30); // 30 karakter szélesség
     addChild(decodedTextBox);
 }
 
