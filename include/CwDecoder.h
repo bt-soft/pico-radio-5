@@ -72,6 +72,7 @@ class CwDecoder {
     String currentMorseBuffer_; // Aktuális morze betű
     String decodedText_;        // Dekódolt szöveg (csak új karakterek)
     bool newCharacterAdded_;    // Jelzi, hogy új karakter lett hozzáadva
+    bool wordSpaceAdded_;       // Jelzi, hogy az aktuális szünethez már hozzáadtunk szóközt
 
     // === STATISZTIKÁK ===
     uint32_t detectedDotsCount_;
