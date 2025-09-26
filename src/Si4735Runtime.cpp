@@ -112,7 +112,7 @@ void Si4735Runtime::manageHardwareAudioMute() {
     if (hardwareAudioMuteState and ((millis() - hardwareAudioMuteElapsed) > MIN_ELAPSED_HARDWARE_AUDIO_MUTE_TIME)) {
         // Ha a mute állapotban vagyunk és eltelt a minimális idő, akkor kikapcsoljuk a mute-t
         hardwareAudioMuteState = false;
-        si4735.setHardwareAudioMute(false);
+        si4735.setHardwareAudioMute(false); // kikommentelem mert csak pattokgást okoz a hangban
     }
 }
 
@@ -121,7 +121,7 @@ void Si4735Runtime::manageHardwareAudioMute() {
  * (SSB/CW frekvenciaváltáskor a zajszűrés miatt)
  */
 void Si4735Runtime::hardwareAudioMuteOn() {
-    si4735.setHardwareAudioMute(true);
+    // si4735.setHardwareAudioMute(true);  //kikommentelem mert csak pattokgást okoz a hangban
     hardwareAudioMuteState = true;
     hardwareAudioMuteElapsed = millis();
 }

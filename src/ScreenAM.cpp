@@ -26,17 +26,6 @@ bool audioDecoderTimerHardwareInterruptHandler(struct repeating_timer *t) {
  */
 void ScreenAM::processAudioDecoder() {
 
-    // Debug: timer számláló
-    static unsigned long debugCallCount = 0;
-    static unsigned long lastDebugReport = millis();
-    debugCallCount++;
-    unsigned long now = millis();
-    if (now - lastDebugReport > 5000) { // 5 másodpercenként
-        DEBUG("[CW-DEBUG] processAudioDecoder hívások: %lu / 5sec\n", debugCallCount);
-        debugCallCount = 0;
-        lastDebugReport = now;
-    }
-
     // Null pointer ellenőrzések error handling-gel
     if (ScreenAM::that == nullptr) {
         DEBUG("ScreenAM::processAudioDecoder() - HIBA: ScreenAM::that nullptr\n");
@@ -399,6 +388,11 @@ void ScreenAM::handleOwnLoop() {
             if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
                 cwDecoder->clear();
                 decodedTextBox->setText("");
+            } else {
+                // Ha nem CW módban vagyunk és van tartalom a szövegdobozban, töröljük
+                if (decodedTextBox->getText().length() > 0) {
+                    decodedTextBox->setText("");
+                }
             }
             lastSpectrumMode_ = currentMode;
         }
