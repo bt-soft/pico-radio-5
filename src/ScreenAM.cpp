@@ -432,7 +432,12 @@ void ScreenAM::handleOwnLoop() {
                     String updatedText = currentText + filteredNewText;
 
                     // Egyszerű karakterszám alapú scrollozás
-                    const int maxChars = 160; // Maximum karakterszám (kb. 4 sor x 40 karakter)
+                    const int maxChars = 80; // Kisebb limit a teszteléshez (kb. 2 sor x 40 karakter)
+
+                    // Debug: kiírjuk a hosszt
+                    if (updatedText.length() > 100) { // Már 100 karakternél is kiírjuk
+                        DEBUG("[CW-UI] Szöveg hossz: %d/%d karakter\n", updatedText.length(), maxChars);
+                    }
 
                     // Ha túl hosszú, akkor elölről vágunk le
                     if (updatedText.length() > maxChars) {
@@ -441,9 +446,11 @@ void ScreenAM::handleOwnLoop() {
                         int spacePos = updatedText.indexOf(' ', cutPos);
                         if (spacePos > 0) {
                             updatedText = updatedText.substring(spacePos + 1);
+                            DEBUG("[CW-UI] Scroll: szó alapján vágva, új hossz: %d\n", updatedText.length());
                         } else {
                             // Ha nincs szóköz, akkor durván vágjuk
                             updatedText = updatedText.substring(cutPos);
+                            DEBUG("[CW-UI] Scroll: durva vágás, új hossz: %d\n", updatedText.length());
                         }
                     }
 
