@@ -102,8 +102,8 @@ void ScreenAM::processAudioDecoder() {
         return;
     }
 
-    // CW DEKÓDER FFT adatok (csak CW módban, külön CW_DECODER_FFT_SIZE-as)
-    if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+    // CW DEKÓDER FFT adatok (CW módokban: CWWaterfall és CwSnrCurve, külön CW_DECODER_FFT_SIZE-as)
+    if (isCwMode) {
         const float *cwMagnitudeData = nullptr;
         float cwBinWidth = 0.0f;
 

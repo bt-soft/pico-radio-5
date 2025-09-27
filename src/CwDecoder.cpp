@@ -78,19 +78,30 @@ void CwDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr) {
     if (toneDetected) {
         recentToneCount_++;
         // Ha túl sok jel érkezett, csökkentjük a küszöböt
-        if (recentToneCount_ > 50) {
+        if (recentToneCount_ > 20) { // 50-ről 20-ra csökkentve - gyorsabb reagálás
             adaptiveSnrThreshold_ = max(6.0f, adaptiveSnrThreshold_ - 0.5f);
             recentToneCount_ = 0;
             recentNoiseCount_ = 0;
+            DEBUG("[CW-ADAPT] SNR küszöb csökkentve: %s dB (sok jel detektálva)\n", Utils::floatToString(adaptiveSnrThreshold_).c_str());
         }
     } else {
         recentNoiseCount_++;
-        // Ha túl sok zaj, emeljük a küszöböt
-        if (recentNoiseCount_ > 100) {
-            adaptiveSnrThreshold_ = min(15.0f, adaptiveSnrThreshold_ + 1.0f);
+        // Ha túl sok zaj, emeljük a küszöböt, de lassan és idővel csökkentsük vissza
+        if (recentNoiseCount_ > 200) {                                        // 100-ról 200-ra növelve - lassabb emelés
+            adaptiveSnrThreshold_ = min(18.0f, adaptiveSnrThreshold_ + 0.5f); // Max 18dB-re növelve, lassabb emelés
             recentToneCount_ = 0;
             recentNoiseCount_ = 0;
+            DEBUG("[CW-ADAPT] SNR küszöb emelve: %s dB (sok zaj detektálva)\n", Utils::floatToString(adaptiveSnrThreshold_).c_str());
         }
+    }
+
+    // Időalapú csökkentés: ha sokáig magas a küszöb és nincs jel, lassan csökkentsük
+    static unsigned long lastThresholdDecay = 0;
+    unsigned long now = millis();
+    if (now - lastThresholdDecay > 10000 && adaptiveSnrThreshold_ > 10.0f && recentToneCount_ == 0) { // 10 sec múlva
+        adaptiveSnrThreshold_ = max(10.0f, adaptiveSnrThreshold_ - 1.0f);                             // Lassan vissza az alapértékre
+        lastThresholdDecay = now;
+        DEBUG("[CW-ADAPT] SNR küszöb időalapú csökkentés: %s dB (hosszú inaktivitás)\n", Utils::floatToString(adaptiveSnrThreshold_).c_str());
     }
 }
 
@@ -311,7 +322,7 @@ void CwDecoder::processCwStateMachine(bool tonePresent) {
                                 wordSpaceAdded_ = true; // Ezt is jelöljük, hogy ne próbáljuk újra
                             }
                         } else {
-                            //DEBUG("[CW-IDLE] Szóköz már hozzáadva ehhez a szünethez (%lu ms)\n", idleDuration);
+                            // DEBUG("[CW-IDLE] Szóköz már hozzáadva ehhez a szünethez (%lu ms)\n", idleDuration);
                         }
                     }
                 }
