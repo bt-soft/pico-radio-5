@@ -21,7 +21,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     /**
      * @brief Megjelenítési módok
      */
-    enum class DisplayMode { Off = 0, SpectrumLowRes = 1, SpectrumHighRes = 2, Oscilloscope = 3, Envelope = 4, Waterfall = 5, CWWaterfall = 6, RTTYWaterfall = 7 };
+    enum class DisplayMode { Off = 0, SpectrumLowRes = 1, SpectrumHighRes = 2, Oscilloscope = 3, Envelope = 4, Waterfall = 5, CWWaterfall = 6, RTTYWaterfall = 7, SNRCurve = 8 };
 
     /**
      * @brief Hangolási segéd típusok (CW/RTTY)
@@ -169,6 +169,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     void renderOscilloscope();
     void renderWaterfall();
     void renderEnvelope();
+    void renderSNRCurve();
     void renderModeIndicator();
     void renderFrequencyLabels(uint16_t minDisplayFrequencyHz, uint16_t maxDisplayFrequencyHz);
 

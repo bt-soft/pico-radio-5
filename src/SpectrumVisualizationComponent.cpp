@@ -35,6 +35,9 @@ constexpr float WATERFALL_INPUT_SCALE = 8.0f; // Waterfall intenzitás skáláz�
 
 // CW/RTTY hangolási segéd - nagyobb érték = élénkebb színek
 constexpr float TUNING_AID_INPUT_SCALE = 3.0f; // Hangolási segéd intenzitás skálázása
+
+// SNR görbe mód - nagyobb érték = nagyobb amplitúdó
+constexpr float SNR_CURVE_SENSITIVITY_FACTOR = 2.0f; // SNR görbe érzékenység
 }; // namespace SensitivityConstants
 
 // Analizátor konstansok
@@ -202,7 +205,7 @@ bool SpectrumVisualizationComponent::isAutoGainMode() {
  * @brief Config értékek konvertálása
  */
 SpectrumVisualizationComponent::DisplayMode SpectrumVisualizationComponent::configValueToDisplayMode(uint8_t configValue) {
-    if (configValue <= static_cast<uint8_t>(DisplayMode::RTTYWaterfall)) {
+    if (configValue <= static_cast<uint8_t>(DisplayMode::SNRCurve)) {
         return static_cast<DisplayMode>(configValue);
     }
     return DisplayMode::Off;
@@ -278,8 +281,8 @@ void SpectrumVisualizationComponent::draw() {
         return;
     }
 
-    // Biztonsági ellenőrzés: FM módban CW/RTTY módok nem engedélyezettek
-    if (radioMode_ == RadioMode::FM && (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall)) {
+    // Biztonsági ellenőrzés: FM módban CW/RTTY/SNR módok nem engedélyezettek
+    if (radioMode_ == RadioMode::FM && (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall || currentMode_ == DisplayMode::SNRCurve)) {
         currentMode_ = DisplayMode::Waterfall; // Automatikus váltás Waterfall módra
     }
 
@@ -313,6 +316,10 @@ void SpectrumVisualizationComponent::draw() {
         case DisplayMode::CWWaterfall:
         case DisplayMode::RTTYWaterfall:
             renderCwOrRttyTuningAid();
+            break;
+
+        case DisplayMode::SNRCurve:
+            renderSNRCurve();
             break;
     }
 
@@ -504,18 +511,20 @@ void SpectrumVisualizationComponent::cycleThroughModes() {
 
     int nextMode = static_cast<int>(currentMode_) + 1;
 
-    // FM módban kihagyjuk a CW és RTTY hangolási segéd módokat
+    // FM módban kihagyjuk a CW, RTTY és SNR hangolási segéd módokat
     if (radioMode_ == RadioMode::FM) {
         if (nextMode == static_cast<int>(DisplayMode::CWWaterfall)) {
             nextMode = static_cast<int>(DisplayMode::Off); // Ugrás az Off módra, mert FM-en nincs CW
         } else if (nextMode == static_cast<int>(DisplayMode::RTTYWaterfall)) {
+            nextMode = static_cast<int>(DisplayMode::Off); // Ugrás az Off módra
+        } else if (nextMode == static_cast<int>(DisplayMode::SNRCurve)) {
             nextMode = static_cast<int>(DisplayMode::Off); // Ugrás az Off módra
         } else if (nextMode > static_cast<int>(DisplayMode::Waterfall)) {
             nextMode = static_cast<int>(DisplayMode::Off);
         }
     } else {
         // AM módban minden mód elérhető
-        if (nextMode > static_cast<int>(DisplayMode::RTTYWaterfall)) {
+        if (nextMode > static_cast<int>(DisplayMode::SNRCurve)) {
             nextMode = static_cast<int>(DisplayMode::Off);
         }
     }
@@ -1404,6 +1413,118 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
 }
 
 /**
+ * @brief SNR Curve renderelése - frekvencia/SNR burkológörbe
+ */
+void SpectrumVisualizationComponent::renderSNRCurve() {
+    // Audio feldolgozás Core1-en történik, AudioCore1Manager-en keresztül
+
+    int graphH = getGraphHeight();
+    if (!spriteCreated_ || bounds.width == 0 || graphH <= 0) {
+        if (!spriteCreated_) {
+            DEBUG("SpectrumVisualizationComponent::renderSNRCurve - Sprite nincs létrehozva\n");
+        }
+        return;
+    }
+
+    // Core1 spektrum adatok lekérése
+    const float *magnitudeData = nullptr;
+    uint16_t actualFftSize = AudioProcessorConstants::DEFAULT_FFT_SAMPLES;
+    float currentBinWidthHz = 0.0f;
+    float currentAutoGain = 1.0f;
+
+    // Lekérjük az adatokat a Core1-ről
+    bool dataAvailable = getCore1SpectrumData(&magnitudeData, &actualFftSize, &currentBinWidthHz, &currentAutoGain);
+    if (!dataAvailable || !magnitudeData || currentBinWidthHz == 0) {
+        return;
+    }
+
+    // Sprite teljes törlése
+    sprite_->fillSprite(TFT_BLACK);
+
+    // Frekvencia tartomány meghatározása
+    const float MIN_FREQ_HZ = AnalyzerConstants::ANALYZER_MIN_FREQ_HZ;
+    const float MAX_FREQ_HZ = maxDisplayFrequencyHz_;
+
+    const int min_bin = std::max(2, static_cast<int>(std::round(MIN_FREQ_HZ / currentBinWidthHz)));
+    const int max_bin = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(MAX_FREQ_HZ / currentBinWidthHz)));
+    const int num_bins = std::max(1, max_bin - min_bin + 1);
+
+    // Adaptív skálázás
+    float adaptiveScale = getAdaptiveScale(SensitivityConstants::SNR_CURVE_SENSITIVITY_FACTOR);
+    float maxMagnitude = 0.0f;
+
+    // Előző pont koordinátái a görbe rajzolásához
+    int prevX = -1;
+    int prevY = -1;
+
+    // Minden pixel oszlophoz kiszámítjuk az SNR értéket
+    for (int x = 0; x < bounds.width; x++) {
+        // X koordináta frekvenciává konvertálása
+        float ratio = (bounds.width <= 1) ? 0.0f : (static_cast<float>(x) / (bounds.width - 1));
+        int fft_bin_index = min_bin + static_cast<int>(std::round(ratio * (num_bins - 1)));
+        fft_bin_index = constrain(fft_bin_index, min_bin, max_bin);
+
+        // Magnitude lekérése és feldolgozása
+        float rawMagnitude = magnitudeData[fft_bin_index];
+        maxMagnitude = std::max(maxMagnitude, rawMagnitude);
+
+        // SNR érték számítása (egyszerű amplitúdó alapú)
+        float snrValue = rawMagnitude * adaptiveScale;
+
+        // Y koordináta számítása (invertált, mert a képernyő teteje y=0)
+        int y = graphH - static_cast<int>(constrain(snrValue, 0.0f, static_cast<float>(graphH)));
+        y = constrain(y, 0, graphH - 1);
+
+        // Görbe rajzolása - pont összekötése az előzővel
+        if (prevX >= 0 && prevY >= 0) {
+            // Vonal rajzolása az előző ponttól a jelenleg számítottig
+            sprite_->drawLine(prevX, prevY, x, y, TFT_CYAN);
+        }
+
+        // Pontot is rajzolunk a jobb láthatóságért
+        sprite_->drawPixel(x, y, TFT_WHITE);
+
+        // Koordináták mentése a következő iterációhoz
+        prevX = x;
+        prevY = y;
+    }
+
+    // Hangolási segédvonal rajzolása (zöld függőleges vonal középen)
+    int centerX = bounds.width / 2;
+    sprite_->drawFastVLine(centerX, 0, graphH, TFT_GREEN);
+
+    // Középső frekvencia számítása és kiírása
+    float centerFreqRatio = 0.5f;
+    int centerBin = min_bin + static_cast<int>(std::round(centerFreqRatio * (num_bins - 1)));
+    float centerFrequencyHz = centerBin * currentBinWidthHz;
+
+    // Frekvencia szöveg kiírása a sprite tetejére
+    sprite_->setTextColor(TFT_GREEN, TFT_BLACK);
+    sprite_->setTextSize(1);
+
+    char freqStr[16];
+    if (centerFrequencyHz >= 1000.0f) {
+        snprintf(freqStr, sizeof(freqStr), "%.1fkHz", centerFrequencyHz / 1000.0f);
+    } else {
+        snprintf(freqStr, sizeof(freqStr), "%.0fHz", centerFrequencyHz);
+    }
+
+    // Szöveg középre igazítása
+    int textWidth = strlen(freqStr) * 6; // Becsült szöveg szélesség
+    int textX = (bounds.width - textWidth) / 2;
+    sprite_->drawString(freqStr, textX, 2);
+
+    // Sprite kirakása a képernyőre
+    sprite_->pushSprite(bounds.x, bounds.y);
+
+    // Adaptív autogain frissítése
+    updateFrameBasedGain(maxMagnitude);
+
+    // Frekvencia feliratok rajzolása alsó részen
+    renderFrequencyLabels(static_cast<uint16_t>(MIN_FREQ_HZ), static_cast<uint16_t>(MAX_FREQ_HZ));
+}
+
+/**
  * @brief Meghatározza, hogy egy adott FFT bin melyik alacsony felbontású sávhoz tartozik.
  * @param fft_bin_index Az FFT bin indexe.
  * @param min_bin_low_res A LowRes spektrumhoz figyelembe vett legalacsonyabb FFT bin index.
@@ -1553,6 +1674,10 @@ uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mo
             size = 256; // Vízfolyás
             break;
 
+        case DisplayMode::SNRCurve:
+            size = 512; // Jó felbontás szükséges a görbe számára
+            break;
+
         case DisplayMode::SpectrumLowRes:
         case DisplayMode::Oscilloscope:
         case DisplayMode::Envelope:
@@ -1598,6 +1723,9 @@ const char *SpectrumVisualizationComponent::decodeModeToStr() {
             break;
         case DisplayMode::RTTYWaterfall:
             modeText = "RTTY Waterfall";
+            break;
+        case DisplayMode::SNRCurve:
+            modeText = "SNR Curve";
             break;
         default:
             modeText = "Unknown";
