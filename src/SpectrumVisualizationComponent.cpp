@@ -1536,7 +1536,6 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 float ratio_cw = (static_cast<float>(cwFrequency) - min_freq_displayed) / displayed_span_hz;
                 uint16_t line_x_cw = static_cast<uint16_t>(std::round(ratio_cw * (bounds.width - 1)));
                 line_x_cw = constrain(line_x_cw, 0, bounds.width - 1);
-                sprite_->drawFastVLine(line_x_cw, 0, graphH, TFT_GREEN);
 
                 // CW frekvencia kiírása a vonaltól jobbra
                 sprite_->setTextColor(TFT_GREEN);
@@ -1556,7 +1555,11 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                     textX = line_x_cw - 30;
                 }
 
-                // Fekete háttér kirajzolása a szöveg alatt
+                // Először a vonal kirajzolása (kivéve a szöveg területét)
+                sprite_->drawLine(line_x_cw, 0, line_x_cw, LABEL_Y_POS - 2, TFT_GREEN);           // Felső rész
+                sprite_->drawLine(line_x_cw, LABEL_Y_POS + 11, line_x_cw, graphH - 1, TFT_GREEN); // Alsó rész
+
+                // Fekete háttér kirajzolása a szöveg alatt (ez felülírja a vonalat a szöveg területén)
                 sprite_->fillRect(textX - 1, LABEL_Y_POS - 1, 32, 10, TFT_BLACK);
                 sprite_->drawString(freqStr, textX, LABEL_Y_POS);
             }
@@ -1571,7 +1574,6 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 float ratio_space = (static_cast<float>(f_space) - min_freq_displayed) / displayed_span_hz;
                 uint16_t line_x_space = static_cast<uint16_t>(std::round(ratio_space * (bounds.width - 1)));
                 line_x_space = constrain(line_x_space, 0, bounds.width - 1);
-                sprite_->drawFastVLine(line_x_space, 0, graphH, TFT_CYAN);
 
                 // Space frekvencia kiírása a vonaltól jobbra
                 sprite_->setTextColor(TFT_CYAN);
@@ -1584,7 +1586,11 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                     spaceTextX = line_x_space - 30;
                 }
 
-                // Fekete háttér kirajzolása a szöveg alatt
+                // Először a vonal kirajzolása (kivéve a szöveg területét)
+                sprite_->drawLine(line_x_space, 0, line_x_space, LABEL_Y_POS - 2, TFT_CYAN);           // Felső rész
+                sprite_->drawLine(line_x_space, LABEL_Y_POS + 11, line_x_space, graphH - 1, TFT_CYAN); // Alsó rész
+
+                // Fekete háttér kirajzolása a szöveg alatt (ez felülírja a vonalat a szöveg területén)
                 sprite_->fillRect(spaceTextX - 1, LABEL_Y_POS - 1, 32, 10, TFT_BLACK);
                 sprite_->drawString(spaceStr, spaceTextX, LABEL_Y_POS);
             }
@@ -1594,7 +1600,6 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 float ratio_mark = (static_cast<float>(f_mark) - min_freq_displayed) / displayed_span_hz;
                 uint16_t line_x_mark = static_cast<uint16_t>(std::round(ratio_mark * (bounds.width - 1)));
                 line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
-                sprite_->drawFastVLine(line_x_mark, 0, graphH, TFT_YELLOW);
 
                 // Mark frekvencia kiírása a vonaltól jobbra
                 sprite_->setTextColor(TFT_YELLOW);
@@ -1607,7 +1612,11 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                     markTextX = line_x_mark - 30;
                 }
 
-                // Fekete háttér kirajzolása a szöveg alatt
+                // Először a vonal kirajzolása (kivéve a szöveg területét)
+                sprite_->drawLine(line_x_mark, 0, line_x_mark, LABEL_Y_POS - 2, TFT_YELLOW);           // Felső rész
+                sprite_->drawLine(line_x_mark, LABEL_Y_POS + 11, line_x_mark, graphH - 1, TFT_YELLOW); // Alsó rész
+
+                // Fekete háttér kirajzolása a szöveg alatt (ez felülírja a vonalat a szöveg területén)
                 sprite_->fillRect(markTextX - 1, LABEL_Y_POS - 1, 32, 10, TFT_BLACK);
                 sprite_->drawString(markStr, markTextX, LABEL_Y_POS);
             }
