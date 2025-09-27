@@ -1453,24 +1453,22 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
     // Megfelelő frekvencia határok és hangolási segéd típus használata a módtól függően
     if (currentMode_ == DisplayMode::CwSnrCurve) {
         // CW mód esetén - CW waterfall frekvencia határainak használata
-        if (currentTuningAidType_ != TuningAidType::CW_TUNING) {
-            // Átmenetileg beállítjuk CW módra a frekvencia határok meghatározásához
-            TuningAidType savedType = currentTuningAidType_;
-            setTuningAidType(TuningAidType::CW_TUNING);
-            currentTuningAidType_ = savedType; // Visszaállítjuk az eredeti típust
-        }
+        // Mindig beállítjuk CW módra a frekvencia határok biztosításához
+        setTuningAidType(TuningAidType::CW_TUNING);
     } else if (currentMode_ == DisplayMode::RttySnrCurve) {
         // RTTY mód esetén - RTTY waterfall frekvencia határainak használata
-        if (currentTuningAidType_ != TuningAidType::RTTY_TUNING) {
-            // Átmenetileg beállítjuk RTTY módra a frekvencia határok meghatározásához
-            TuningAidType savedType = currentTuningAidType_;
-            setTuningAidType(TuningAidType::RTTY_TUNING);
-            currentTuningAidType_ = savedType; // Visszaállítjuk az eredeti típust
-        }
+        // Mindig beállítjuk RTTY módra a frekvencia határok biztosításához
+        setTuningAidType(TuningAidType::RTTY_TUNING);
     }
 
     const float MIN_FREQ_HZ = currentTuningAidMinFreqHz_;
     const float MAX_FREQ_HZ = currentTuningAidMaxFreqHz_;
+
+    // Biztonsági ellenőrzés: ha a frekvencia határok még nem inicializálódtak
+    if (MIN_FREQ_HZ == 0 || MAX_FREQ_HZ == 0 || MIN_FREQ_HZ >= MAX_FREQ_HZ) {
+        DEBUG("SpectrumVisualizationComponent::renderSnrCurve - Érvénytelen frekvencia határok: MIN=%.0f, MAX=%.0f\n", MIN_FREQ_HZ, MAX_FREQ_HZ);
+        return;
+    }
 
     const int min_bin = std::max(2, static_cast<int>(std::round(MIN_FREQ_HZ / currentBinWidthHz)));
     const int max_bin = std::min(static_cast<int>(actualFftSize / 2 - 1), static_cast<int>(std::round(MAX_FREQ_HZ / currentBinWidthHz)));
@@ -1526,32 +1524,42 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
     uint16_t max_freq_displayed = MAX_FREQ_HZ;
     uint16_t displayed_span_hz = max_freq_displayed - min_freq_displayed;
 
+    constexpr int LABEL_Y_POS = 12; // Y pozíció a frekvencia címkéknek
+
     if (displayed_span_hz > 0) {
         if (currentMode_ == DisplayMode::CwSnrCurve) {
-            // CW módban középső frekvencia vonala (zöld)
-            int centerX = bounds.width / 2;
-            sprite_->drawFastVLine(centerX, 0, graphH, TFT_GREEN);
+            // CW módban a konfigurált CW tone frekvencia vonala (zöld)
+            uint16_t cwFrequency = config.data.cwToneFrequencyHz;
 
-            // Középső frekvencia számítása és kiírása
-            float centerFreqRatio = 0.5f;
-            int centerBin = min_bin + static_cast<int>(std::round(centerFreqRatio * (num_bins - 1)));
-            float centerFrequencyHz = centerBin * currentBinWidthHz;
+            // CW frekvencia vonal pozíciójának számítása
+            if (cwFrequency >= min_freq_displayed && cwFrequency <= max_freq_displayed) {
+                float ratio_cw = (static_cast<float>(cwFrequency) - min_freq_displayed) / displayed_span_hz;
+                uint16_t line_x_cw = static_cast<uint16_t>(std::round(ratio_cw * (bounds.width - 1)));
+                line_x_cw = constrain(line_x_cw, 0, bounds.width - 1);
+                sprite_->drawFastVLine(line_x_cw, 0, graphH, TFT_GREEN);
 
-            // Frekvencia szöveg kiírása a sprite tetejére
-            sprite_->setTextColor(TFT_GREEN, TFT_BLACK);
-            sprite_->setTextSize(1);
+                // CW frekvencia kiírása a vonaltól jobbra
+                sprite_->setTextColor(TFT_GREEN);
+                sprite_->setTextSize(1);
 
-            char freqStr[16];
-            if (centerFrequencyHz >= 1000.0f) {
-                snprintf(freqStr, sizeof(freqStr), "%.1fkHz", centerFrequencyHz / 1000.0f);
-            } else {
-                snprintf(freqStr, sizeof(freqStr), "%.0fHz", centerFrequencyHz);
+                char freqStr[16];
+                if (cwFrequency >= 1000) {
+                    snprintf(freqStr, sizeof(freqStr), "%.1fkHz", cwFrequency / 1000.0f);
+                } else {
+                    snprintf(freqStr, sizeof(freqStr), "%dHz", cwFrequency);
+                }
+
+                // Szöveg a vonaltól jobbra 2 pixellel távolabb
+                int textX = line_x_cw + 2;
+                // Ha túlnyúlna a képernyő szélén, akkor balra helyezzük
+                if (textX + 30 > bounds.width) {
+                    textX = line_x_cw - 30;
+                }
+
+                // Fekete háttér kirajzolása a szöveg alatt
+                sprite_->fillRect(textX - 1, LABEL_Y_POS - 1, 32, 10, TFT_BLACK);
+                sprite_->drawString(freqStr, textX, LABEL_Y_POS);
             }
-
-            // Szöveg középre igazítása
-            int textWidth = strlen(freqStr) * 6; // Becsült szöveg szélesség
-            int textX = (bounds.width - textWidth) / 2;
-            sprite_->drawString(freqStr, textX, 2);
 
         } else if (currentMode_ == DisplayMode::RttySnrCurve) {
             // RTTY módban mark és space vonalak
@@ -1565,15 +1573,20 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 line_x_space = constrain(line_x_space, 0, bounds.width - 1);
                 sprite_->drawFastVLine(line_x_space, 0, graphH, TFT_CYAN);
 
-                // Space frekvencia kiírása felül
-                sprite_->setTextColor(TFT_CYAN, TFT_BLACK);
+                // Space frekvencia kiírása a vonaltól jobbra
+                sprite_->setTextColor(TFT_CYAN);
                 sprite_->setTextSize(1);
                 char spaceStr[16];
                 snprintf(spaceStr, sizeof(spaceStr), "%dHz", f_space);
-                int spaceTextX = line_x_space - 20;
-                if (spaceTextX < 0)
-                    spaceTextX = line_x_space + 2;
-                sprite_->drawString(spaceStr, spaceTextX, 2);
+                int spaceTextX = line_x_space + 2; // Vonaltól jobbra
+                // Ha túlnyúlna a képernyő szélén, akkor balra helyezzük
+                if (spaceTextX + 30 > bounds.width) {
+                    spaceTextX = line_x_space - 30;
+                }
+
+                // Fekete háttér kirajzolása a szöveg alatt
+                sprite_->fillRect(spaceTextX - 1, LABEL_Y_POS - 1, 32, 10, TFT_BLACK);
+                sprite_->drawString(spaceStr, spaceTextX, LABEL_Y_POS);
             }
 
             // Mark vonal (yellow)
@@ -1583,15 +1596,20 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
                 sprite_->drawFastVLine(line_x_mark, 0, graphH, TFT_YELLOW);
 
-                // Mark frekvencia kiírása felül
-                sprite_->setTextColor(TFT_YELLOW, TFT_BLACK);
+                // Mark frekvencia kiírása a vonaltól jobbra
+                sprite_->setTextColor(TFT_YELLOW);
                 sprite_->setTextSize(1);
                 char markStr[16];
                 snprintf(markStr, sizeof(markStr), "%dHz", f_mark);
-                int markTextX = line_x_mark - 20;
-                if (markTextX < 0)
-                    markTextX = line_x_mark + 2;
-                sprite_->drawString(markStr, markTextX, 12);
+                int markTextX = line_x_mark + 2; // Vonaltól jobbra
+                // Ha túlnyúlna a képernyő szélén, akkor balra helyezzük
+                if (markTextX + 30 > bounds.width) {
+                    markTextX = line_x_mark - 30;
+                }
+
+                // Fekete háttér kirajzolása a szöveg alatt
+                sprite_->fillRect(markTextX - 1, LABEL_Y_POS - 1, 32, 10, TFT_BLACK);
+                sprite_->drawString(markStr, markTextX, LABEL_Y_POS);
             }
         }
     }
