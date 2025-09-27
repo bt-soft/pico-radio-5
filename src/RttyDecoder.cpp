@@ -556,10 +556,18 @@ void RttyDecoder::processRttyStateMachine(bool markPresent, bool spacePresent) {
                     // Hibás stop bit, de értelmes betű - mentsük meg
                     shouldDecode = true;
                     DEBUG("[RTTY-DECODE] Karakter dekódolva (hibás stop bit): '%c' (0x%02X)\n", decodedChar, receivedBaudotCode_);
+                } else if (decodedChar != '\0' && (decodedChar >= '0' && decodedChar <= '9')) {
+                    // Hibás stop bit, de értelmes szám - mentsük meg
+                    shouldDecode = true;
+                    DEBUG("[RTTY-DECODE] Szám dekódolva (hibás stop bit): '%c' (0x%02X)\n", decodedChar, receivedBaudotCode_);
                 } else if (decodedChar == ' ' || decodedChar == '\n' || decodedChar == '\r') {
                     // Whitespace karakterek esetén is próbáljuk
                     shouldDecode = true;
                     DEBUG("[RTTY-DECODE] Whitespace karakter dekódolva (hibás stop bit): '%c' (0x%02X)\n", decodedChar, receivedBaudotCode_);
+                } else if (decodedChar != '\0') {
+                    // Minden más karakter (kivéve NULL) hibás stop bittel is - zajos környezet
+                    shouldDecode = true;
+                    DEBUG("[RTTY-DECODE] Egyéb karakter dekódolva (hibás stop bit): '%c' (0x%02X)\n", decodedChar, receivedBaudotCode_);
                 } else {
                     // Tényleg eldobjuk
                     discardCurrentBit("Hibás stop bit - nem menthető karakter");
@@ -617,11 +625,14 @@ void RttyDecoder::updateBaudRateDetection(bool markPresent, bool spacePresent) {
             if (bitHistoryIndex_ < 32) {
                 bitTimingHistory_[bitHistoryIndex_] = bitLength;
                 bitHistoryIndex_++;
+                DEBUG("[RTTY-BAUD-DEBUG] Bit időzítés: %lu ms (történet: %d/32)\n", bitLength, bitHistoryIndex_);
             } else {
                 // Történet telt, elemzés
                 analyzeBitTiming();
                 bitHistoryIndex_ = 0;
             }
+        } else {
+            DEBUG("[RTTY-BAUD-DEBUG] Túl rövid/hosszú bit időzítés eldobva: %lu ms\n", bitLength);
         }
 
         lastTransition = currentTime;
@@ -635,8 +646,12 @@ void RttyDecoder::updateBaudRateDetection(bool markPresent, bool spacePresent) {
  * Bit időzítés elemzése a baud rate felismeréshez
  */
 void RttyDecoder::analyzeBitTiming() {
-    if (bitHistoryIndex_ < 8)
+    if (bitHistoryIndex_ < 8) {
+        DEBUG("[RTTY-BAUD-ANALYZE] Túl kevés minta az elemzéshez: %d < 8\n", bitHistoryIndex_);
         return; // Túl kevés minta
+    }
+
+    DEBUG("[RTTY-BAUD-ANALYZE] %d mintából elemzés kezdése...\n", bitHistoryIndex_);
 
     // Minden baud rate kandidátushoz pontszám számítása
     for (int i = 0; i < 6; i++) {
@@ -657,6 +672,9 @@ void RttyDecoder::analyzeBitTiming() {
             baudCandidates_[i].totalBitLength += bitHistoryIndex_;
             baudCandidates_[i].averageBitLength = baudCandidates_[i].totalBitLength > 0 ? expectedBitTime : 0;
             baudCandidates_[i].confidence = static_cast<float>(validBits) / bitHistoryIndex_;
+
+            DEBUG("[RTTY-BAUD-ANALYZE] %u baud: várt=%s ms, érvényes bitek=%u/%d, konfidencia=%s%%\n", static_cast<uint16_t>(baudCandidates_[i].baud), Utils::floatToString(expectedBitTime, 1).c_str(), validBits,
+                  bitHistoryIndex_, Utils::floatToString(baudCandidates_[i].confidence * 100.0f, 1).c_str());
         }
     }
 
