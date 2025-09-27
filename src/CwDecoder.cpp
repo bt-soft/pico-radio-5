@@ -311,7 +311,7 @@ void CwDecoder::processCwStateMachine(bool tonePresent) {
                                 wordSpaceAdded_ = true; // Ezt is jelöljük, hogy ne próbáljuk újra
                             }
                         } else {
-                            DEBUG("[CW-IDLE] Szóköz már hozzáadva ehhez a szünethez (%lu ms)\n", idleDuration);
+                            //DEBUG("[CW-IDLE] Szóköz már hozzáadva ehhez a szünethez (%lu ms)\n", idleDuration);
                         }
                     }
                 }
@@ -474,7 +474,7 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
     uint16_t centerFreqHz = config.data.cwToneFrequencyHz;
 
     // Még nagyobb keresési ablak a CW jelekhez
-    constexpr uint16_t SEARCH_WINDOW_HZ = 200; // +-200 Hz keresési ablak
+    constexpr uint16_t SEARCH_WINDOW_HZ = 100; // +-100 Hz keresési ablak
     uint16_t startFreqHz = (centerFreqHz > SEARCH_WINDOW_HZ) ? (centerFreqHz - SEARCH_WINDOW_HZ) : 0;
     uint16_t endFreqHz = centerFreqHz + SEARCH_WINDOW_HZ;
 
@@ -495,7 +495,8 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
         }
     }
 
-    float peakMagnitude_ = maxMagnitude; // Legnagyobb amplitúdó érték
+    float peakMagnitude_ = maxMagnitude;                                    // Legnagyobb amplitúdó érték
+    float peakFrequencyHz_ = (peakBin != -1) ? (peakBin * binWidth) : 0.0f; // Legnagyobb amplitúdó frekvencia
 
     // --- Javított Noise level számítása: robusztusabb módszer ---
     float noiseSum = 0.0f;
@@ -554,12 +555,13 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
         snrDb = -60.0f;
     }
 
-    // DEBUG üzenet visszaengedése a diagnosztizáláshoz
-    // DEBUG("[CW Decoder] CW: %dHz, ablak: [%d Hz - %d Hz], Peak: %s Hz,  SNR: %s dB, (Ampl: %s, Noise: %s)\n", centerFreqHz, startFreqHz, endFreqHz, Utils::floatToString(peakFrequencyHz_).c_str(),
-    //      Utils::floatToString(snrDb).c_str(), Utils::floatToString(peakMagnitude_).c_str(), Utils::floatToString(measuredNoise).c_str());
-
     // JAVÍTOTT küszöbök: adaptív SNR és reális amplitúdó 70000 felett
     bool isToneDetected = (snrDb >= adaptiveSnrThreshold_) && (peakMagnitude_ >= 70000.0f);
+
+    if (isToneDetected) {
+        DEBUG("[CW Decoder] CW: %dHz, ablak: [%d Hz - %d Hz], Peak: %s Hz,  SNR: %s dB, (Ampl: %s, Noise: %s)\n", centerFreqHz, startFreqHz, endFreqHz, Utils::floatToString(peakFrequencyHz_).c_str(),
+              Utils::floatToString(snrDb).c_str(), Utils::floatToString(peakMagnitude_).c_str(), Utils::floatToString(measuredNoise).c_str());
+    }
 
     // Adaptív küszöb frissítése
     updateAdaptiveThreshold(isToneDetected, snrDb);
