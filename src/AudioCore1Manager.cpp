@@ -186,7 +186,7 @@ void AudioCore1Manager::core1AudioLoop() {
             if (!pSharedData_->core1AudioPaused) {
 
                 // Audio feldolgozás időmérés
-                uint32_t t0 = micros();
+                // uint32_t t0 = micros();
                 pAudioProcessor_->process(collectOsci_);
 
                 // // Csak 5 másodpercenként írjuk ki a futásidőt

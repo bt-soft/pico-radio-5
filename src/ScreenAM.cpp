@@ -1,6 +1,7 @@
 #include "ScreenAM.h"
 #include "CwDecoder.h"
 #include "MultiButtonDialog.h"
+#include "PicoMemoryInfo.h"
 
 #include <RPi_Pico_TimerInterrupt.h>
 extern RPI_PICO_Timer audioDecoderTimer;
@@ -13,11 +14,12 @@ ScreenAM *ScreenAM::that = nullptr;
  * @brief  Hardware timer interrupt service routine az audio dekóder számára
  */
 bool audioDecoderTimerHardwareInterruptHandler(struct repeating_timer *t) {
-    ScreenAM::audioDecoderRun = true;
-
-    // Audio dekóder feldolgozása
-    ScreenAM::processAudioDecoder();
-
+    // Extra védelem: ISR context-ben minimális működés
+    if (ScreenAM::that != nullptr) {
+        ScreenAM::audioDecoderRun = true;
+        // Az audio dekóder feldolgozását átrakjuk a main loop-ba a biztonság kedvéért
+        // ScreenAM::processAudioDecoder(); // Ezt nem az ISR-ben hívjuk!
+    }
     return true;
 }
 
@@ -41,6 +43,16 @@ void ScreenAM::processAudioDecoder() {
 
     if (ScreenAM::that->cwDecoder == nullptr) {
         DEBUG("ScreenAM::processAudioDecoder() - HIBA: cwDecoder nullptr\n");
+        return;
+    }
+
+    if (ScreenAM::that->rttyDecoder == nullptr) {
+        DEBUG("ScreenAM::processAudioDecoder() - HIBA: rttyDecoder nullptr\n");
+        return;
+    }
+
+    if (ScreenAM::that->decodedTextBox == nullptr) {
+        DEBUG("ScreenAM::processAudioDecoder() - HIBA: decodedTextBox nullptr\n");
         return;
     }
 
@@ -169,32 +181,93 @@ static constexpr uint8_t STEP_BUTTON = 74;   ///< Frequency Step
  * @param si4735Manager Si4735 rádió chip kezelő referencia
  */
 ScreenAM::ScreenAM() : ScreenRadioBase(SCREEN_NAME_AM) {
+    DEBUG("ScreenAM::ScreenAM() - Konstruktor kezdete\n");
 
     // UI komponensek létrehozása és elhelyezése
     layoutComponents();
+    DEBUG("ScreenAM::ScreenAM() - layoutComponents() sikeresen befejezve\n");
+
+    DEBUG("ScreenAM::ScreenAM() - Konstruktor befejezve\n");
 }
 
 /**
- * @brief ScreenAM destruktor - MiniAudioDisplay parent pointer törlése
- * @details Biztosítja, hogy az MiniAudioDisplay ne próbáljon hozzáférni
- * a törölt screen objektumhoz képernyőváltáskor
+ * @brief ScreenAM destruktor - erőforrások felszabadítása és memóriaszivárgás megelőzése
+ * @details Biztosítja a proper cleanup-ot:
+ * - Dekóderek leállítása és felszabadítása (CW, RTTY)
+ * - UI komponensek cleanup-ja (TextBox, Spectrum)
+ * - Shared_ptr referenciák nullázása
+ * - Parent pointer cleanup (MiniAudioDisplay)
  */
-ScreenAM::~ScreenAM() { DEBUG("ScreenAM::~ScreenAM() - Destruktor hívása\n"); }
+ScreenAM::~ScreenAM() {
+    DEBUG("ScreenAM::~ScreenAM() - Destruktor hívása - erőforrások felszabadítása\n");
 
-/**
- * @brief Statikus képernyő tartalom kirajzolása - AM képernyő specifikus elemek
- * @details Csak a statikus UI elemeket rajzolja ki (nem változó tartalom):
- * - S-Meter skála vonalak és számok (AM módhoz optimalizálva)
- * - Band információs terület (AM/MW/LW/SW jelzők)
- * - Statikus címkék és szövegek
- *
- * A dinamikus tartalom (pl. S-Meter érték, frekvencia) a loop()-ban frissül.
- *
- * **TODO implementációk**:
- * - S-Meter skála: RSSI alapú AM skála (0-60 dB tartomány)
- * - Band indikátor: Aktuális band típus megjelenítése
- * - Frekvencia egység: kHz/MHz megfelelő formátumban
- */
+    // ===================================================================
+    // 0. Statikus pointer és timer cleanup (ELSŐ!)
+    // ===================================================================
+    if (ScreenAM::that == this) {
+        DEBUG("ScreenAM::~ScreenAM() - Statikus pointer és timer cleanup\n");
+        audioDecoderTimer.detachInterrupt(); // Timer leállítása
+        ScreenAM::that = nullptr;            // Statikus pointer nullázása
+    }
+
+// Debug memória állapot a cleanup előtt
+#ifdef SHOW_MEMORY_INFO
+    PicoMemoryInfo::MemoryStatus_t memBefore = PicoMemoryInfo::getMemoryStatus();
+    DEBUG("ScreenAM::~ScreenAM() - Memória cleanup előtt: %d B heap használatban\n", memBefore.usedHeap);
+#endif
+
+    // ===================================================================
+    // 1. Dekóderek leállítása és cleanup
+    // ===================================================================
+    if (cwDecoder) {
+        DEBUG("ScreenAM::~ScreenAM() - CW dekóder cleanup\n");
+        cwDecoder.reset(); // shared_ptr explicit reset
+    }
+
+    if (rttyDecoder) {
+        DEBUG("ScreenAM::~ScreenAM() - RTTY dekóder cleanup\n");
+        rttyDecoder.reset(); // shared_ptr explicit reset
+    }
+
+    // ===================================================================
+    // 2. UI komponensek cleanup
+    // ===================================================================
+    if (decodedTextBox) {
+        DEBUG("ScreenAM::~ScreenAM() - DecodedTextBox cleanup\n");
+        // Child komponensből eltávolítás
+        removeChild(decodedTextBox);
+        decodedTextBox.reset();
+    }
+
+    if (spectrumComp) {
+        DEBUG("ScreenAM::~ScreenAM() - SpectrumComponent cleanup\n");
+        // Child komponensből eltávolítás
+        removeChild(spectrumComp);
+        spectrumComp.reset();
+    }
+
+// Debug memória állapot a cleanup után
+#ifdef SHOW_MEMORY_INFO
+    PicoMemoryInfo::MemoryStatus_t memAfter = PicoMemoryInfo::getMemoryStatus();
+    int32_t memoryReleased = memBefore.usedHeap - memAfter.usedHeap;
+    DEBUG("ScreenAM::~ScreenAM() - Memória cleanup után: %d B heap, felszabadítva: %d B\n", memAfter.usedHeap, memoryReleased);
+#endif
+
+    DEBUG("ScreenAM::~ScreenAM() - Destruktor befejezve - memória felszabadítva\n");
+} /**
+   * @brief Statikus képernyő tartalom kirajzolása - AM képernyő specifikus elemek
+   * @details Csak a statikus UI elemeket rajzolja ki (nem változó tartalom):
+   * - S-Meter skála vonalak és számok (AM módhoz optimalizálva)
+   * - Band információs terület (AM/MW/LW/SW jelzők)
+   * - Statikus címkék és szövegek
+   *
+   * A dinamikus tartalom (pl. S-Meter érték, frekvencia) a loop()-ban frissül.
+   *
+   * **TODO implementációk**:
+   * - S-Meter skála: RSSI alapú AM skála (0-60 dB tartomány)
+   * - Band indikátor: Aktuális band típus megjelenítése
+   * - Frekvencia egység: kHz/MHz megfelelő formátumban
+   */
 void ScreenAM::drawContent() {
     // DEBUG("ScreenAM::drawContent() - Statikus tartalom kirajzolása\n");
 
@@ -235,16 +308,30 @@ void ScreenAM::activate() {
     // Szülő osztály aktiválása (ScreenRadioBase -> ScreenFrequDisplayBase -> UIScreen)
     ScreenRadioBase::activate();
 
+    // ===================================================================
+    // Objektumok ellenőrzése aktiválás előtt
+    // ===================================================================
+    if (!spectrumComp) {
+        DEBUG("ScreenAM::activate() - HIBA: spectrumComp nullptr!\n");
+        return;
+    }
+    if (!cwDecoder) {
+        DEBUG("ScreenAM::activate() - HIBA: cwDecoder nullptr!\n");
+        return;
+    }
+    if (!rttyDecoder) {
+        DEBUG("ScreenAM::activate() - HIBA: rttyDecoder nullptr!\n");
+        return;
+    }
+    if (!decodedTextBox) {
+        DEBUG("ScreenAM::activate() - HIBA: decodedTextBox nullptr!\n");
+        return;
+    }
+
     lastSpectrumMode_ = SpectrumVisualizationComponent::DisplayMode::Off; // Reset on activate
-    if (cwDecoder) {
-        cwDecoder->clear();
-    }
-    if (rttyDecoder) {
-        rttyDecoder->clear();
-    }
-    if (decodedTextBox) {
-        decodedTextBox->setText("");
-    }
+    cwDecoder->clear();
+    rttyDecoder->clear();
+    decodedTextBox->setText("");
 
     // ===================================================================
     // *** EGYETLEN GOMBÁLLAPOT SZINKRONIZÁLÁSI PONT - Event-driven ***
@@ -258,6 +345,8 @@ void ScreenAM::activate() {
     audioDecoderTimer.detachInterrupt(); // Biztonság kedvéért leállítjuk először
     audioDecoderTimer.attachInterruptInterval(AUDIO_DECODER_TIMER_INTERVAL * 1000, audioDecoderTimerHardwareInterruptHandler);
     ScreenAM::that = this; // Beállítjuk a statikus pointert az aktuális ScreenAM példányra
+
+    DEBUG("ScreenAM::activate() - Aktiválás sikeresen befejezve\n");
 
     // ===================================================================
     // CW/RTTY mód azonnali beállítása screensaver után is
@@ -427,6 +516,14 @@ bool ScreenAM::handleRotary(const RotaryEvent &event) {
  * - Univerzális gombkezelés (CommonVerticalButtons)
  */
 void ScreenAM::handleOwnLoop() {
+
+    // ===================================================================
+    // Audio dekóder feldolgozása, ha a timer interrupt jelezte
+    // ===================================================================
+    if (ScreenAM::audioDecoderRun && ScreenAM::that == this) {
+        ScreenAM::audioDecoderRun = false; // Reset flag
+        processAudioDecoder();
+    }
 
     // ===================================================================
     // S-Meter (jelerősség) időzített frissítése - Közös RadioScreen implementáció

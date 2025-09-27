@@ -27,9 +27,39 @@ ScreenFM::ScreenFM() : ScreenRadioBase(SCREEN_NAME_FM) {
 }
 
 /**
- * @brief ScreenFM destruktor - Automatikus cleanup
+ * @brief ScreenFM destruktor - erőforrások felszabadítása és memóriaszivárgás megelőzése
+ * @details Biztosítja a proper cleanup-ot:
+ * - RDS komponens cleanup-ja
+ * - Stereo indikátor cleanup-ja
+ * - Spectrum komponens cleanup-ja
+ * - Shared_ptr referenciák nullázása
  */
-ScreenFM::~ScreenFM() { DEBUG("ScreenFM::~ScreenFM() - Destruktor hívása\n"); }
+ScreenFM::~ScreenFM() {
+    DEBUG("ScreenFM::~ScreenFM() - Destruktor hívása - erőforrások felszabadítása\n");
+
+    // ===================================================================
+    // FM specifikus komponensek cleanup
+    // ===================================================================
+    if (stereoIndicator) {
+        DEBUG("ScreenFM::~ScreenFM() - StereoIndicator cleanup\n");
+        removeChild(stereoIndicator);
+        stereoIndicator.reset();
+    }
+
+    if (rdsComponent) {
+        DEBUG("ScreenFM::~ScreenFM() - RDSComponent cleanup\n");
+        removeChild(rdsComponent);
+        rdsComponent.reset();
+    }
+
+    if (spectrumComp) {
+        DEBUG("ScreenFM::~ScreenFM() - SpectrumComponent cleanup\n");
+        removeChild(spectrumComp);
+        spectrumComp.reset();
+    }
+
+    DEBUG("ScreenFM::~ScreenFM() - Destruktor befejezve - memória felszabadítva\n");
+}
 
 // ===================================================================
 // UI komponensek layout és elhelyezés
