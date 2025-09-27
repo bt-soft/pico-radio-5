@@ -1241,7 +1241,7 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
     bool typeChanged = (currentTuningAidType_ != type);
     currentTuningAidType_ = type;
 
-    if (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall) {
+    if (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall || currentMode_ == DisplayMode::CwSnrCurve || currentMode_ == DisplayMode::RttySnrCurve) {
         uint16_t oldMinFreq = currentTuningAidMinFreqHz_;
         uint16_t oldMaxFreq = currentTuningAidMaxFreqHz_;
 
@@ -1264,8 +1264,8 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
             currentTuningAidMaxFreqHz_ = maxDisplayFrequencyHz_;
         }
 
-        // Ha változott a frekvencia tartomány, invalidáljuk a buffert
-        if (typeChanged || oldMinFreq != currentTuningAidMinFreqHz_ || oldMaxFreq != currentTuningAidMaxFreqHz_) {
+        // Ha változott a frekvencia tartomány, invalidáljuk a buffert (csak waterfall módokhoz)
+        if ((typeChanged || oldMinFreq != currentTuningAidMinFreqHz_ || oldMaxFreq != currentTuningAidMaxFreqHz_) && (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall)) {
             for (auto &row : wabuf) {
                 std::fill(row.begin(), row.end(), 0);
             }
@@ -1377,23 +1377,24 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
             sprite_->setTextSize(1);
             sprite_->setTextDatum(BC_DATUM);
 
+            uint16_t label_y = graphH > 2 ? graphH - 2 : 0;
+
             if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
                 uint16_t line_x = bounds.width / 2;
-                uint16_t label_y = graphH > 2 ? graphH - 2 : 0;
-                sprite_->fillRect(line_x - 25, label_y - 8, 50, 10, TFT_BLACK);
+                sprite_->fillRect(line_x - 23, label_y - 13, 56, 21, TFT_BLACK);
                 sprite_->setTextColor(TUNING_AID_CW_TARGET_COLOR, TFT_BLACK);
                 sprite_->drawString(String(config.data.cwToneFrequencyHz) + "Hz", line_x, label_y);
 
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
                 uint16_t f_mark = config.data.rttyMarkFrequencyHz;
                 uint16_t f_space = f_mark - config.data.rttyShiftHz;
+
                 // Space címke
                 if (f_space >= min_freq_displayed && f_space <= max_freq_displayed) {
                     float ratio_space = (static_cast<float>(f_space) - min_freq_displayed) / displayed_span_hz;
                     uint16_t line_x_space = static_cast<uint16_t>(std::round(ratio_space * (bounds.width - 1)));
                     line_x_space = constrain(line_x_space, 0, bounds.width - 1);
-                    uint16_t label_y = graphH;
-                    sprite_->fillRect(line_x_space - 25, label_y - 8, 50, 10, TFT_BLACK);
+                    sprite_->fillRect(line_x_space - 28, label_y - 11, 56, 16, TFT_BLACK);
                     sprite_->setTextColor(TUNING_AID_RTTY_SPACE_COLOR, TFT_BLACK);
                     sprite_->drawString(String(static_cast<uint16_t>(round(f_space))) + "Hz", line_x_space, label_y);
                 }
@@ -1402,8 +1403,7 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
                     float ratio_mark = (static_cast<float>(f_mark) - min_freq_displayed) / displayed_span_hz;
                     uint16_t line_x_mark = static_cast<uint16_t>(std::round(ratio_mark * (bounds.width - 1)));
                     line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
-                    uint16_t label_y = graphH;
-                    sprite_->fillRect(line_x_mark - 25, label_y - 8, 50, 10, TFT_BLACK);
+                    sprite_->fillRect(line_x_mark - 28, label_y - 11, 56, 16, TFT_BLACK);
                     sprite_->setTextColor(TUNING_AID_RTTY_MARK_COLOR, TFT_BLACK);
                     sprite_->drawString(String(static_cast<uint16_t>(round(f_mark))) + "Hz", line_x_mark, label_y);
                 }
@@ -1537,9 +1537,12 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 uint16_t line_x_cw = static_cast<uint16_t>(std::round(ratio_cw * (bounds.width - 1)));
                 line_x_cw = constrain(line_x_cw, 0, bounds.width - 1);
 
-                // CW frekvencia kiírása a vonaltól jobbra
-                sprite_->setTextColor(TFT_GREEN);
+                // Először a teljes vonal kirajzolása
+                sprite_->drawFastVLine(line_x_cw, 0, graphH, TFT_GREEN);
+
+                // CW frekvencia kiírása a vonal közepére
                 sprite_->setTextSize(1);
+                sprite_->setTextDatum(MC_DATUM); // Middle Center - szöveg közép középre igazítás
 
                 char freqStr[16];
                 if (cwFrequency >= 1000) {
@@ -1548,20 +1551,19 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                     snprintf(freqStr, sizeof(freqStr), "%dHz", cwFrequency);
                 }
 
-                // Szöveg a vonaltól jobbra 2 pixellel távolabb
-                int textX = line_x_cw + 2;
-                // Ha túlnyúlna a képernyő szélén, akkor balra helyezzük
-                if (textX + 30 > bounds.width) {
-                    textX = line_x_cw - 30;
-                }
+                // Becsült szöveg méret a háttér kirajzolásához
+                // int textWidth = strlen(freqStr) * 6;
+                // int textHeight = 8;
 
-                // Először a vonal kirajzolása (kivéve a szöveg területét)
-                sprite_->drawLine(line_x_cw, 0, line_x_cw, LABEL_Y_POS - 2, TFT_GREEN);           // Felső rész
-                sprite_->drawLine(line_x_cw, LABEL_Y_POS + 11, line_x_cw, graphH - 1, TFT_GREEN); // Alsó rész
+                // Fekete háttér kirajzolása a szöveg alatt (középre igazítva)
+                // sprite_->fillRect(line_x_cw - (textWidth / 2) - 2, LABEL_Y_POS - (textHeight / 2) - 1, textWidth + 4, textHeight + 2, TFT_BLACK);
 
-                // Fekete háttér kirajzolása a szöveg alatt (ez felülírja a vonalat a szöveg területén)
-                sprite_->fillRect(textX - 1, LABEL_Y_POS - 1, 32, 10, TFT_BLACK);
-                sprite_->drawString(freqStr, textX, LABEL_Y_POS);
+                // Szöveg kirajzolása pontosan a vonal közepére
+                sprite_->setTextColor(TFT_GREEN, TFT_BLACK); // Szöveg színe és háttérszín
+                sprite_->drawString(freqStr, line_x_cw, LABEL_Y_POS);
+
+                // TextDatum visszaállítása alapértelmezettre
+                sprite_->setTextDatum(TL_DATUM);
             }
 
         } else if (currentMode_ == DisplayMode::RttySnrCurve) {
@@ -1575,23 +1577,25 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 uint16_t line_x_space = static_cast<uint16_t>(std::round(ratio_space * (bounds.width - 1)));
                 line_x_space = constrain(line_x_space, 0, bounds.width - 1);
 
+                // Először a teljes vonal kirajzolása
+                sprite_->drawFastVLine(line_x_space, 0, graphH, TFT_CYAN);
+
                 // Space frekvencia kiírása a vonaltól jobbra
                 sprite_->setTextColor(TFT_CYAN);
                 sprite_->setTextSize(1);
                 char spaceStr[16];
                 snprintf(spaceStr, sizeof(spaceStr), "%dHz", f_space);
+
+                // Becsült szöveg méret a háttér kirajzolásához
+                int spaceTextWidth = strlen(spaceStr) * 6;
+
                 int spaceTextX = line_x_space + 2; // Vonaltól jobbra
                 // Ha túlnyúlna a képernyő szélén, akkor balra helyezzük
-                if (spaceTextX + 30 > bounds.width) {
-                    spaceTextX = line_x_space - 30;
+                if (spaceTextX + spaceTextWidth > bounds.width) {
+                    spaceTextX = line_x_space - spaceTextWidth - 2;
                 }
 
-                // Először a vonal kirajzolása (kivéve a szöveg területét)
-                sprite_->drawLine(line_x_space, 0, line_x_space, LABEL_Y_POS - 2, TFT_CYAN);           // Felső rész
-                sprite_->drawLine(line_x_space, LABEL_Y_POS + 11, line_x_space, graphH - 1, TFT_CYAN); // Alsó rész
-
-                // Fekete háttér kirajzolása a szöveg alatt (ez felülírja a vonalat a szöveg területén)
-                sprite_->fillRect(spaceTextX - 1, LABEL_Y_POS - 1, 32, 10, TFT_BLACK);
+                sprite_->setTextColor(TFT_CYAN, TFT_BLACK); // Szöveg színe és háttérszín
                 sprite_->drawString(spaceStr, spaceTextX, LABEL_Y_POS);
             }
 
@@ -1601,23 +1605,24 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 uint16_t line_x_mark = static_cast<uint16_t>(std::round(ratio_mark * (bounds.width - 1)));
                 line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
 
+                // Először a teljes vonal kirajzolása
+                sprite_->drawFastVLine(line_x_mark, 0, graphH, TFT_YELLOW);
+
                 // Mark frekvencia kiírása a vonaltól jobbra
-                sprite_->setTextColor(TFT_YELLOW);
                 sprite_->setTextSize(1);
                 char markStr[16];
                 snprintf(markStr, sizeof(markStr), "%dHz", f_mark);
+
+                // Becsült szöveg méret a háttér kirajzolásához
+                int markTextWidth = strlen(markStr) * 6;
+
                 int markTextX = line_x_mark + 2; // Vonaltól jobbra
                 // Ha túlnyúlna a képernyő szélén, akkor balra helyezzük
-                if (markTextX + 30 > bounds.width) {
-                    markTextX = line_x_mark - 30;
+                if (markTextX + markTextWidth > bounds.width) {
+                    markTextX = line_x_mark - markTextWidth - 2;
                 }
 
-                // Először a vonal kirajzolása (kivéve a szöveg területét)
-                sprite_->drawLine(line_x_mark, 0, line_x_mark, LABEL_Y_POS - 2, TFT_YELLOW);           // Felső rész
-                sprite_->drawLine(line_x_mark, LABEL_Y_POS + 11, line_x_mark, graphH - 1, TFT_YELLOW); // Alsó rész
-
-                // Fekete háttér kirajzolása a szöveg alatt (ez felülírja a vonalat a szöveg területén)
-                sprite_->fillRect(markTextX - 1, LABEL_Y_POS - 1, 32, 10, TFT_BLACK);
+                sprite_->setTextColor(TFT_YELLOW, TFT_BLACK); // Szöveg színe és háttérszín
                 sprite_->drawString(markStr, markTextX, LABEL_Y_POS);
             }
         }
