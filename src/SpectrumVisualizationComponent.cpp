@@ -20,8 +20,8 @@ constexpr uint8_t SPECTRUM_FPS = 15;                              // FPS limitá
 // ===== ÉRZÉKENYSÉGI / AMPLITÚDÓ SKÁLÁZÁSI KONSTANSOK =====
 
 // SNR Curve sensitivity constants
-constexpr float CW_SNR_CURVE_SENSITIVITY_FACTOR = 0.3f;   // CW SNR görbe érzékenység (csökkentett autogain)
-constexpr float RTTY_SNR_CURVE_SENSITIVITY_FACTOR = 0.3f; // RTTY SNR görbe érzékenység (csökkentett autogain)
+constexpr float CW_SNR_CURVE_SENSITIVITY_FACTOR = 1.2f;   // CW SNR görbe érzékenység (mérsékelten csökkentett autogain)
+constexpr float RTTY_SNR_CURVE_SENSITIVITY_FACTOR = 0.9f; // RTTY SNR görbe érzékenység (kiegyensúlyozott autogain)
 
 // ===== ÉRZÉKENYSÉGI / AMPLITÚDÓ SKÁLÁZÁSI KONSTANSOK =====
 // Minden grafikon mód érzékenységét és amplitúdó skálázását itt lehet módosítani
@@ -1234,9 +1234,10 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
     // CW: A config.data.cwToneFrequencyHz +- 600 Hz körüli CW frekvencia a hangolássegéd sávszélessége
     constexpr float CW_TUNING_AID_SPAN_HZ = 600.0f;
 
-    // RTTY: A minimum frekvencia: min(f_mark, f_space) - 200 Hz, a maximum frekvencia: max(f_mark, f_space) + 200 Hz.
-    // Így a tuning aid spektrum sávszélessége a két RTTY frekvencia közötti távolság plusz kétszer 200 Hz.
-    constexpr float RTTY_TUNING_AID_SPAN_HZ = 200.0f;
+    // RTTY: A minimum frekvencia: min(f_mark, f_space) - 500 Hz, a maximum frekvencia: max(f_mark, f_space) + 500 Hz.
+    // Így a tuning aid spektrum sávszélessége a két RTTY frekvencia közötti távolság plusz kétszer 300 Hz.
+    // Nagyobb tartomány = simább grafikon (több FFT bin oszlik el a képernyő szélességén)
+    constexpr float RTTY_TUNING_AID_SPAN_HZ = 300.0f;
 
     bool typeChanged = (currentTuningAidType_ != type);
     currentTuningAidType_ = type;
@@ -1383,6 +1384,7 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
                 uint16_t line_x = bounds.width / 2;
                 sprite_->fillRect(line_x - 23, label_y - 13, 56, 21, TFT_BLACK);
                 sprite_->setTextColor(TUNING_AID_CW_TARGET_COLOR, TFT_BLACK);
+                sprite_->setTextDatum(BC_DATUM); // Explicit beállítás minden szöveg előtt
                 sprite_->drawString(String(config.data.cwToneFrequencyHz) + "Hz", line_x, label_y);
 
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
@@ -1396,6 +1398,7 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
                     line_x_space = constrain(line_x_space, 0, bounds.width - 1);
                     sprite_->fillRect(line_x_space - 28, label_y - 11, 56, 16, TFT_BLACK);
                     sprite_->setTextColor(TUNING_AID_RTTY_SPACE_COLOR, TFT_BLACK);
+                    sprite_->setTextDatum(BC_DATUM); // Explicit beállítás minden szöveg előtt
                     sprite_->drawString(String(static_cast<uint16_t>(round(f_space))) + "Hz", line_x_space, label_y);
                 }
                 // Mark címke
@@ -1405,6 +1408,7 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
                     line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
                     sprite_->fillRect(line_x_mark - 28, label_y - 11, 56, 16, TFT_BLACK);
                     sprite_->setTextColor(TUNING_AID_RTTY_MARK_COLOR, TFT_BLACK);
+                    sprite_->setTextDatum(BC_DATUM); // Explicit beállítás minden szöveg előtt
                     sprite_->drawString(String(static_cast<uint16_t>(round(f_mark))) + "Hz", line_x_mark, label_y);
                 }
             }
@@ -1487,15 +1491,26 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
     int prevX = -1;
     int prevY = -1;
 
-    // Minden pixel oszlophoz kiszámítjuk az SNR értéket
+    // Minden pixel oszlophoz kiszámítjuk az SNR értéket interpolációval
     for (int x = 0; x < bounds.width; x++) {
-        // X koordináta frekvenciává konvertálása
+        // X koordináta frekvenciává konvertálása (lebegőpontos bin index)
         float ratio = (bounds.width <= 1) ? 0.0f : (static_cast<float>(x) / (bounds.width - 1));
-        int fft_bin_index = min_bin + static_cast<int>(std::round(ratio * (num_bins - 1)));
-        fft_bin_index = constrain(fft_bin_index, min_bin, max_bin);
+        float exact_bin_index = min_bin + ratio * (num_bins - 1);
 
-        // Magnitude lekérése és feldolgozása
-        float rawMagnitude = magnitudeData[fft_bin_index];
+        // Interpoláció a szomszédos bin-ek között a simább görbe érdekében
+        int bin_low = static_cast<int>(floor(exact_bin_index));
+        int bin_high = bin_low + 1;
+        float interpolation_factor = exact_bin_index - bin_low;
+
+        // Biztonsági korlátok
+        bin_low = constrain(bin_low, min_bin, max_bin);
+        bin_high = constrain(bin_high, min_bin, max_bin);
+
+        // Interpolált magnitude érték számítása
+        float mag_low = magnitudeData[bin_low];
+        float mag_high = (bin_high <= max_bin) ? magnitudeData[bin_high] : mag_low;
+        float rawMagnitude = mag_low + interpolation_factor * (mag_high - mag_low);
+
         maxMagnitude = std::max(maxMagnitude, rawMagnitude);
 
         // SNR érték számítása (egyszerű amplitúdó alapú)

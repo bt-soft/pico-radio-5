@@ -30,9 +30,9 @@ void RttyDecoder::clear() {
     currentBitIndex_ = 0;
     receivedBaudotCode_ = 0;
 
-    // Jeladaptáció
-    adaptiveMarkThreshold_ = 8.0f;
-    adaptiveSpaceThreshold_ = 8.0f;
+    // Jeladaptáció - alacsonyabb kezdőértékekkel
+    adaptiveMarkThreshold_ = 5.0f;
+    adaptiveSpaceThreshold_ = 5.0f;
     recentMarkCount_ = 0;
     recentSpaceCount_ = 0;
     recentNoiseCount_ = 0;
@@ -127,7 +127,7 @@ bool RttyDecoder::detectMarkTone(const float *fftData, uint16_t fftSize, float b
         lastMarkDebugTime = currentTime;
     }
 
-    updateAdaptiveThreshold(markDetected, snr);
+    updateAdaptiveThreshold(markDetected, snr, true); // true = mark tónus
 
     if (markDetected) {
         recentMarkCount_++;
@@ -151,11 +151,11 @@ bool RttyDecoder::detectSpaceTone(const float *fftData, uint16_t fftSize, float 
     static unsigned long lastSpaceDebugTime = 0;
     unsigned long currentTime = millis();
     if (currentTime - lastSpaceDebugTime > 3000) { // 3 másodpercenként
-        DEBUG("[RTTY-SPACE] SNR=%.2f dB, küszöb=%.2f dB, detektált=%s\n", snr, adaptiveSpaceThreshold_, spaceDetected ? "IGEN" : "NEM");
+        DEBUG("[RTTY-SPACE] SNR=%s dB, küszöb=%s dB, detektált=%s\n", Utils::floatToString(snr).c_str(), Utils::floatToString(adaptiveSpaceThreshold_).c_str(), spaceDetected ? "IGEN" : "NEM");
         lastSpaceDebugTime = currentTime;
     }
 
-    updateAdaptiveThreshold(spaceDetected, snr);
+    updateAdaptiveThreshold(spaceDetected, snr, false); // false = space tónus
 
     if (spaceDetected) {
         recentSpaceCount_++;
@@ -194,20 +194,28 @@ float RttyDecoder::calculateSnrForFrequency(const float *fftData, uint16_t fftSi
     }
     signalPower /= signalBinCount;
 
-    // Zaj erősség környező frekvenciákon (10 bin átlagával)
+    // Zaj erősség környező frekvenciákon (adaptív ablak mérettel)
     float noisePower = 0.0f;
     uint16_t noiseBinCount = 0;
-    for (int i = -15; i <= 15; i++) {
-        if (abs(i) < 5)
+
+    // Adaptív ablak méret a frekvencia alapján (alacsony frekvenciáknál kisebb ablak)
+    int noiseWindow = (targetFreq < 1500) ? 10 : 15;
+    int signalGap = (targetFreq < 1500) ? 3 : 5;
+
+    for (int i = -noiseWindow; i <= noiseWindow; i++) {
+        if (abs(i) < signalGap)
             continue; // Kihagyjuk a jel környékét
         uint16_t bin = targetBin + i;
-        if (bin < fftSize) {
+        if (bin < fftSize && bin >= 0) { // Biztonsági ellenőrzés
             noisePower += fftData[bin];
             noiseBinCount++;
         }
     }
     if (noiseBinCount > 0) {
         noisePower /= noiseBinCount;
+    } else {
+        // Ha nincs elegendő zaj minta, használjunk egy minimális értéket
+        noisePower = signalPower * 0.1f; // 10%-os zaj feltételezése
     }
 
     // SNR számítás (dB-ben)
@@ -229,24 +237,60 @@ float RttyDecoder::calculateSnrForFrequency(const float *fftData, uint16_t fftSi
 }
 
 /**
- * Adaptív SNR küszöb frissítése
+ * Adaptív SNR küszöb frissítése mark/space külön kezeléssel
  */
-void RttyDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr) {
+void RttyDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr, bool isMarkTone) {
+    static unsigned long lastAdaptiveUpdate = 0;
+    unsigned long currentTime = millis();
+
     if (toneDetected) {
-        // Jel detektálva, esetleg csökkentsük a küszöböt ha túl magas
-        if (recentMarkCount_ + recentSpaceCount_ > 100) {
-            adaptiveMarkThreshold_ = max(5.0f, adaptiveMarkThreshold_ - 0.2f);
-            adaptiveSpaceThreshold_ = max(5.0f, adaptiveSpaceThreshold_ - 0.2f);
-            recentMarkCount_ = recentSpaceCount_ = recentNoiseCount_ = 0;
+        if (isMarkTone) {
+            recentMarkCount_++;
+        } else {
+            recentSpaceCount_++;
+        }
+
+        // Ha jó SNR-rel detektáljuk a jelet, fokozatosan csökkentsük a megfelelő küszöböt
+        float &threshold = isMarkTone ? adaptiveMarkThreshold_ : adaptiveSpaceThreshold_;
+        if (currentSnr > threshold + 3.0f) {
+            if (currentTime - lastAdaptiveUpdate > 1000) { // 1 másodpercenként
+                float oldThreshold = threshold;
+                threshold = max(3.0f, threshold - 0.1f); // Alacsonyabb minimum
+                DEBUG("[RTTY-ADAPTIVE] %s küszöb csökkentve: %s -> %s dB (jó SNR: %s dB)\n", isMarkTone ? "Mark" : "Space", Utils::floatToString(oldThreshold, 1).c_str(), Utils::floatToString(threshold, 1).c_str(),
+                      Utils::floatToString(currentSnr, 1).c_str());
+                lastAdaptiveUpdate = currentTime;
+            }
         }
     } else {
         recentNoiseCount_++;
-        // Túl sok zaj, emeljük a küszöböt
-        if (recentNoiseCount_ > 200) {
-            adaptiveMarkThreshold_ = min(15.0f, adaptiveMarkThreshold_ + 0.5f);
-            adaptiveSpaceThreshold_ = min(15.0f, adaptiveSpaceThreshold_ + 0.5f);
-            recentMarkCount_ = recentSpaceCount_ = recentNoiseCount_ = 0;
+        // Ha túl gyakran nincs detektálás alacsony SNR miatt, csökkentsük a megfelelő küszöböt
+        float &threshold = isMarkTone ? adaptiveMarkThreshold_ : adaptiveSpaceThreshold_;
+        if (currentSnr > 2.0f && currentSnr < threshold) {                           // Alacsonyabb alsó határ
+            if (currentTime - lastAdaptiveUpdate > 2000 && recentNoiseCount_ > 20) { // 2 másodpercenként
+                float oldThreshold = threshold;
+                threshold = max(3.0f, threshold - 0.2f); // Alacsonyabb minimum
+                DEBUG("[RTTY-ADAPTIVE] %s küszöb csökkentve: %s -> %s dB (gyakori elutasítás, SNR: %s dB)\n", isMarkTone ? "Mark" : "Space", Utils::floatToString(oldThreshold, 1).c_str(),
+                      Utils::floatToString(threshold, 1).c_str(), Utils::floatToString(currentSnr, 1).c_str());
+                recentMarkCount_ = recentSpaceCount_ = recentNoiseCount_ = 0;
+                lastAdaptiveUpdate = currentTime;
+            }
         }
+        // Csak akkor emeljük a küszöböt, ha valóban sok a zaj
+        else if (recentNoiseCount_ > 100 && (recentMarkCount_ + recentSpaceCount_) < 10) {
+            if (currentTime - lastAdaptiveUpdate > 5000) { // 5 másodpercenként
+                float oldThreshold = threshold;
+                threshold = min(12.0f, threshold + 0.3f);
+                DEBUG("[RTTY-ADAPTIVE] %s küszöb emelve: %s -> %s dB (sok zaj)\n", isMarkTone ? "Mark" : "Space", Utils::floatToString(oldThreshold, 1).c_str(), Utils::floatToString(threshold, 1).c_str());
+                recentMarkCount_ = recentSpaceCount_ = recentNoiseCount_ = 0;
+                lastAdaptiveUpdate = currentTime;
+            }
+        }
+    }
+
+    // Számláló reset időnként
+    if (currentTime - lastAdaptiveUpdate > 10000) {
+        recentMarkCount_ = recentSpaceCount_ = recentNoiseCount_ = 0;
+        lastAdaptiveUpdate = currentTime;
     }
 }
 
@@ -255,7 +299,7 @@ void RttyDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr) {
  */
 void RttyDecoder::processRttyFftData(const float *fftData, uint16_t fftSize, float binWidth) {
     if (!fftData || fftSize == 0 || binWidth <= 0.0f) {
-        DEBUG("[RTTY-FFT] HIBA: Érvénytelen FFT adatok (ptr:%p, size:%u, binWidth:%.2f)\n", fftData, fftSize, binWidth);
+        DEBUG("[RTTY-FFT] HIBA: Érvénytelen FFT adatok (ptr:%p, size:%u, binWidth:%s)\n", fftData, fftSize, Utils::floatToString(binWidth).c_str());
         return;
     }
 
@@ -277,22 +321,72 @@ void RttyDecoder::processRttyFftData(const float *fftData, uint16_t fftSize, flo
     bool markPresent = detectMarkTone(fftData, fftSize, binWidth);
     bool spacePresent = detectSpaceTone(fftData, fftSize, binWidth);
 
-    // Debug: jelenlét státusz (csak változáskor)
-    static bool lastMarkPresent = false;
-    static bool lastSpacePresent = false;
-    if (markPresent != lastMarkPresent || spacePresent != lastSpacePresent) {
-        DEBUG("[RTTY-DETECT] Jel állapot változás: Mark=%s, Space=%s\n", markPresent ? "VAN" : "NINCS", spacePresent ? "VAN" : "NINCS");
-        lastMarkPresent = markPresent;
-        lastSpacePresent = spacePresent;
+    // Jel stabilizáció - csak akkor változtassuk az állapotot, ha a jel stabil
+    static bool stableMarkPresent = false;
+    static bool stableSpacePresent = false;
+    static unsigned long lastSignalChangeTime = 0;
+    static int markConfirmCount = 0;
+    static int spaceConfirmCount = 0;
+
+    const int CONFIRMATION_THRESHOLD = 5;         // 5 egymás utáni megerősítés kell (nagyobb stabilitás)
+    const unsigned long MIN_SIGNAL_DURATION = 40; // minimum 40ms stabil jel (RTTY bit idő ~22ms)
+
+    // Megerősítési számláló frissítése
+    if (markPresent && !spacePresent) {
+        markConfirmCount++;
+        spaceConfirmCount = 0;
+    } else if (!markPresent && spacePresent) {
+        spaceConfirmCount++;
+        markConfirmCount = 0;
+    } else {
+        markConfirmCount = 0;
+        spaceConfirmCount = 0;
+    }
+
+    // Stabil állapot meghatározása
+    unsigned long timeSinceLastChange = currentTime - lastSignalChangeTime;
+    bool shouldUpdateStableState = false;
+
+    if (markConfirmCount >= CONFIRMATION_THRESHOLD && timeSinceLastChange >= MIN_SIGNAL_DURATION) {
+        if (!stableMarkPresent || stableSpacePresent) {
+            shouldUpdateStableState = true;
+            stableMarkPresent = true;
+            stableSpacePresent = false;
+        }
+    } else if (spaceConfirmCount >= CONFIRMATION_THRESHOLD && timeSinceLastChange >= MIN_SIGNAL_DURATION) {
+        if (stableMarkPresent || !stableSpacePresent) {
+            shouldUpdateStableState = true;
+            stableMarkPresent = false;
+            stableSpacePresent = true;
+        }
+    } else if (markConfirmCount == 0 && spaceConfirmCount == 0 && timeSinceLastChange >= MIN_SIGNAL_DURATION * 2) {
+        if (stableMarkPresent || stableSpacePresent) {
+            shouldUpdateStableState = true;
+            stableMarkPresent = false;
+            stableSpacePresent = false;
+        }
+    }
+
+    if (shouldUpdateStableState) {
+        lastSignalChangeTime = currentTime;
+    }
+
+    // Debug: jelenlét státusz (csak stabil állapot változáskor)
+    static bool lastStableMarkPresent = false;
+    static bool lastStableSpacePresent = false;
+    if (stableMarkPresent != lastStableMarkPresent || stableSpacePresent != lastStableSpacePresent) {
+        DEBUG("[RTTY-DETECT] Stabil jel állapot változás: Mark=%s, Space=%s\n", stableMarkPresent ? "VAN" : "NINCS", stableSpacePresent ? "VAN" : "NINCS");
+        lastStableMarkPresent = stableMarkPresent;
+        lastStableSpacePresent = stableSpacePresent;
     }
 
     // Automatikus baud felismerés
     if (autoBaudEnabled_ && !baudRateDetected_) {
-        updateBaudRateDetection(markPresent, spacePresent);
+        updateBaudRateDetection(stableMarkPresent, stableSpacePresent);
     }
 
-    // RTTY állapotgép futtatása
-    processRttyStateMachine(markPresent, spacePresent);
+    // RTTY állapotgép futtatása stabil jelekkel
+    processRttyStateMachine(stableMarkPresent, stableSpacePresent);
 }
 
 /**
@@ -326,11 +420,19 @@ void RttyDecoder::processRttyStateMachine(bool markPresent, bool spacePresent) {
                     bitStartTime_ = currentTime;
                     currentBitIndex_ = 0;
                     DEBUG("[RTTY-STATE] Érvényes start bit, adatok fogadása\n");
-                } else {
-                    // Hibás start bit
+                } else if (markPresent && !spacePresent) {
+                    // Mark jel helyett space-t vártunk - ez valószínűleg nem start bit
                     currentState_ = RTTY_IDLE;
                     errorCount_++;
-                    DEBUG("[RTTY-STATE] Hibás start bit, visszatérés idle-ba\n");
+                    DEBUG("[RTTY-STATE] Hibás start bit (mark helyett space), visszatérés idle-ba\n");
+                } else {
+                    // Bizonytalan jel - adjunk még egy esélyt, ha nem túl sokáig tart
+                    if (currentTime - bitStartTime_ >= bitLengthMs_ * 1.5) {
+                        currentState_ = RTTY_IDLE;
+                        errorCount_++;
+                        DEBUG("[RTTY-STATE] Start bit időtúllépés, visszatérés idle-ba\n");
+                    }
+                    // Egyébként várunk tovább
                 }
             }
             break;
@@ -352,9 +454,28 @@ void RttyDecoder::processRttyStateMachine(bool markPresent, bool spacePresent) {
                         currentState_ = RTTY_STOP;
                         DEBUG("[RTTY-STATE] 5 adat bit fogadva: 0x%02X\n", receivedBaudotCode_);
                     }
+                } else if (!markPresent && !spacePresent) {
+                    // Nincs jel - ez lehet átmenet, várjunk egy kicsit
+                    if (currentTime - bitStartTime_ >= bitLengthMs_ * 1.5) {
+                        // Túl sokáig nincs jel, hibás átvitel
+                        discardCurrentBit("Túl sokáig nincs jel az adat bitben");
+                    }
+                    // Egyébként várjunk tovább
                 } else {
-                    // Nem egyértelmű jel, hiba
-                    discardCurrentBit("Nem egyértelmű jel az adat bitben");
+                    // Mindkét jel egyszerre - zajos környezet, próbáljunk továbbmenni
+                    // A domináló jelet választjuk (ha van SNR alapú információ)
+                    if (currentTime - bitStartTime_ >= bitLengthMs_ * 1.2) {
+                        // Időkorlát túllépve, mégis próbáljuk
+                        DEBUG("[RTTY-STATE] Zajos jel, space-t feltételezünk\n");
+                        // Space-t feltételezünk (0 bit)
+                        currentBitIndex_++;
+                        bitStartTime_ = currentTime;
+
+                        if (currentBitIndex_ >= 5) {
+                            currentState_ = RTTY_STOP;
+                            DEBUG("[RTTY-STATE] 5 adat bit fogadva (zajos): 0x%02X\n", receivedBaudotCode_);
+                        }
+                    }
                 }
             }
             break;
@@ -461,7 +582,7 @@ void RttyDecoder::analyzeBitTiming() {
     if (bestIndex >= 0 && bestConfidence >= 0.6f) {
         setBaudRate(baudCandidates_[bestIndex].baud);
         baudRateDetected_ = true;
-        DEBUG("[RTTY-AUTO-BAUD] Baud rate felismert: %u (konfidencia: %.1f%%)\n", static_cast<uint16_t>(currentBaudRate_), bestConfidence * 100.0f);
+        DEBUG("[RTTY-AUTO-BAUD] Baud rate felismert: %u (konfidencia: %s%%)\n", static_cast<uint16_t>(currentBaudRate_), Utils::floatToString(bestConfidence * 100.0f, 1).c_str());
     }
 }
 

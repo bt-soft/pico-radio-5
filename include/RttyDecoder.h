@@ -48,7 +48,7 @@ class RttyDecoder {
 
     // RTTY állapotgép és dekódolás
     void processRttyStateMachine(bool markPresent, bool spacePresent);
-    void updateAdaptiveThreshold(bool toneDetected, float currentSnr);
+    void updateAdaptiveThreshold(bool toneDetected, float currentSnr, bool isMarkTone);
     char baudotToChar(uint8_t baudotCode);
 
     // Automatikus baud felismerés
