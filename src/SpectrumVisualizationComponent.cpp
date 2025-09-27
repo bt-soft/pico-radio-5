@@ -1790,7 +1790,7 @@ uint16_t SpectrumVisualizationComponent::getOptimalFftSizeForMode(DisplayMode mo
 
         case DisplayMode::CwSnrCurve:
         case DisplayMode::RttySnrCurve:
-            size = 768; // Jó felbontás szükséges a görbe számára
+            size = 512; // Jó felbontás szükséges a görbe számára
             break;
 
         case DisplayMode::SpectrumLowRes:

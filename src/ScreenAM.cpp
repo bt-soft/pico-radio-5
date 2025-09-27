@@ -26,6 +26,8 @@ bool audioDecoderTimerHardwareInterruptHandler(struct repeating_timer *t) {
  */
 void ScreenAM::processAudioDecoder() {
 
+    unsigned long currentTime = millis();
+
     // Null pointer ellenőrzések error handling-gel
     if (ScreenAM::that == nullptr) {
         DEBUG("ScreenAM::processAudioDecoder() - HIBA: ScreenAM::that nullptr\n");
@@ -45,26 +47,30 @@ void ScreenAM::processAudioDecoder() {
     // Lekérjük a jelenlegi spektrum vizualizáció módot (egyszeri ellenőrzés)
     SpectrumVisualizationComponent::DisplayMode currentMode = ScreenAM::that->spectrumComp->getCurrentMode();
 
-    // CW mód flag beállítása a Core1 számára (Core0 -> Core1 kommunikáció)
+    // CW és RTTY mód flag beállítása a Core1 számára (Core0 -> Core1 kommunikáció)
     static SpectrumVisualizationComponent::DisplayMode lastCwMode = static_cast<SpectrumVisualizationComponent::DisplayMode>(-1);
-    bool isCwMode = (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall);
+    bool isCwMode = (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::CwSnrCurve);
+    bool isRttyMode = (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve);
+    bool isCwOrRttyDecoderMode = isCwMode || isRttyMode; // CW vagy RTTY dekóder módok
 
     if (currentMode != lastCwMode) {
-        AudioCore1Manager::setCwModeEnabled(isCwMode);
-        // DEBUG("[CW-DEBUG] CW mód flag beállítva: %s (mód: %d -> %d)\n", isCwMode ? "ENABLE" : "DISABLE", (int)lastCwMode, (int)currentMode);
+        // A CW mód flag-et CW VAGY RTTY módhoz állítjuk - mindkettő ugyanazt az FFT-t használja
+        AudioCore1Manager::setCwModeEnabled(isCwOrRttyDecoderMode);
+        DEBUG("[DECODER-DEBUG] CW/RTTY dekóder FFT flag beállítva: %s (mód: %d -> %d)\n", isCwOrRttyDecoderMode ? "ENABLE" : "DISABLE", (int)lastCwMode, (int)currentMode);
         lastCwMode = currentMode;
     }
 
     // Debug: spektrum mód ellenőrzése
     static SpectrumVisualizationComponent::DisplayMode lastDebugMode = static_cast<SpectrumVisualizationComponent::DisplayMode>(-1);
     if (currentMode != lastDebugMode) {
-        // DEBUG("[CW-DEBUG] Spektrum mód változás: %d -> %d (CWWaterfall=%d)\n", (int)lastDebugMode, (int)currentMode, (int)SpectrumVisualizationComponent::DisplayMode::CWWaterfall);
+        DEBUG("[DECODER-DEBUG] Spektrum mód változás: %d -> %d (CW=%s, RTTY=%s, DecoderMode=%s)\n", (int)lastDebugMode, (int)currentMode, isCwMode ? "IGEN" : "NEM", isRttyMode ? "IGEN" : "NEM",
+              isCwOrRttyDecoderMode ? "IGEN" : "NEM");
         lastDebugMode = currentMode;
     }
 
-    // Csak CW Waterfall módban dolgozunk
-    if (!isCwMode) {
-        return; // Gyors kilépés ha nem CW mód
+    // Csak CW vagy RTTY dekóder módokban dolgozunk
+    if (!isCwOrRttyDecoderMode) {
+        return; // Gyors kilépés ha nincs dekóder mód aktív
     }
 
     // FFT adatok lekérése - DUPLEX rendszer használata
@@ -93,6 +99,35 @@ void ScreenAM::processAudioDecoder() {
             // CW dekóder feldolgozás (CW_DECODER_FFT_SIZE-as FFT)
             if (ScreenAM::that && ScreenAM::that->cwDecoder) {
                 ScreenAM::that->cwDecoder->processCwFftData(cwMagnitudeData, CW_DECODER_FFT_SIZE, cwBinWidth);
+            }
+        }
+    }
+
+    // RTTY DEKÓDER FFT adatok (RTTYWaterfall és RttySnrCurve módokban)
+    if (isRttyMode) {
+        const float *rttyMagnitudeData = nullptr;
+        float rttyBinWidth = 0.0f;
+
+        // RTTY-hoz is használhatjuk a CW FFT adatokat, mivel hasonló frekvencia tartomány kell
+        if (AudioCore1Manager::getFastCwData(&rttyMagnitudeData, &rttyBinWidth)) {
+
+            // RTTY dekóder feldolgozás
+            if (ScreenAM::that && ScreenAM::that->rttyDecoder) {
+                ScreenAM::that->rttyDecoder->processRttyFftData(rttyMagnitudeData, CW_DECODER_FFT_SIZE, rttyBinWidth);
+            } else {
+                // Debug: dekóder hiányzik
+                static unsigned long lastDecoderErrorDebug = 0;
+                if (currentTime - lastDecoderErrorDebug > 10000) { // 10 másodpercenként
+                    DEBUG("[SCREEN-AM] HIBA: RTTY dekóder nem elérhető - that=%p, rttyDecoder=%p\n", ScreenAM::that, ScreenAM::that ? ScreenAM::that->rttyDecoder.get() : nullptr);
+                    lastDecoderErrorDebug = currentTime;
+                }
+            }
+        } else {
+            // Debug: FFT adatok nem elérhetők
+            static unsigned long lastNoFftDebug = 0;
+            if (currentTime - lastNoFftDebug > 5000) { // 5 másodpercenként
+                DEBUG("[SCREEN-AM] RTTY FFT adatok NEM elérhetők\n");
+                lastNoFftDebug = currentTime;
             }
         }
     }
@@ -206,6 +241,8 @@ void ScreenAM::activate() {
     lastSpectrumMode_ = SpectrumVisualizationComponent::DisplayMode::Off; // Reset on activate
     if (cwDecoder)
         cwDecoder->clear();
+    if (rttyDecoder)
+        rttyDecoder->clear();
     if (decodedTextBox)
         decodedTextBox->setText("");
 
@@ -221,6 +258,23 @@ void ScreenAM::activate() {
     audioDecoderTimer.detachInterrupt(); // Biztonság kedvéért leállítjuk először
     audioDecoderTimer.attachInterruptInterval(AUDIO_DECODER_TIMER_INTERVAL * 1000, audioDecoderTimerHardwareInterruptHandler);
     ScreenAM::that = this; // Beállítjuk a statikus pointert az aktuális ScreenAM példányra
+
+    // ===================================================================
+    // CW/RTTY mód azonnali beállítása screensaver után is
+    // ===================================================================
+    if (spectrumComp) {
+        SpectrumVisualizationComponent::DisplayMode currentMode = spectrumComp->getCurrentMode();
+        bool isCwMode = (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::CwSnrCurve);
+        bool isRttyMode = (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve);
+        bool isCwOrRttyDecoderMode = isCwMode || isRttyMode;
+
+        if (isCwOrRttyDecoderMode) {
+            AudioCore1Manager::setCwModeEnabled(true);
+            DEBUG("[ACTIVATE-DEBUG] CW/RTTY mód azonnal beállítva az activate()-ban: mód=%d\n", (int)currentMode);
+        } else {
+            AudioCore1Manager::setCwModeEnabled(false);
+        }
+    }
 }
 
 /**
@@ -380,16 +434,24 @@ void ScreenAM::handleOwnLoop() {
     updateSMeter(false /* AM mód */);
 
     // Spektrum és dekóder frissítés
-    if (spectrumComp && cwDecoder && decodedTextBox) {
+    if (spectrumComp && cwDecoder && rttyDecoder && decodedTextBox) {
         SpectrumVisualizationComponent::DisplayMode currentMode = spectrumComp->getCurrentMode();
 
-        // Ha a mód megváltozott, töröljük a dekódert
+        // Ha a mód megváltozott, töröljük a dekódereket
         if (currentMode != lastSpectrumMode_) {
             if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
                 cwDecoder->clear();
+                rttyDecoder->clear();
                 decodedTextBox->setText("");
+            } else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
+                rttyDecoder->clear();
+                cwDecoder->clear();
+                decodedTextBox->setText("");
+                // RTTY konfigurálása
+                rttyDecoder->setMarkFrequency(config.data.rttyMarkFrequencyHz);
+                rttyDecoder->setShiftFrequency(config.data.rttyShiftHz);
             } else {
-                // Ha nem CW módban vagyunk és van tartalom a szövegdobozban, töröljük
+                // Ha nem CW/RTTY módban vagyunk és van tartalom a szövegdobozban, töröljük
                 if (decodedTextBox->getText().length() > 0) {
                     decodedTextBox->setText("");
                 }
@@ -445,6 +507,47 @@ void ScreenAM::handleOwnLoop() {
                             // Ha nincs szóköz, akkor durván vágjuk
                             updatedText = updatedText.substring(cutPos);
                             DEBUG("[CW-UI] Scroll: durva vágás, új hossz: %d\n", updatedText.length());
+                        }
+                    }
+
+                    decodedTextBox->setText(updatedText);
+                }
+            }
+        }
+
+        // Ha az RTTY dekóder mód aktív (RTTYWaterfall vagy RttySnrCurve)
+        else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
+
+            // A Dekódolt szöveg lekérése és megjelenítése
+            if (rttyDecoder) {
+                String newText = rttyDecoder->getDecodedText();
+                if (newText.length() > 0) {
+                    // RTTY szöveg feldolgozása (kevesebb szűrés szükséges mint CW-nél)
+                    String currentText = decodedTextBox->getText();
+                    String updatedText = currentText + newText;
+
+                    // Karakterszám alapú scrollozás
+                    const int maxChars = 120; // Hosszabb limit RTTY-hoz, mert folyamatosabb szöveg
+
+                    // Ha túl hosszú, akkor elölről vágunk le
+                    if (updatedText.length() > maxChars) {
+                        // Sor alapján vágás RTTY-nál (\n vagy \r karakter keresése)
+                        int cutPos = updatedText.length() - maxChars + 30;
+                        int newlinePos = max(updatedText.indexOf('\n', cutPos), updatedText.indexOf('\r', cutPos));
+                        if (newlinePos > 0) {
+                            updatedText = updatedText.substring(newlinePos + 1);
+                            DEBUG("[RTTY-UI] Scroll: sor alapján vágva, új hossz: %d\n", updatedText.length());
+                        } else {
+                            // Szóköz alapján vágás ha nincs sortörés
+                            int spacePos = updatedText.indexOf(' ', cutPos);
+                            if (spacePos > 0) {
+                                updatedText = updatedText.substring(spacePos + 1);
+                                DEBUG("[RTTY-UI] Scroll: szó alapján vágva, új hossz: %d\n", updatedText.length());
+                            } else {
+                                // Durva vágás utolsó lehetőségként
+                                updatedText = updatedText.substring(cutPos);
+                                DEBUG("[RTTY-UI] Scroll: durva vágás, új hossz: %d\n", updatedText.length());
+                            }
                         }
                     }
 
@@ -531,6 +634,9 @@ void ScreenAM::layoutComponents() {
 
     // CW Dekóder példányosítása
     cwDecoder = std::make_shared<CwDecoder>();
+
+    // RTTY Dekóder példányosítása
+    rttyDecoder = std::make_shared<RttyDecoder>();
 
     // Dekódolt szöveg doboz létrehozása
     Rect textBoxBounds(2, 165, 405, 75); // Pozíció

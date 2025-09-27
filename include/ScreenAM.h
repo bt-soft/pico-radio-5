@@ -1,7 +1,8 @@
 #pragma once
 
 #include "CommonVerticalButtons.h"
-#include "CwDecoder.h" // Új include
+#include "CwDecoder.h"   // Új include
+#include "RttyDecoder.h" // RTTY dekóder include
 #include "ScreenRadioBase.h"
 #include "UITextBox.h" // Új include
 
@@ -194,6 +195,7 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
     // AM specifikus tagváltozók
     // ===================================================================
     std::shared_ptr<CwDecoder> cwDecoder;
+    std::shared_ptr<RttyDecoder> rttyDecoder; // RTTY dekóder
     std::shared_ptr<UITextBox> decodedTextBox;
     SpectrumVisualizationComponent::DisplayMode lastSpectrumMode_ = SpectrumVisualizationComponent::DisplayMode::Off;
 };
