@@ -18,8 +18,8 @@ void RttyDecoder::clear() {
     shiftHz_ = RTTY_DEFAULT_SHIFT_FREQUENCY;
     spaceFrequencyHz_ = markFrequencyHz_ - shiftHz_;
 
-    // Alapértelmezett baud rate
-    currentBaudRate_ = RttyBaudRate::BAUD_45;
+    // Alapértelmezett baud rate - 75 baud gyakoribb mint 45
+    currentBaudRate_ = RttyBaudRate::BAUD_75;
     autoBaudEnabled_ = true;
     setBaudRate(currentBaudRate_);
 
@@ -36,6 +36,19 @@ void RttyDecoder::clear() {
     recentMarkCount_ = 0;
     recentSpaceCount_ = 0;
     recentNoiseCount_ = 0;
+
+    // Jel jelenlét validáció inicializálása
+    // Szigorúbb szűrés: 8.0f vagy 10.0f dB (kevesebb hamis pozitív)
+    // Engedékenyebb: 4.0f vagy 5.0f dB (több gyenge jel dekódolása)
+    signalPresenceThreshold_ = 8.0f; // Minimálisan ekkora SNR szükséges valós jelhez
+
+    lastValidSignalTime_ = millis(); // Inicializálás aktuális idővel
+    signalTimeoutMs_ = 2000;         // 2 másodperc timeout jel nélkül (csökkentve 3-ról)
+    signalPresenceValid_ = false;    // Kezdetben nincs érvényes jel
+    continuousNullCount_ = 0;        // Null számláló reset
+    maxContinuousNulls_ = 2;         // Maximum 2 egymás utáni null (csökkentve 3-ról)
+    currentMarkSnr_ = 0.0f;          // SNR értékek inicializálása
+    currentSpaceSnr_ = 0.0f;
 
     // Baudot character set
     figureMode_ = false; // Kezdés LETTERS módban
@@ -255,6 +268,61 @@ void RttyDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr, b
 }
 
 /**
+ * Jel jelenlét validációja - megköveteli minimális SNR értékeket és stabilitást
+ */
+bool RttyDecoder::validateSignalPresence(float markSnr, float spaceSnr) {
+    currentMarkSnr_ = markSnr;
+    currentSpaceSnr_ = spaceSnr;
+
+    // Vizsgáljuk, hogy van-e elég erős jel bármelyik frekvencián
+    bool hasStrongSignal = (markSnr >= signalPresenceThreshold_) || (spaceSnr >= signalPresenceThreshold_);
+
+    // Debug: jel erősség ellenőrzés (ritkán)
+    static unsigned long lastPresenceDebug = 0;
+    unsigned long currentTime = millis();
+    if (currentTime - lastPresenceDebug > 5000) { // 5 másodpercenként
+        DEBUG("[RTTY-PRESENCE] SNR check: Mark=%s dB, Space=%s dB, threshold=%s dB, strong=%s\n", Utils::floatToString(markSnr, 1).c_str(), Utils::floatToString(spaceSnr, 1).c_str(),
+              Utils::floatToString(signalPresenceThreshold_, 1).c_str(), hasStrongSignal ? "IGEN" : "NEM");
+        lastPresenceDebug = currentTime;
+    }
+
+    if (hasStrongSignal) {
+        lastValidSignalTime_ = currentTime;
+        signalPresenceValid_ = true;
+        continuousNullCount_ = 0; // Reset null számláló erős jel esetén
+        return true;
+    } else {
+        // Ellenőrizzük, hogy mennyi ideje nincs erős jel
+        unsigned long timeSinceLastValidSignal = currentTime - lastValidSignalTime_;
+
+        if (timeSinceLastValidSignal > signalTimeoutMs_) {
+            // Túl sokáig nincs érvényes jel
+            signalPresenceValid_ = false;
+            static unsigned long lastTimeoutDebug = 0;
+            if (currentTime - lastTimeoutDebug > 3000) { // 3 másodpercenként debug
+                DEBUG("[RTTY-PRESENCE] Jel timeout: %lu ms > %lu ms threshold - dekódolás szünetel\n", timeSinceLastValidSignal, signalTimeoutMs_);
+                lastTimeoutDebug = currentTime;
+            }
+            return false;
+        } else {
+            // Még a timeout határán belül vagyunk
+            return signalPresenceValid_; // Megtartjuk az előző állapotot
+        }
+    }
+}
+
+/**
+ * Jel jelenlét követés frissítése
+ */
+void RttyDecoder::updateSignalPresenceTracking(bool hasValidSignal) {
+    if (hasValidSignal) {
+        lastValidSignalTime_ = millis();
+        signalPresenceValid_ = true;
+        continuousNullCount_ = 0;
+    }
+}
+
+/**
  * RTTY FFT adatok feldolgozása
  */
 void RttyDecoder::processRttyFftData(const float *fftData, uint16_t fftSize, float binWidth) {
@@ -280,6 +348,19 @@ void RttyDecoder::processRttyFftData(const float *fftData, uint16_t fftSize, flo
     // Mark és Space tónusok detektálása
     float markSnr = calculateSnrForFrequency(fftData, fftSize, binWidth, markFrequencyHz_);
     float spaceSnr = calculateSnrForFrequency(fftData, fftSize, binWidth, spaceFrequencyHz_);
+
+    // Jel jelenlét validáció - megkövetelünk minimális jel erősséget
+    bool signalValid = validateSignalPresence(markSnr, spaceSnr);
+
+    if (!signalValid) {
+        // Nincs elég erős jel - ne dekódoljunk karaktereket
+        static unsigned long lastNoSignalDebug = 0;
+        if (currentTime - lastNoSignalDebug > 2000) { // 2 másodpercenként debug
+            DEBUG("[RTTY-PRESENCE] Gyenge jel - dekódolás szünetel (Mark=%s dB, Space=%s dB)\n", Utils::floatToString(markSnr, 1).c_str(), Utils::floatToString(spaceSnr, 1).c_str());
+            lastNoSignalDebug = currentTime;
+        }
+        return; // Korai kilépés - ne folytassuk a dekódolást
+    }
 
     bool rawMarkPresent = markSnr > adaptiveMarkThreshold_;
     bool rawSpacePresent = spaceSnr > adaptiveSpaceThreshold_;
@@ -576,6 +657,15 @@ void RttyDecoder::processRttyStateMachine(bool markPresent, bool spacePresent) {
 
                 // Karakter dekódolása és feldolgozása
                 if (shouldDecode && decodedChar != '\0') {
+                    // Extra validáció: ellenőrizzük az aktuális jel erősséget
+                    if (currentMarkSnr_ < signalPresenceThreshold_ && currentSpaceSnr_ < signalPresenceThreshold_) {
+                        // Gyenge jel esetén még jobban szűrjünk
+                        DEBUG("[RTTY-DECODE] Karakter eldobva gyenge jel miatt: '%c' (Mark SNR=%s, Space SNR=%s)\n", decodedChar, Utils::floatToString(currentMarkSnr_, 1).c_str(),
+                              Utils::floatToString(currentSpaceSnr_, 1).c_str());
+                        currentState_ = RTTY_IDLE;
+                        break;
+                    }
+
                     decodedText_ += decodedChar;
 
                     // Szóköz hozzáadása bizonyos karakterek után az olvashatóság javítása érdekében
@@ -595,6 +685,49 @@ void RttyDecoder::processRttyStateMachine(bool markPresent, bool spacePresent) {
 
                     newCharacterAdded_ = true;
                     decodedCharactersCount_++;
+                    continuousNullCount_ = 0; // Reset null számláló valós karakter esetén
+                } else if (shouldDecode && decodedChar == '\0') {
+                    // Null karakter kezelés - szigorúbb ellenőrzéssel
+                    continuousNullCount_++;
+
+                    // Ha túl sok egymás utáni null karakter -> valószínűleg nincs valódi jel
+                    if (continuousNullCount_ > maxContinuousNulls_) {
+                        DEBUG("[RTTY-DECODE] Túl sok egymás utáni null karakter (%d) - valószínűleg nincs jel\n", continuousNullCount_);
+                        signalPresenceValid_ = false; // Invalidáljuk a jel jelenlétet
+                        currentState_ = RTTY_IDLE;
+                        break;
+                    }
+                    // Null karakter monitorozása - túl sok null jel baudrate problémát
+                    static int nullCharCount = 0;
+                    static unsigned long lastNullReset = millis();
+
+                    nullCharCount++;
+
+                    // Ha 10 másodperc alatt több mint 5 null karakter -> baudrate probléma
+                    if (nullCharCount > 5 && (millis() - lastNullReset) < 10000) {
+                        DEBUG("[RTTY-AUTO-SYNC] Túl sok null karakter (%d/10s), baudrate újraszinkronizálás...\n", nullCharCount);
+
+                        // Következő baudrate kipróbálása
+                        if (currentBaudRate_ == RttyBaudRate::BAUD_75) {
+                            setBaudRate(RttyBaudRate::BAUD_45);
+                            DEBUG("[RTTY-AUTO-SYNC] Váltás 75->45 baud\n");
+                        } else if (currentBaudRate_ == RttyBaudRate::BAUD_45) {
+                            setBaudRate(RttyBaudRate::BAUD_50);
+                            DEBUG("[RTTY-AUTO-SYNC] Váltás 45->50 baud\n");
+                        } else {
+                            setBaudRate(RttyBaudRate::BAUD_75);
+                            DEBUG("[RTTY-AUTO-SYNC] Váltás vissza 75 baud-ra\n");
+                        }
+
+                        nullCharCount = 0;
+                        lastNullReset = millis();
+                    }
+
+                    // 30 másodpercenként reset
+                    if (millis() - lastNullReset > 30000) {
+                        nullCharCount = 0;
+                        lastNullReset = millis();
+                    }
                 }
 
                 // Visszatérés idle állapotba

@@ -48,6 +48,10 @@ class RttyDecoder {
 
     // RTTY állapotgép és dekódolás
     void processRttyStateMachine(bool markPresent, bool spacePresent);
+
+    // Jel jelenlét validáció
+    bool validateSignalPresence(float markSnr, float spaceSnr);
+    void updateSignalPresenceTracking(bool hasValidSignal);
     void updateAdaptiveThreshold(bool toneDetected, float currentSnr, bool isMarkTone);
     char baudotToChar(uint8_t baudotCode);
 
@@ -83,6 +87,16 @@ class RttyDecoder {
     uint16_t recentMarkCount_;
     uint16_t recentSpaceCount_;
     uint16_t recentNoiseCount_;
+
+    // === JEL JELENLÉT VALIDÁCIÓ ===
+    float signalPresenceThreshold_;     // Minimális SNR értékek jelenlét detektáláshoz
+    unsigned long lastValidSignalTime_; // Utolsó érvényes jel időpontja
+    unsigned long signalTimeoutMs_;     // Maximális idő jel nélkül (ms)
+    bool signalPresenceValid_;          // Jelzi, hogy van-e érvényes jel
+    uint16_t continuousNullCount_;      // Egymás utáni null karakterek száma
+    uint16_t maxContinuousNulls_;       // Maximum megengedett egymás utáni null-ok
+    float currentMarkSnr_;              // Aktuális mark SNR érték
+    float currentSpaceSnr_;             // Aktuális space SNR érték
 
     // === AUTOMATIKUS BAUD FELISMERÉS ===
     struct BaudDetectionData {

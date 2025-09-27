@@ -95,8 +95,8 @@ void ScreenAM::processAudioDecoder() {
     if (!AudioCore1Manager::getLatestSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
         static unsigned long lastWarning = 0;
         unsigned long now = millis();
-        if (now - lastWarning > 5000) {
-            DEBUG("ScreenAM::processAudioDecoder() - Nincs új waterfall FFT adat 5 sec óta\n");
+        if (now - lastWarning > 2000) { // 2 sec helyett 5 sec - gyorsabb figyelmeztetés
+            DEBUG("ScreenAM::processAudioDecoder() - Nincs új waterfall FFT adat 2 sec óta\n");
             lastWarning = now;
         }
         return;
