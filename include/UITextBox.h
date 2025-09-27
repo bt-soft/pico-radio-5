@@ -16,6 +16,7 @@ class UITextBox : public UIComponent {
     TFT_eSprite _sprite;
     bool _spriteCreated;
     int maxCharsPerLine; // Karakterek száma soronként
+    int scrollOffset;    // Scrolling offset sorokban
 
     // Hosszú érintés kezelése
     static constexpr uint32_t LONG_PRESS_DURATION = 2000; // 2 másodperc

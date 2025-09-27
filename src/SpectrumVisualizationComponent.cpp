@@ -1384,7 +1384,6 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
                 uint16_t line_x = bounds.width / 2;
                 sprite_->fillRect(line_x - 23, label_y - 13, 56, 21, TFT_BLACK);
                 sprite_->setTextColor(TUNING_AID_CW_TARGET_COLOR, TFT_BLACK);
-                sprite_->setTextDatum(BC_DATUM); // Explicit beállítás minden szöveg előtt
                 sprite_->drawString(String(config.data.cwToneFrequencyHz) + "Hz", line_x, label_y);
 
             } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
@@ -1398,7 +1397,6 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
                     line_x_space = constrain(line_x_space, 0, bounds.width - 1);
                     sprite_->fillRect(line_x_space - 28, label_y - 11, 56, 16, TFT_BLACK);
                     sprite_->setTextColor(TUNING_AID_RTTY_SPACE_COLOR, TFT_BLACK);
-                    sprite_->setTextDatum(BC_DATUM); // Explicit beállítás minden szöveg előtt
                     sprite_->drawString(String(static_cast<uint16_t>(round(f_space))) + "Hz", line_x_space, label_y);
                 }
                 // Mark címke
@@ -1408,7 +1406,6 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
                     line_x_mark = constrain(line_x_mark, 0, bounds.width - 1);
                     sprite_->fillRect(line_x_mark - 28, label_y - 11, 56, 16, TFT_BLACK);
                     sprite_->setTextColor(TUNING_AID_RTTY_MARK_COLOR, TFT_BLACK);
-                    sprite_->setTextDatum(BC_DATUM); // Explicit beállítás minden szöveg előtt
                     sprite_->drawString(String(static_cast<uint16_t>(round(f_mark))) + "Hz", line_x_mark, label_y);
                 }
             }

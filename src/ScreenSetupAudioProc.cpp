@@ -156,7 +156,7 @@ void ScreenSetupAudioProc::handleRttyMarkFrequencyDialog(int index) {
 
     auto rttyMarkDialog = std::make_shared<ValueChangeDialog>(
         this, "RTTY Mark Freq", "RTTY Mark Frequency (Hz):", tempValuePtr.get(),
-        static_cast<int>(1200), // Min: 1200Hz
+        static_cast<int>(600),  // Min: 600Hz
         static_cast<int>(2500), // Max: 2500Hz
         static_cast<int>(25),   // Step: 25Hz
         [this, index](const std::variant<int, float, bool> &liveNewValue) {

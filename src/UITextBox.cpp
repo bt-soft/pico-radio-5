@@ -13,7 +13,8 @@
  * @param initialText A kezdeti szöveg.
  */
 UITextBox::UITextBox(const Rect &bounds, const String &initialText)
-    : UIComponent(bounds), text(initialText), textColor(TFT_WHITE), bgColor(TFT_BLACK), textSize(2), textDatum(TL_DATUM), _sprite(&tft), _spriteCreated(false), maxCharsPerLine(40), longPressHandled(false) {
+    : UIComponent(bounds), text(initialText), textColor(TFT_WHITE), bgColor(TFT_BLACK), textSize(2), textDatum(TL_DATUM), _sprite(&tft), _spriteCreated(false), maxCharsPerLine(40), scrollOffset(0),
+      longPressHandled(false) {
     // Sprite létrehozása a konstruktorban
     if (bounds.width > 0 && bounds.height > 0) {
         _sprite.setColorDepth(16);
@@ -65,12 +66,16 @@ void UITextBox::setBounds(const Rect &newBounds) {
 // ==========================================
 /**
  * @brief Beállítja a szövegdoboz szövegét.
- * @details Ha a szöveg változik, újrarajzolást kér.
+ * @details Ha a szöveg változik, újrarajzolást kér és resetálja a scroll pozíciót.
  * @param newText Az új szöveg.
  */
 void UITextBox::setText(const String &newText) {
     if (text != newText) {
         text = newText;
+        // Hosszú érintés resetelése új szöveg esetén
+        if (longPressHandled) {
+            scrollOffset = 0; // Scroll reset csak ha új szöveg jött
+        }
         markForRedraw(); // Újrarajzolás kérése, ha a szöveg változik
     }
 }
@@ -145,7 +150,7 @@ void UITextBox::setMaxCharsPerLine(int maxChars) {
 // ==========================================
 /**
  * @brief Kirajzolja a szövegdobozt a képernyőre.
- * @details A szöveget sortöréssel jeleníti meg a sprite-on belül.
+ * @details A szöveget sortöréssel jeleníti meg a sprite-on belül, automatikus scrolling-gal.
  */
 void UITextBox::draw() {
     if (!needsRedraw || !_spriteCreated) {
@@ -166,43 +171,56 @@ void UITextBox::draw() {
     if (!text.isEmpty()) {
         int16_t cursorX = 5; // Belső padding
         int16_t cursorY = 5;
-        int16_t lineHeight = _sprite.fontHeight() + 2; // Kis extra térköz a sorok között
+        int16_t lineHeight = _sprite.fontHeight() + 2;           // Kis extra térköz a sorok között
+        int maxVisibleLines = (bounds.height - 10) / lineHeight; // Hány sor fér el
+
+        // Szöveg sorokra törése
+        String lines[200]; // Max 200 sor tárolása
+        int lineCount = 0;
         String currentLine = "";
 
+        // Először fel kell bontani a teljes szöveget sorokra
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
 
             if (c == '\n') {
                 // Explicit új sor
-                _sprite.drawString(currentLine, cursorX, cursorY);
-                cursorY += lineHeight;
-                currentLine = "";
-
-                // Ha kilógnánk a sprite-ból, stop
-                if (cursorY + lineHeight > bounds.height) {
-                    break;
+                if (lineCount < 200) {
+                    lines[lineCount++] = currentLine;
                 }
+                currentLine = "";
             } else {
                 // Karakter hozzáadása a sorhoz
                 currentLine += c;
 
                 // Ha elértük a karakterlimitet, új sort kezdünk
                 if (currentLine.length() >= maxCharsPerLine) {
-                    _sprite.drawString(currentLine, cursorX, cursorY);
-                    cursorY += lineHeight;
-                    currentLine = "";
-
-                    // Ha kilógnánk a sprite-ból, stop
-                    if (cursorY + lineHeight > bounds.height) {
-                        break;
+                    if (lineCount < 200) {
+                        lines[lineCount++] = currentLine;
                     }
+                    currentLine = "";
                 }
             }
         }
 
-        // Az utolsó sor kirajzolása (ha van és még elfér)
-        if (!currentLine.isEmpty() && cursorY < bounds.height) {
-            _sprite.drawString(currentLine, cursorX, cursorY);
+        // Az utolsó sor hozzáadása (ha van)
+        if (!currentLine.isEmpty() && lineCount < 200) {
+            lines[lineCount++] = currentLine;
+        }
+
+        // Automatikus scroll: ha túl sok sor van, scrolloljunk le
+        if (lineCount > maxVisibleLines) {
+            scrollOffset = lineCount - maxVisibleLines;
+        } else {
+            scrollOffset = 0;
+        }
+
+        // Sorok kirajzolása a scroll offset-tel
+        int startLine = scrollOffset;
+        int endLine = min(startLine + maxVisibleLines, lineCount);
+
+        for (int i = startLine; i < endLine; i++) {
+            _sprite.drawString(lines[i], cursorX, cursorY + (i - startLine) * lineHeight);
         }
     }
 
