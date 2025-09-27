@@ -236,12 +236,15 @@ void ScreenAM::activate() {
     ScreenRadioBase::activate();
 
     lastSpectrumMode_ = SpectrumVisualizationComponent::DisplayMode::Off; // Reset on activate
-    if (cwDecoder)
+    if (cwDecoder) {
         cwDecoder->clear();
-    if (rttyDecoder)
+    }
+    if (rttyDecoder) {
         rttyDecoder->clear();
-    if (decodedTextBox)
+    }
+    if (decodedTextBox) {
         decodedTextBox->setText("");
+    }
 
     // ===================================================================
     // *** EGYETLEN GOMBÁLLAPOT SZINKRONIZÁLÁSI PONT - Event-driven ***
@@ -447,6 +450,11 @@ void ScreenAM::handleOwnLoop() {
                 // RTTY konfigurálása
                 rttyDecoder->setMarkFrequency(config.data.rttyMarkFrequencyHz);
                 rttyDecoder->setShiftFrequency(config.data.rttyShiftHz);
+                // RTTY baud rate beállítása (45.45 baud helyett 50 baud - gyakoribb)
+                rttyDecoder->setBaudRate(RttyBaudRate::BAUD_50);
+                // Automatikus baud felismerés bekapcsolása
+                rttyDecoder->enableAutoBaudDetection(true);
+                DEBUG("[RTTY-INIT] RTTY dekóder inicializálva: Mark=%d Hz, Shift=%d Hz, Baud=50\n", config.data.rttyMarkFrequencyHz, config.data.rttyShiftHz);
             } else {
                 // Ha nem CW/RTTY módban vagyunk és van tartalom a szövegdobozban, töröljük
                 if (decodedTextBox->getText().length() > 0) {
@@ -519,6 +527,7 @@ void ScreenAM::handleOwnLoop() {
             if (rttyDecoder) {
                 String newText = rttyDecoder->getDecodedText();
                 if (newText.length() > 0) {
+                    DEBUG("[RTTY-UI] Új szöveg érkezett: '%s' (%d karakter)\n", newText.c_str(), newText.length());
                     // RTTY szöveg feldolgozása (kevesebb szűrés szükséges mint CW-nél)
                     String currentText = decodedTextBox->getText();
                     String updatedText = currentText + newText;

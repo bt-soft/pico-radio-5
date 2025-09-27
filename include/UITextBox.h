@@ -17,6 +17,10 @@ class UITextBox : public UIComponent {
     bool _spriteCreated;
     int maxCharsPerLine; // Karakterek száma soronként
 
+    // Hosszú érintés kezelése
+    static constexpr uint32_t LONG_PRESS_DURATION = 2000; // 2 másodperc
+    bool longPressHandled = false;                        // Biztosítja, hogy csak egyszer történjen meg a törlés
+
   public:
     UITextBox(const Rect &bounds, const String &initialText);
     virtual ~UITextBox();
@@ -31,4 +35,8 @@ class UITextBox : public UIComponent {
 
     virtual void setBounds(const Rect &newBounds) override;
     virtual void draw() override;
+    virtual void loop() override; // Hosszú érintés ellenőrzéséhez
+    virtual void onTouchDown(const TouchEvent &event) override;
+    virtual void onTouchUp(const TouchEvent &event) override;
+    virtual void onTouchCancel(const TouchEvent &event) override;
 };

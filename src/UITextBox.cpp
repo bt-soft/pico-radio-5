@@ -1,8 +1,19 @@
 #include "UITextBox.h"
+#include "Config.h"  // For config.data.beeperEnabled
 #include "defines.h" // For DEBUG
+#include "utils.h"   // For beepTick()
 
+// ==========================================
+// UITextBox::UITextBox
+// ==========================================
+/**
+ * @brief Konstruktor, amely inicializálja a szövegdobozt.
+ * @details Létrehozza a sprite-ot és beállítja az alapértelmezett értékeket.
+ * @param bounds A szövegdoboz méretei.
+ * @param initialText A kezdeti szöveg.
+ */
 UITextBox::UITextBox(const Rect &bounds, const String &initialText)
-    : UIComponent(bounds), text(initialText), textColor(TFT_WHITE), bgColor(TFT_BLACK), textSize(2), textDatum(TL_DATUM), _sprite(&tft), _spriteCreated(false), maxCharsPerLine(40) {
+    : UIComponent(bounds), text(initialText), textColor(TFT_WHITE), bgColor(TFT_BLACK), textSize(2), textDatum(TL_DATUM), _sprite(&tft), _spriteCreated(false), maxCharsPerLine(40), longPressHandled(false) {
     // Sprite létrehozása a konstruktorban
     if (bounds.width > 0 && bounds.height > 0) {
         _sprite.setColorDepth(16);
@@ -13,12 +24,27 @@ UITextBox::UITextBox(const Rect &bounds, const String &initialText)
     }
 }
 
+// ==========================================
+// UITextBox::~UITextBox
+// ==========================================
+/**
+ * @brief Destruktor, amely felszabadítja az erőforrásokat.
+ * @details Törli a sprite-ot, ha az létre lett hozva.
+ */
 UITextBox::~UITextBox() {
     if (_spriteCreated) {
         _sprite.deleteSprite();
     }
 }
 
+// ==========================================
+// UITextBox::setBounds
+// ==========================================
+/**
+ * @brief Beállítja a szövegdoboz méreteit.
+ * @details Újra létrehozza a sprite-ot az új méretek alapján.
+ * @param newBounds Az új méretek.
+ */
 void UITextBox::setBounds(const Rect &newBounds) {
     UIComponent::setBounds(newBounds);
     if (_spriteCreated) {
@@ -34,6 +60,14 @@ void UITextBox::setBounds(const Rect &newBounds) {
     }
 }
 
+// ==========================================
+// UITextBox::setText
+// ==========================================
+/**
+ * @brief Beállítja a szövegdoboz szövegét.
+ * @details Ha a szöveg változik, újrarajzolást kér.
+ * @param newText Az új szöveg.
+ */
 void UITextBox::setText(const String &newText) {
     if (text != newText) {
         text = newText;
@@ -41,8 +75,23 @@ void UITextBox::setText(const String &newText) {
     }
 }
 
+// ==========================================
+// UITextBox::getText
+// ==========================================
+/**
+ * @brief Visszaadja a szövegdoboz aktuális szövegét.
+ * @return A szöveg.
+ */
 String UITextBox::getText() const { return text; }
 
+// ==========================================
+// UITextBox::setTextColor
+// ==========================================
+/**
+ * @brief Beállítja a szöveg és a háttér színét.
+ * @param fg A szöveg színe.
+ * @param bg A háttér színe.
+ */
 void UITextBox::setTextColor(uint16_t fg, uint16_t bg) {
     textColor = fg;
     bgColor = bg;
@@ -51,6 +100,13 @@ void UITextBox::setTextColor(uint16_t fg, uint16_t bg) {
     markForRedraw();
 }
 
+// ==========================================
+// UITextBox::setTextSize
+// ==========================================
+/**
+ * @brief Beállítja a szöveg méretét.
+ * @param size Az új szövegméret.
+ */
 void UITextBox::setTextSize(uint8_t size) {
     textSize = size;
     if (_spriteCreated)
@@ -58,6 +114,13 @@ void UITextBox::setTextSize(uint8_t size) {
     markForRedraw();
 }
 
+// ==========================================
+// UITextBox::setTextDatum
+// ==========================================
+/**
+ * @brief Beállítja a szöveg igazítását.
+ * @param datum Az igazítás típusa.
+ */
 void UITextBox::setTextDatum(uint8_t datum) {
     textDatum = datum;
     if (_spriteCreated)
@@ -65,11 +128,25 @@ void UITextBox::setTextDatum(uint8_t datum) {
     markForRedraw();
 }
 
+// ==========================================
+// UITextBox::setMaxCharsPerLine
+// ==========================================
+/**
+ * @brief Beállítja a soronkénti maximális karakterszámot.
+ * @param maxChars A maximális karakterszám.
+ */
 void UITextBox::setMaxCharsPerLine(int maxChars) {
     maxCharsPerLine = maxChars;
     markForRedraw();
 }
 
+// ==========================================
+// UITextBox::draw
+// ==========================================
+/**
+ * @brief Kirajzolja a szövegdobozt a képernyőre.
+ * @details A szöveget sortöréssel jeleníti meg a sprite-on belül.
+ */
 void UITextBox::draw() {
     if (!needsRedraw || !_spriteCreated) {
         return;
@@ -133,4 +210,84 @@ void UITextBox::draw() {
     _sprite.pushSprite(bounds.x, bounds.y);
 
     needsRedraw = false;
+}
+
+// ==========================================
+// UITextBox::loop
+// ==========================================
+/**
+ * @brief Ellenőrzi a hosszú érintést és végrehajtja a megfelelő műveleteket.
+ * @details Ha a felhasználó 2 másodpercig nyomva tartja a szövegdobozt, a tartalom törlődik,
+ * és egy hangjelzés hallható, ha a konfiguráció engedélyezi.
+ */
+void UITextBox::loop() {
+    // Hosszú érintés ellenőrzése
+    if (pressed && !longPressHandled) {
+        uint32_t pressDuration = millis() - touchDownTime;
+        if (pressDuration >= LONG_PRESS_DURATION) {
+            // Hosszú érintés történt - szöveg törlése és hangjelzés
+            if (!text.isEmpty()) {
+                setText(""); // Szöveg törlése
+
+                // Hangjelzés, ha engedélyezve van
+                if (config.data.beeperEnabled) {
+                    Utils::beepTick();
+                }
+            }
+            longPressHandled = true; // Csak egyszer hajtjuk végre
+        }
+    }
+}
+
+// ==========================================
+// UITextBox::onTouchDown
+// ==========================================
+/**
+ * @brief Kezeli az érintés lenyomását.
+ * @details Reseteli a hosszú érintés flag-et, hogy újra lehessen érzékelni.
+ * @param event Az érintés esemény adatai.
+ */
+void UITextBox::onTouchDown(const TouchEvent &event) {
+    // Alapértelmezett touchDown kezelés
+    UIComponent::onTouchDown(event);
+
+    // Reset a hosszú érintés kezeléshez
+    longPressHandled = false;
+
+    // Hangjelzés, ha engedélyezve van
+    if (config.data.beeperEnabled) {
+        Utils::beepTick();
+    }
+}
+
+// ==========================================
+// UITextBox::onTouchUp
+// ==========================================
+/**
+ * @brief Kezeli az érintés felengedését.
+ * @details Reseteli a hosszú érintés flag-et, hogy újra lehessen érzékelni.
+ * @param event Az érintés esemény adatai.
+ */
+void UITextBox::onTouchUp(const TouchEvent &event) {
+    // Alapértelmezett touchUp kezelés
+    UIComponent::onTouchUp(event);
+
+    // Reset a hosszú érintés kezeléshez
+    longPressHandled = false;
+}
+
+// ==========================================
+// UITextBox::onTouchCancel
+// ==========================================
+/**
+ * @brief Kezeli az érintés megszakítását.
+ * @details Reseteli a hosszú érintés flag-et, hogy újra lehessen érzékelni.
+ * @param event Az érintés esemény adatai.
+ */
+void UITextBox::onTouchCancel(const TouchEvent &event) {
+    // Alapértelmezett touchCancel kezelés
+    UIComponent::onTouchCancel(event);
+
+    // Reset a hosszú érintés kezeléshez
+    longPressHandled = false;
 }
