@@ -164,6 +164,7 @@ class FreqDisplay : public UIComponent {
      * @brief Beállítja, hogy megjelenjen-e a finomhangolás aláhúzás (képernyővédő mód)
      */
     void setHideUnderline(bool hide);
+    bool isHideUnderline() const { return hideUnderline; }
 
     /**
      * @brief Kényszeríti a teljes újrarajzolást (BFO módváltáskor)

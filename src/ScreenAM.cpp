@@ -196,16 +196,13 @@ ScreenAM::~ScreenAM() { DEBUG("ScreenAM::~ScreenAM() - Destruktor hívása\n"); 
  * - Frekvencia egység: kHz/MHz megfelelő formátumban
  */
 void ScreenAM::drawContent() {
-    // TODO: S-Meter statikus skála kirajzolása AM módban
-    // if (smeterComp) {
-    //     smeterComp->drawAmeterScale(); // AM-specifikus skála
-    // }
+    // DEBUG("ScreenAM::drawContent() - Statikus tartalom kirajzolása\n");
 
-    // TODO: Band információs terület kirajzolása
-    // drawBandInfoArea();
-
-    // TODO: Statikus címkék és UI elemek
-    // drawStaticLabels();
+    //  Finomhangolás jel (aláhúzás) megjelenítése SSB/CW módokban, elrejtése egyéb módokban
+    //  Itt állítjuk be, mert ha vált SW módban SSB-re, akkor is frissíteni kell a frekvencia kijelzőt a dialógus bezárásakor
+    BandTable &currentband = ::pSi4735Manager->getCurrentBand();
+    bool isSSBorCW = currentband.currDemod == LSB_DEMOD_TYPE || currentband.currDemod == USB_DEMOD_TYPE || currentband.currDemod == CW_DEMOD_TYPE;
+    freqDisplayComp->setHideUnderline(!::pSi4735Manager->isCurrentDemodSSBorCW() && !isSSBorCW);
 
     // Spektrum vizualizáció komponens border frissítése
     if (spectrumComp) {
@@ -606,9 +603,6 @@ void ScreenAM::layoutComponents() {
 
     // Dinamikus szélesség beállítása band típus alapján
     updateFreqDisplayWidth();
-
-    // Finomhangolás jel (alulvonás) elrejtése a frekvencia kijelzőn, ha nem HAM sávban vagyunk
-    freqDisplayComp->setHideUnderline(!::pSi4735Manager->isCurrentHamBand());
 
     // ===================================================================
     // S-Meter komponens létrehozása - RadioScreen közös implementáció
