@@ -53,8 +53,8 @@ const Config_t DEFAULT_CONFIG = {
     .miniAudioFftConfigRtty = 0.0f,     // RTTY-hez alapértelmezetten Auto Gain
 
     // CW és RTTY beállítások
-    .cwToneFrequencyHz = 900,      // x Hz CW offset
-    .rttyMarkFrequencyHz = 2125,   // RTTY Mark frequency
+    .cwToneFrequencyHz = 850,      // x Hz CW offset
+    .rttyMarkFrequencyHz = 1000,   // Hogy az 1.2kHz-es HF sávszélességbe is beleférjen  //2125,   // RTTY Mark frequency
     .rttyShiftHz = 170,            // RTTY Shift
     .cwRttyLedDebugEnabled = true, // CW/RTTY LED debug jelzés engedélyezése
 

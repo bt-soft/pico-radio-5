@@ -21,7 +21,7 @@ constexpr uint8_t SPECTRUM_FPS = 15;                              // FPS limitá
 // ===== ÉRZÉKENYSÉGI / AMPLITÚDÓ SKÁLÁZÁSI KONSTANSOK =====
 
 // SNR Curve sensitivity constants
-constexpr float CW_SNR_CURVE_SENSITIVITY_FACTOR = 1.2f;   // CW SNR görbe érzékenység (mérsékelten csökkentett autogain)
+constexpr float CW_SNR_CURVE_SENSITIVITY_FACTOR = 0.8f;   // Reduced for better weak signal detection
 constexpr float RTTY_SNR_CURVE_SENSITIVITY_FACTOR = 0.9f; // RTTY SNR görbe érzékenység (kiegyensúlyozott autogain)
 
 // ===== ÉRZÉKENYSÉGI / AMPLITÚDÓ SKÁLÁZÁSI KONSTANSOK =====
@@ -51,6 +51,11 @@ constexpr float SNR_CURVE_SENSITIVITY_FACTOR = 2.0f; // SNR görbe érzékenysé
 namespace AnalyzerConstants {
 constexpr uint16_t ANALYZER_MIN_FREQ_HZ = 300;
 }; // namespace AnalyzerConstants
+
+// Tunnnig Aid/Curve Színek
+constexpr uint16_t TUNING_AID_CW_TARGET_COLOR = TFT_GREEN;
+constexpr uint16_t TUNING_AID_RTTY_SPACE_COLOR = TFT_CYAN;
+constexpr uint16_t TUNING_AID_RTTY_MARK_COLOR = TFT_YELLOW;
 
 /**
  * @brief Konstruktor
@@ -979,7 +984,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     // Frame-alapú adaptív skálázás envelope-hoz
     float adaptiveScale = getAdaptiveScale(SensitivityConstants::ENVELOPE_INPUT_GAIN);
 
-    // Konzervatív korlátok envelope-hez
+    // Konzervatív korlátok envelope-hoz
     adaptiveScale = constrain(adaptiveScale, SensitivityConstants::ENVELOPE_INPUT_GAIN * 0.1f, SensitivityConstants::ENVELOPE_INPUT_GAIN * 10.0f); // 2. Új adatok betöltése
     // Az Envelope módhoz az magnitudeData értékeit használjuk csökkentett erősítéssel.
     float maxRawMagnitude = 0.0f;
@@ -1372,11 +1377,6 @@ void SpectrumVisualizationComponent::renderCwOrRttyTuningAid() {
     // Adaptív autogain frissítése
     updateFrameBasedGain(maxMagnitude);
 
-    // Színek
-    constexpr uint16_t TUNING_AID_CW_TARGET_COLOR = TFT_GREEN;
-    constexpr uint16_t TUNING_AID_RTTY_SPACE_COLOR = TFT_CYAN;
-    constexpr uint16_t TUNING_AID_RTTY_MARK_COLOR = TFT_YELLOW;
-
     uint16_t min_freq_displayed = currentTuningAidMinFreqHz_;
     uint16_t max_freq_displayed = currentTuningAidMaxFreqHz_;
     uint16_t displayed_span_hz = max_freq_displayed - min_freq_displayed;
@@ -1594,7 +1594,7 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 line_x_cw = constrain(line_x_cw, 0, bounds.width - 1);
 
                 // Először a teljes vonal kirajzolása
-                sprite_->drawFastVLine(line_x_cw, 0, graphH, TFT_GREEN);
+                sprite_->drawFastVLine(line_x_cw, 0, graphH, TUNING_AID_CW_TARGET_COLOR);
 
                 // CW frekvencia kiírása a vonal közepére
                 sprite_->setTextSize(1);
@@ -1615,7 +1615,7 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 // sprite_->fillRect(line_x_cw - (textWidth / 2) - 2, LABEL_Y_POS - (textHeight / 2) - 1, textWidth + 4, textHeight + 2, TFT_BLACK);
 
                 // Szöveg kirajzolása pontosan a vonal közepére
-                sprite_->setTextColor(TFT_GREEN, TFT_BLACK); // Szöveg színe és háttérszín
+                sprite_->setTextColor(TUNING_AID_CW_TARGET_COLOR, TFT_BLACK); // Szöveg színe és háttérszín
                 sprite_->drawString(freqStr, line_x_cw, LABEL_Y_POS);
 
                 // TextDatum visszaállítása alapértelmezettre

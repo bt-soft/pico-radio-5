@@ -49,7 +49,7 @@ void CwDecoder::clear() {
     lastToneEndTime_ = 0;
 
     // Jeladaptáció
-    adaptiveSnrThreshold_ = 10.0f; // Kezdő SNR küszöb
+    adaptiveSnrThreshold_ = 8.0f; // Kezdő SNR küszöb
     recentToneCount_ = 0;
     recentNoiseCount_ = 0;
 
@@ -87,7 +87,7 @@ void CwDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr) {
     } else {
         recentNoiseCount_++;
         // Ha túl sok zaj, emeljük a küszöböt, de lassan és idővel csökkentsük vissza
-        if (recentNoiseCount_ > 200) {                                        // 100-ról 200-ra növelve - lassabb emelés
+        if (recentNoiseCount_ > 300) {                                        // 100-ról 200-ra növelve - lassabb emelés
             adaptiveSnrThreshold_ = min(18.0f, adaptiveSnrThreshold_ + 0.5f); // Max 18dB-re növelve, lassabb emelés
             recentToneCount_ = 0;
             recentNoiseCount_ = 0;
@@ -98,8 +98,8 @@ void CwDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr) {
     // Időalapú csökkentés: ha sokáig magas a küszöb és nincs jel, lassan csökkentsük
     static unsigned long lastThresholdDecay = 0;
     unsigned long now = millis();
-    if (now - lastThresholdDecay > 10000 && adaptiveSnrThreshold_ > 10.0f && recentToneCount_ == 0) { // 10 sec múlva
-        adaptiveSnrThreshold_ = max(10.0f, adaptiveSnrThreshold_ - 1.0f);                             // Lassan vissza az alapértékre
+    if (now - lastThresholdDecay > 10000 && adaptiveSnrThreshold_ > 4.0f && recentToneCount_ == 0) { // 10 sec múlva
+        adaptiveSnrThreshold_ = max(4.0f, adaptiveSnrThreshold_ - 1.0f);                             // Lassan vissza az alapértékre
         lastThresholdDecay = now;
         DEBUG("[CW-ADAPT] SNR küszöb időalapú csökkentés: %s dB (hosszú inaktivitás)\n", Utils::floatToString(adaptiveSnrThreshold_).c_str());
     }
