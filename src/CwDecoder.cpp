@@ -154,7 +154,7 @@ void CwDecoder::updateAdaptiveWordGap(unsigned long pauseLength) {
         // Az adaptív szóközt ésszerű határok közé szorítjuk a szélsőséges értékek elkerülése érdekében.
         adaptiveWordGap_ = max((uint16_t)(letterGapMs_ * 1.8f), adaptiveWordGap_);
         adaptiveWordGap_ = min((uint16_t)(letterGapMs_ * 4.0f), adaptiveWordGap_);
-        DEBUG("[CW-ADAPTIVE] Átlag szünet: %u ms, adaptív szóköz: %u ms (alapértelmezett: %u ms), szünet_szám: %u\n", (uint16_t)averagePauseLength_, adaptiveWordGap_, wordGapMs_, pauseCount_);
+        //DEBUG("[CW-ADAPTIVE] Átlag szünet: %u ms, adaptív szóköz: %u ms (alapértelmezett: %u ms), szünet_szám: %u\n", (uint16_t)averagePauseLength_, adaptiveWordGap_, wordGapMs_, pauseCount_);
     }
 }
 
@@ -308,7 +308,7 @@ void CwDecoder::processCwStateMachine(bool tonePresent, String &newChars) {
  */
 bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidth) {
     uint16_t centerFreqHz = config.data.cwToneFrequencyHz;
-    constexpr uint16_t SEARCH_WINDOW_HZ = 100; // +/- 100 Hz-es keresés a középfrekvencia körül.
+    constexpr uint16_t SEARCH_WINDOW_HZ = 50; // +/- 50 Hz-es keresés a középfrekvencia körül.
 
     uint16_t startFreqHz = (centerFreqHz > SEARCH_WINDOW_HZ) ? (centerFreqHz - SEARCH_WINDOW_HZ) : 0;
     uint16_t endFreqHz = centerFreqHz + SEARCH_WINDOW_HZ;
@@ -380,7 +380,7 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
 
     if (isToneDetected) {
         float peakFrequencyHz = (peakBin != -1) ? (peakBin * binWidth) : 0.0f;
-        DEBUG("[CW Decoder] CW: %dHz, ablak: [%d Hz - %d Hz],\n   Csúcs: %s Hz,\n   SNR: %s dB (adaptiveSnrThreshold_: %s dB),\n   CsúcsAmpl: %s, Zaj: %s)\n",
+        DEBUG("[CW Decoder] CW: %dHz, ablak: [%d Hz - %d Hz], Csúcs: %s Hz, SNR: %s dB (adaptiveSnrThreshold_: %s dB), CsúcsAmpl: %s, Zaj: %s)\n",
               centerFreqHz, startFreqHz, endFreqHz,
               Utils::floatToString(peakFrequencyHz).c_str(),
               Utils::floatToString(snrDb).c_str(),

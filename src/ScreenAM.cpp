@@ -550,8 +550,9 @@ void ScreenAM::handleOwnLoop() {
         lastSpectrumMode_ = currentMode;
     }
 
-    // Ha a CW dekóder mód aktív
-    if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+    // Ha a CW dekóder mód aktív (CWWaterfall vagy CwSnrCurve)
+    if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall //
+        || currentMode == SpectrumVisualizationComponent::DisplayMode::CwSnrCurve) {
 
         // A Dekódolt szöveg lekérése és megjelenítése a belső pufferből
         if (newCwTextBuffer_.length() > 0) {
@@ -607,7 +608,8 @@ void ScreenAM::handleOwnLoop() {
     }
 
     // Ha az RTTY dekóder mód aktív (RTTYWaterfall vagy RttySnrCurve)
-    else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
+    else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall //
+             || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
 
         // A Dekódolt szöveg lekérése és megjelenítése
         if (rttyDecoder) {
