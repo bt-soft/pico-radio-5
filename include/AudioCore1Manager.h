@@ -42,6 +42,10 @@ class AudioCore1Manager {
         volatile bool cwDataAvailable;
         volatile bool cwModeEnabled; // Flag: CW mód aktív-e (Core0 -> Core1 kommunikáció)
 
+        // CW/RTTY optimalizált mintavételezés
+        volatile uint16_t cwRttyOptimalSamplingFreq; // Optimális mintavételezési frekvencia CW/RTTY-hoz
+        volatile bool cwRttyOptimalSamplingChanged;  // Flag: CW/RTTY optimális mintavételezés megváltozott
+
         // Oszcilloszkóp adatok
         int oscilloscopeBuffer[320];     // MAX_INTERNAL_WIDTH
         int oscilloscopeSampleCount = 0; // tényleges mintaszám
@@ -177,6 +181,12 @@ class AudioCore1Manager {
      * @param enabled true ha CW mód aktív, false egyébként
      */
     static void setCwModeEnabled(bool enabled);
+
+    /**
+     * @brief CW/RTTY optimális mintavételezési frekvencia beállítása az aktuális HF sávszélesség alapján
+     * @param hfBandwidthHz Az aktuális HF sávszélesség Hz-ben
+     */
+    static void setCwRttyOptimalSamplingFrequency(uint16_t hfBandwidthHz);
 
     /**
      * @brief Debug információk kiírása

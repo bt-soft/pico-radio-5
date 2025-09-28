@@ -482,6 +482,14 @@ void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
         if (spectrumCompMaxFrequency < 1000) {
             spectrumCompMaxFrequency = 1000; // Minimum 1000 Hz (1 kHz) sávszélesség
         }
+
+        // CW/RTTY optimalizált mintavételezési frekvencia beállítása
+        // Ha CW vagy RTTY mód aktív, akkor optimalizáljuk a mintavételezést az aktuális HF sávszélesség alapján
+        if (currDemodMod == CW_DEMOD_TYPE || currDemodMod == LSB_DEMOD_TYPE || currDemodMod == USB_DEMOD_TYPE) {
+            // CW/SSB módokban optimalizáljuk a dekóderek mintavételezését
+            AudioCore1Manager::setCwRttyOptimalSamplingFrequency(spectrumCompMaxFrequency);
+            DEBUG("ScreenRadioBase: CW/SSB mód - optimalizált mintavételezés beállítva HF BW=%d Hz alapján\n", spectrumCompMaxFrequency);
+        }
     }
 
     // Beállítjuk az AudioCore1Manager sampling frekvenciáját

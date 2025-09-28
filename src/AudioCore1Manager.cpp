@@ -38,8 +38,10 @@ bool AudioCore1Manager::init(float &gainConfigAmRef, float &gainConfigFmRef, int
     pSharedData_->spectrumDataReady = false;
     pSharedData_->oscilloscopeDataReady = false;
     pSharedData_->latestSpectrumDataAvailable = false;
-    pSharedData_->cwDataAvailable = false; // CW dekóder FFT inicializálása
-    pSharedData_->cwModeEnabled = false;   // CW mód alapértelmezetten ki van kapcsolva
+    pSharedData_->cwDataAvailable = false;                              // CW dekóder FFT inicializálása
+    pSharedData_->cwModeEnabled = false;                                // CW mód alapértelmezetten ki van kapcsolva
+    pSharedData_->cwRttyOptimalSamplingFreq = initialSamplingFrequency; // Optimális mintavételezési frekvencia inicializálása
+    pSharedData_->cwRttyOptimalSamplingChanged = false;                 // Kezdetben nincs változás
     pSharedData_->core1Running = false;
     pSharedData_->core1ShouldStop = false;
     pSharedData_->configChanged = false;
@@ -385,6 +387,14 @@ void AudioCore1Manager::updateAudioConfig() {
         pAudioProcessor_->setSamplingFrequency(pSharedData_->samplingFrequency);
     }
 
+    // CW/RTTY optimális mintavételezési frekvencia frissítése ha szükséges
+    if (pSharedData_->cwRttyOptimalSamplingChanged) {
+        DEBUG("AudioCore1Manager:updateAudioConfig: CW/RTTY optimális mintavételezési frekvencia váltása %d Hz-re\n", pSharedData_->cwRttyOptimalSamplingFreq);
+        pAudioProcessor_->setSamplingFrequency(pSharedData_->cwRttyOptimalSamplingFreq);
+        pSharedData_->samplingFrequency = pSharedData_->cwRttyOptimalSamplingFreq; // Szinkronizálás
+        pSharedData_->cwRttyOptimalSamplingChanged = false;
+    }
+
     pSharedData_->configChanged = false;
 }
 
@@ -649,6 +659,39 @@ bool AudioCore1Manager::isCore1Paused() {
     mutex_exit(&pSharedData_->dataMutex);
 
     return paused;
+}
+
+/**
+ * @brief CW/RTTY optimális mintavételezési frekvencia beállítása az aktuális HF sávszélesség alapján
+ * @param hfBandwidthHz Az aktuális HF sávszélesség Hz-ben
+ * @details A mintavételezési frekvenciát optimalizálja a tényleges HF sávszélesség alapján.
+ * Például: 3kHz HF sávszélesség esetén 6-8kHz mintavételezést használunk a 12kHz helyett.
+ */
+void AudioCore1Manager::setCwRttyOptimalSamplingFrequency(uint16_t hfBandwidthHz) {
+    if (!initialized_ || !pSharedData_) {
+        DEBUG("AudioCore1Manager::setCwRttyOptimalSamplingFrequency: Nincs inicializálva.\n");
+        return;
+    }
+
+    // Optimális mintavételezési frekvencia számítása az aktuális HF sávszélesség alapján
+    // A Nyquist tétel alapján legalább 2x kell, de jobb felbontáshoz 2.5-3x is használhatunk
+    uint16_t optimalSamplingFreq = hfBandwidthHz * 3; // 3x a HF sávszélesség
+
+    // Minimális és maximális korlátok alkalmazása
+    if (optimalSamplingFreq < AudioProcessorConstants::MIN_SAMPLING_FREQUENCY) {
+        optimalSamplingFreq = AudioProcessorConstants::MIN_SAMPLING_FREQUENCY;
+    } else if (optimalSamplingFreq > AudioProcessorConstants::MAX_SAMPLING_FREQUENCY) {
+        optimalSamplingFreq = AudioProcessorConstants::MAX_SAMPLING_FREQUENCY;
+    }
+
+    DEBUG("AudioCore1Manager::setCwRttyOptimalSamplingFrequency: HF BW=%d Hz -> Optimális sampling=%d Hz\n", hfBandwidthHz, optimalSamplingFreq);
+
+    // Thread-safe beállítás
+    if (mutex_try_enter(&pSharedData_->dataMutex, nullptr)) {
+        pSharedData_->cwRttyOptimalSamplingFreq = optimalSamplingFreq;
+        pSharedData_->cwRttyOptimalSamplingChanged = true;
+        mutex_exit(&pSharedData_->dataMutex);
+    }
 }
 
 /**

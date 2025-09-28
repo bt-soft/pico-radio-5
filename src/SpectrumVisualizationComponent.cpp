@@ -1,6 +1,7 @@
 #include "SpectrumVisualizationComponent.h"
 #include "AudioCore1Manager.h"
 #include "Config.h"
+#include "Si4735Manager.h"
 #include "defines.h"
 #include "utils.h"
 #include <cmath>
@@ -1231,38 +1232,76 @@ uint16_t SpectrumVisualizationComponent::valueToWaterfallColor(float val, float 
  */
 void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
 
-    // CW: A config.data.cwToneFrequencyHz +- 600 Hz körüli CW frekvencia a hangolássegéd sávszélessége
-    constexpr float CW_TUNING_AID_SPAN_HZ = 600.0f;
-
-    // RTTY: A minimum frekvencia: min(f_mark, f_space) - 500 Hz, a maximum frekvencia: max(f_mark, f_space) + 500 Hz.
-    // Így a tuning aid spektrum sávszélessége a két RTTY frekvencia közötti távolság plusz kétszer 300 Hz.
-    // Nagyobb tartomány = simább grafikon (több FFT bin oszlik el a képernyő szélességén)
-    constexpr float RTTY_TUNING_AID_SPAN_HZ = 300.0f;
-
     bool typeChanged = (currentTuningAidType_ != type);
     currentTuningAidType_ = type;
+
+    // Debug csak ritkán - időzítéssel
+    static unsigned long lastDebugTime = 0;
+    unsigned long currentTime = millis();
+    bool shouldDebug = typeChanged || (currentTime - lastDebugTime > 5000); // Típus váltáskor vagy 5mp-enként
 
     if (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall || currentMode_ == DisplayMode::CwSnrCurve || currentMode_ == DisplayMode::RttySnrCurve) {
         uint16_t oldMinFreq = currentTuningAidMinFreqHz_;
         uint16_t oldMaxFreq = currentTuningAidMaxFreqHz_;
 
         if (currentTuningAidType_ == TuningAidType::CW_TUNING) {
-            // CW: 600 Hz span a CW offset frekvencia körül
+            // CW: Az aktuális HF sávszélesség alapján optimalizált span
             uint16_t centerFreq = config.data.cwToneFrequencyHz;
-            currentTuningAidMinFreqHz_ = centerFreq - CW_TUNING_AID_SPAN_HZ / 2;
-            currentTuningAidMaxFreqHz_ = centerFreq + CW_TUNING_AID_SPAN_HZ / 2;
+
+            // Aktuális HF sávszélesség lekérése CW/SSB módokhoz
+            uint16_t hfBandwidthHz = 3000; // Alapértelmezett 3kHz
+            if (::pSi4735Manager) {
+                const char *bwStr = ::pSi4735Manager->getCurrentBandWidthLabel();
+                if (bwStr) {
+                    float bwFloat = String(bwStr).toFloat();       // Float konverzió (pl. "3.0" -> 3.0)
+                    hfBandwidthHz = (uint16_t)(bwFloat * 1000.0f); // kHz -> Hz konverzió
+                    if (hfBandwidthHz < 500)
+                        hfBandwidthHz = 500; // Minimum 500 Hz
+                }
+            }
+
+            // CW hangolási segéd span: HF sávszélesség felét használjuk, de minimum 600 Hz
+            float cwSpanHz = std::max(600.0f, hfBandwidthHz / 2.0f);
+            currentTuningAidMinFreqHz_ = centerFreq - cwSpanHz / 2;
+            currentTuningAidMaxFreqHz_ = centerFreq + cwSpanHz / 2;
+
         } else if (currentTuningAidType_ == TuningAidType::RTTY_TUNING) {
-            // RTTY: Mark és Space frekvenciák közötti terület + margó
+            // RTTY: Az aktuális HF sávszélesség alapján optimalizált span
             uint16_t f_mark = config.data.rttyMarkFrequencyHz;
             uint16_t f_space = f_mark - config.data.rttyShiftHz;
-            uint16_t min_freq = std::min(f_mark, f_space) - RTTY_TUNING_AID_SPAN_HZ;
-            uint16_t max_freq = std::max(f_mark, f_space) + RTTY_TUNING_AID_SPAN_HZ;
+
+            // Aktuális HF sávszélesség lekérése
+            uint16_t hfBandwidthHz = 3000; // Alapértelmezett 3kHz
+            if (::pSi4735Manager) {
+                const char *bwStr = ::pSi4735Manager->getCurrentBandWidthLabel();
+                if (bwStr) {
+                    float bwFloat = String(bwStr).toFloat();       // Float konverzió (pl. "3.0" -> 3.0)
+                    hfBandwidthHz = (uint16_t)(bwFloat * 1000.0f); // kHz -> Hz konverzió
+                    if (hfBandwidthHz < 1000)
+                        hfBandwidthHz = 1000; // Minimum 1000 Hz
+                }
+            }
+
+            // RTTY hangolási segéd: HF sávszélesség alapján dinamikus margó
+            float rttyMarginHz = std::max(300.0f, hfBandwidthHz * 0.15f); // 15% a HF sávszélességből, de minimum 300 Hz
+            uint16_t min_freq = std::min(f_mark, f_space) - rttyMarginHz;
+            uint16_t max_freq = std::max(f_mark, f_space) + rttyMarginHz;
             currentTuningAidMinFreqHz_ = min_freq;
             currentTuningAidMaxFreqHz_ = max_freq;
+
         } else {
             // OFF_DECODER: alapértelmezett tartomány
             currentTuningAidMinFreqHz_ = 0.0f;
             currentTuningAidMaxFreqHz_ = maxDisplayFrequencyHz_;
+        }
+
+        // Debug ritkán - csak amikor szükséges
+        if (shouldDebug) {
+            if (::pSi4735Manager) {
+                const char *bwStr = ::pSi4735Manager->getCurrentBandWidthLabel();
+                DEBUG("SpectrumVisualizationComponent::setTuningAidType: Type=%d, BW='%s', Min=%.0f, Max=%.0f\n", (int)type, bwStr ? bwStr : "NULL", currentTuningAidMinFreqHz_, currentTuningAidMaxFreqHz_);
+            }
+            lastDebugTime = currentTime;
         }
 
         // Ha változott a frekvencia tartomány, invalidáljuk a buffert (csak waterfall módokhoz)
@@ -1467,7 +1506,12 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
 
     // Biztonsági ellenőrzés: ha a frekvencia határok még nem inicializálódtak
     if (MIN_FREQ_HZ == 0 || MAX_FREQ_HZ == 0 || MIN_FREQ_HZ >= MAX_FREQ_HZ) {
-        DEBUG("SpectrumVisualizationComponent::renderSnrCurve - Érvénytelen frekvencia határok: MIN=%.0f, MAX=%.0f\n", MIN_FREQ_HZ, MAX_FREQ_HZ);
+        static unsigned long lastSnrErrorDebugTime = 0;
+        unsigned long currentTime = millis();
+        if (currentTime - lastSnrErrorDebugTime > 10000) { // 10 másodpercenként
+            DEBUG("SpectrumVisualizationComponent::renderSnrCurve - Érvénytelen frekvencia határok: MIN=%.0f, MAX=%.0f\n", MIN_FREQ_HZ, MAX_FREQ_HZ);
+            lastSnrErrorDebugTime = currentTime;
+        }
         return;
     }
 
