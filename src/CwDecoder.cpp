@@ -4,12 +4,15 @@
 #include "utils.h"
 #include <cmath>
 
+constexpr float MIN_ADAPTIVE_SNR_THRESHOLD = 7.0f;  // Egységes minimum SNR küszöbérték
+constexpr float MAX_ADAPTIVE_SNR_THRESHOLD = 18.0f; // Egységes maximum SNR küszöbérték
+
 /**
  * @brief Létrehoz egy új CwDecoder objektumot és inicializálja azt.
  */
 CwDecoder::CwDecoder() {
     pinMode(LED_BUILTIN, OUTPUT); // Beépített LED inicializálása hibakeresési célokra.
-    clear(); // Alapértelmezett értékek beállítása.
+    clear();                      // Alapértelmezett értékek beállítása.
 }
 
 /**
@@ -23,9 +26,9 @@ void CwDecoder::calibrateTimingFromWpm(uint8_t wpm) {
     float baseDotMs = 1200.0f / wpm;
 
     dotLengthMs_ = (uint16_t)baseDotMs;
-    dashLengthMs_ = dotLengthMs_ * 3;    // Egy vonal 3x hosszabb, mint egy pont.
-    elementGapMs_ = dotLengthMs_;        // A betűn belüli elemek közötti szünet 1x pont hosszúságú.
-    letterGapMs_ = dotLengthMs_ * 3;     // A betűk közötti szünet 3x pont hosszúságú.
+    dashLengthMs_ = dotLengthMs_ * 3;             // Egy vonal 3x hosszabb, mint egy pont.
+    elementGapMs_ = dotLengthMs_;                 // A betűn belüli elemek közötti szünet 1x pont hosszúságú.
+    letterGapMs_ = dotLengthMs_ * 3;              // A betűk közötti szünet 3x pont hosszúságú.
     wordGapMs_ = (uint16_t)(dotLengthMs_ * 7.0f); // A szavak közötti szünet 7x pont hosszúságú.
 
     // Időzítési toleranciák beállítása a túl szigorú érzékelés elkerülése érdekében.
@@ -35,7 +38,8 @@ void CwDecoder::calibrateTimingFromWpm(uint8_t wpm) {
     dashMaxMs_ = (uint16_t)(dashLengthMs_ * 1.3f);
 
     adaptiveWordGap_ = wordGapMs_; // Az adaptív szóköz inicializálása az alapértelmezettel.
-    DEBUG("[CW-TIMING] Kalibrálva %u WPM-re: pont=%u ms, vonal=%u ms, elem_szünet=%u ms, betű_szünet=%u ms, szó_szünet=%u ms (adaptív=%u)\n", wpm, dotLengthMs_, dashLengthMs_, elementGapMs_, letterGapMs_, wordGapMs_, adaptiveWordGap_);
+    DEBUG("[CW-TIMING] Kalibrálva %u WPM-re: pont=%u ms, vonal=%u ms, elem_szünet=%u ms, betű_szünet=%u ms, szó_szünet=%u ms (adaptív=%u)\n", wpm, dotLengthMs_, dashLengthMs_, elementGapMs_, letterGapMs_, wordGapMs_,
+          adaptiveWordGap_);
 }
 
 /**
@@ -46,7 +50,7 @@ void CwDecoder::clear() {
     currentState_ = CW_IDLE;
     toneStartTime_ = 0;
     lastToneEndTime_ = 0;
-    adaptiveSnrThreshold_ = 8.0f; // Kezdetben egy mérsékelt SNR küszöbértékkel indulunk.
+    adaptiveSnrThreshold_ = MIN_ADAPTIVE_SNR_THRESHOLD; // Kezdetben az egységes minimum értékkel indulunk.
     recentToneCount_ = 0;
     recentNoiseCount_ = 0;
     currentMorseBuffer_ = "";
@@ -69,7 +73,7 @@ void CwDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr) {
         recentToneCount_++;
         // Ha sok hangot észlelünk egymás után, a jel valószínűleg jó. Csökkentsük a küszöböt, hogy érzékenyebbek legyünk.
         if (recentToneCount_ > 20) {
-            adaptiveSnrThreshold_ = max(6.0f, adaptiveSnrThreshold_ - 0.5f); // Ne menjünk egy minimum alá.
+            adaptiveSnrThreshold_ = max(MIN_ADAPTIVE_SNR_THRESHOLD, adaptiveSnrThreshold_ - 0.5f); // Ne menjünk az egységes minimum alá.
             recentToneCount_ = 0;
             recentNoiseCount_ = 0;
             DEBUG("[CW-ADAPT] SNR küszöb csökkentve: %s dB (sok jel észlelve)\n", Utils::floatToString(adaptiveSnrThreshold_).c_str());
@@ -78,7 +82,7 @@ void CwDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr) {
         recentNoiseCount_++;
         // Ha sok zajt látunk (nincs hang), a körülmények rosszak lehetnek. Emeljük a küszöböt a téves pozitívok elkerülése érdekében.
         if (recentNoiseCount_ > 300) {
-            adaptiveSnrThreshold_ = min(18.0f, adaptiveSnrThreshold_ + 0.5f); // Ne menjünk egy maximum fölé.
+            adaptiveSnrThreshold_ = min(MAX_ADAPTIVE_SNR_THRESHOLD, adaptiveSnrThreshold_ + 0.5f); // Ne menjünk egy maximum fölé.
             recentToneCount_ = 0;
             recentNoiseCount_ = 0;
             DEBUG("[CW-ADAPT] SNR küszöb emelve: %s dB (sok zaj észlelve)\n", Utils::floatToString(adaptiveSnrThreshold_).c_str());
@@ -89,8 +93,8 @@ void CwDecoder::updateAdaptiveThreshold(bool toneDetected, float currentSnr) {
     // Ez megakadályozza, hogy a küszöb magasan maradjon egy zajos időszak után.
     static unsigned long lastThresholdDecay = 0;
     unsigned long now = millis();
-    if (now - lastThresholdDecay > 10000 && adaptiveSnrThreshold_ > 4.0f && recentToneCount_ == 0) {
-        adaptiveSnrThreshold_ = max(4.0f, adaptiveSnrThreshold_ - 1.0f);
+    if (now - lastThresholdDecay > 10000 && adaptiveSnrThreshold_ > MIN_ADAPTIVE_SNR_THRESHOLD && recentToneCount_ == 0) {
+        adaptiveSnrThreshold_ = max(MIN_ADAPTIVE_SNR_THRESHOLD, adaptiveSnrThreshold_ - 1.0f);
         lastThresholdDecay = now;
         DEBUG("[CW-ADAPT] SNR küszöb időalapú csökkentése: %s dB (hosszú inaktivitás)\n", Utils::floatToString(adaptiveSnrThreshold_).c_str());
     }
@@ -107,24 +111,78 @@ char CwDecoder::morseToChar(const String &morseCode) {
         DEBUG("[CW-MORSE] Túl hosszú morze kód: '%s' (%d karakter)\n", morseCode.c_str(), morseCode.length());
         return '?';
     }
-    if (morseCode == ".") return 'E'; if (morseCode == "-") return 'T';
-    if (morseCode == "..") return 'I'; if (morseCode == ".-") return 'A';
-    if (morseCode == "-.") return 'N'; if (morseCode == "--") return 'M';
-    if (morseCode == "...") return 'S'; if (morseCode == "..-") return 'U';
-    if (morseCode == ".-.") return 'R'; if (morseCode == ".--") return 'W';
-    if (morseCode == "-..") return 'D'; if (morseCode == "-.- ") return 'K';
-    if (morseCode == "--.") return 'G'; if (morseCode == "---") return 'O';
-    if (morseCode == "....") return 'H'; if (morseCode == ".-..") return 'L';
-    if (morseCode == ".--.") return 'P'; if (morseCode == "...-") return 'V';
-    if (morseCode == "-...") return 'B'; if (morseCode == "-.-.") return 'C';
-    if (morseCode == "..-.") return 'F'; if (morseCode == "-..-") return 'X';
-    if (morseCode == "-.--") return 'Y'; if (morseCode == "--..") return 'Z';
-    if (morseCode == "--.-") return 'Q'; if (morseCode == "---.") return 'J';
-    if (morseCode == ".....") return '5'; if (morseCode == ".----") return '1';
-    if (morseCode == "..---") return '2'; if (morseCode == "...--") return '3';
-    if (morseCode == "....-") return '4'; if (morseCode == "--.--") return '6';
-    if (morseCode == "--...") return '7'; if (morseCode == "---..") return '8';
-    if (morseCode == "----.") return '9'; if (morseCode == "-----") return '0';
+    if (morseCode == ".")
+        return 'E';
+    if (morseCode == "-")
+        return 'T';
+    if (morseCode == "..")
+        return 'I';
+    if (morseCode == ".-")
+        return 'A';
+    if (morseCode == "-.")
+        return 'N';
+    if (morseCode == "--")
+        return 'M';
+    if (morseCode == "...")
+        return 'S';
+    if (morseCode == "..-")
+        return 'U';
+    if (morseCode == ".-.")
+        return 'R';
+    if (morseCode == ".--")
+        return 'W';
+    if (morseCode == "-..")
+        return 'D';
+    if (morseCode == "-.- ")
+        return 'K';
+    if (morseCode == "--.")
+        return 'G';
+    if (morseCode == "---")
+        return 'O';
+    if (morseCode == "....")
+        return 'H';
+    if (morseCode == ".-..")
+        return 'L';
+    if (morseCode == ".--.")
+        return 'P';
+    if (morseCode == "...-")
+        return 'V';
+    if (morseCode == "-...")
+        return 'B';
+    if (morseCode == "-.-.")
+        return 'C';
+    if (morseCode == "..-.")
+        return 'F';
+    if (morseCode == "-..-")
+        return 'X';
+    if (morseCode == "-.--")
+        return 'Y';
+    if (morseCode == "--..")
+        return 'Z';
+    if (morseCode == "--.-")
+        return 'Q';
+    if (morseCode == "---.")
+        return 'J';
+    if (morseCode == ".....")
+        return '5';
+    if (morseCode == ".----")
+        return '1';
+    if (morseCode == "..---")
+        return '2';
+    if (morseCode == "...--")
+        return '3';
+    if (morseCode == "....-")
+        return '4';
+    if (morseCode == "--.--")
+        return '6';
+    if (morseCode == "--...")
+        return '7';
+    if (morseCode == "---..")
+        return '8';
+    if (morseCode == "----.")
+        return '9';
+    if (morseCode == "-----")
+        return '0';
     DEBUG("[CW-MORSE] Ismeretlen morze kód: '%s'\n", morseCode.c_str());
     return '?';
 }
@@ -154,7 +212,7 @@ void CwDecoder::updateAdaptiveWordGap(unsigned long pauseLength) {
         // Az adaptív szóközt ésszerű határok közé szorítjuk a szélsőséges értékek elkerülése érdekében.
         adaptiveWordGap_ = max((uint16_t)(letterGapMs_ * 1.8f), adaptiveWordGap_);
         adaptiveWordGap_ = min((uint16_t)(letterGapMs_ * 4.0f), adaptiveWordGap_);
-        //DEBUG("[CW-ADAPTIVE] Átlag szünet: %u ms, adaptív szóköz: %u ms (alapértelmezett: %u ms), szünet_szám: %u\n", (uint16_t)averagePauseLength_, adaptiveWordGap_, wordGapMs_, pauseCount_);
+        // DEBUG("[CW-ADAPTIVE] Átlag szünet: %u ms, adaptív szóköz: %u ms (alapértelmezett: %u ms), szünet_szám: %u\n", (uint16_t)averagePauseLength_, adaptiveWordGap_, wordGapMs_, pauseCount_);
     }
 }
 
@@ -289,7 +347,7 @@ void CwDecoder::processCwStateMachine(bool tonePresent, String &newChars) {
                         DEBUG("[CW-PAUSE] Adaptív szóköz észlelve: %lu ms >= %u ms (fix: %u ms)\n", pauseDuration, adaptiveWordGap_, wordGapMs_);
                         newChars += " ";
                     }
-                    
+
                     // Visszatérés IDLE állapotba a következő hangra várva.
                     currentState_ = CW_IDLE;
                     DEBUG("[CW-STATE] PAUSE -> IDLE (betű/szó vége)\n");
@@ -380,12 +438,8 @@ bool CwDecoder::detectTone(const float *fftData, uint16_t fftSize, float binWidt
 
     if (isToneDetected) {
         float peakFrequencyHz = (peakBin != -1) ? (peakBin * binWidth) : 0.0f;
-        DEBUG("[CW Decoder] CW: %dHz, ablak: [%d Hz - %d Hz], Csúcs: %s Hz, SNR: %s dB (adaptiveSnrThreshold_: %s dB), CsúcsAmpl: %s, Zaj: %s)\n",
-              centerFreqHz, startFreqHz, endFreqHz,
-              Utils::floatToString(peakFrequencyHz).c_str(),
-              Utils::floatToString(snrDb).c_str(),
-              Utils::floatToString(adaptiveSnrThreshold_, 0).c_str(),
-              Utils::floatToString(maxMagnitude).c_str(),
+        DEBUG("[CW Decoder] CW: %dHz, ablak: [%d Hz - %d Hz], Csúcs: %s Hz, SNR: %s dB (adaptiveSnrThreshold_: %s dB), CsúcsAmpl: %s, Zaj: %s)\n", centerFreqHz, startFreqHz, endFreqHz,
+              Utils::floatToString(peakFrequencyHz).c_str(), Utils::floatToString(snrDb).c_str(), Utils::floatToString(adaptiveSnrThreshold_, 0).c_str(), Utils::floatToString(maxMagnitude).c_str(),
               Utils::floatToString(measuredNoise).c_str());
     }
 
@@ -413,18 +467,18 @@ String CwDecoder::processCwFftData(const float *fftData, uint16_t fftSize, float
         cwProcessCount = 0;
         lastCwProcessReport = nowProcess;
     }
-    
+
     String newChars = "";
     // 1. Észleljük, hogy van-e hang az aktuális FFT keretben.
     bool currentToneDetected = detectTone(fftData, fftSize, binWidth);
-    
+
     // 2. Futtassuk az állapotgépet az észlelési eredménnyel.
     processCwStateMachine(currentToneDetected, newChars);
-    
+
     // 3. (Opcionális) Kapcsoljunk egy LED-et a hangérzékelés vizuális visszajelzéséhez.
     if (config.data.cwRttyLedDebugEnabled) {
         digitalWrite(LED_BUILTIN, currentToneDetected ? HIGH : LOW);
     }
-    
+
     return newChars;
 }
