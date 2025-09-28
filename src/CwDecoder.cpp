@@ -4,7 +4,7 @@
 #include "utils.h"
 #include <cmath>
 
-constexpr float MIN_ADAPTIVE_SNR_THRESHOLD = 7.0f;  // Egységes minimum SNR küszöbérték
+constexpr float MIN_ADAPTIVE_SNR_THRESHOLD = 8.0f;  // Egységes minimum SNR küszöbérték
 constexpr float MAX_ADAPTIVE_SNR_THRESHOLD = 18.0f; // Egységes maximum SNR küszöbérték
 
 /**

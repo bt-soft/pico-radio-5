@@ -332,8 +332,6 @@ void ScreenAM::activate() {
     audioDecoderTimer.attachInterruptInterval(AUDIO_DECODER_TIMER_INTERVAL * 1000, audioDecoderTimerHardwareInterruptHandler);
     ScreenAM::that = this; // Beállítjuk a statikus pointert az aktuális ScreenAM példányra
 
-    DEBUG("ScreenAM::activate() - Aktiválás sikeresen befejezve\n");
-
     // ===================================================================
     // CW/RTTY mód azonnali beállítása screensaver után is
     // ===================================================================
@@ -346,6 +344,7 @@ void ScreenAM::activate() {
         if (isCwOrRttyDecoderMode) {
             AudioCore1Manager::setCwModeEnabled(true);
             DEBUG("[ACTIVATE-DEBUG] CW/RTTY mód azonnal beállítva az activate()-ban: mód=%d\n", (int)currentMode);
+            // Nem hívunk azonnal renderelést, hanem hagyjuk, hogy a normál ciklusban történjen
         } else {
             AudioCore1Manager::setCwModeEnabled(false);
         }

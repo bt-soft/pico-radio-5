@@ -899,5 +899,4 @@ String RttyDecoder::getDecodedText() {
 void RttyDecoder::clearDecodedText() {
     decodedText_ = "";
     newCharacterAdded_ = false;
-    DEBUG("[RTTY-CLEAR] Dekódolt szöveg törölve\n");
 }

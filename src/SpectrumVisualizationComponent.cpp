@@ -994,7 +994,7 @@ void SpectrumVisualizationComponent::renderEnvelope() {
     for (uint32_t r = 0; r < bounds.height; ++r) {
         // 'r' (0 to bounds.height-1) leképezése FFT bin indexre a szűkített tartományon belül
         int fft_bin_index = min_bin_for_env + static_cast<int>(std::round(static_cast<float>(r) / std::max(1, (bounds.height - 1)) * (num_bins_in_env_range - 1)));
-        fft_bin_index = constrain(fft_bin_index, min_bin_for_env, max_bin_for_env); // Finomabb gain alkalmazás envelope-hez
+        fft_bin_index = constrain(fft_bin_index, min_bin_for_env, max_bin_for_env); // Finomabb gain alkalmazás envelope-hoz
         float rawMagnitude = magnitudeData[fft_bin_index];
 
         // KRITIKUS: Infinity és NaN értékek szűrése!
@@ -1491,15 +1491,17 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
     sprite_->fillSprite(TFT_BLACK);
 
     // Megfelelő frekvencia határok és hangolási segéd típus használata a módtól függően
-    // if (currentMode_ == DisplayMode::CwSnrCurve) {
-    //     if (currentTuningAidType_ != TuningAidType::CW_TUNING) {
-    //         setTuningAidType(TuningAidType::CW_TUNING);
-    //     }
-    // } else if (currentMode_ == DisplayMode::RttySnrCurve) {
-    //     if (currentTuningAidType_ != TuningAidType::RTTY_TUNING) {
-    //         setTuningAidType(TuningAidType::RTTY_TUNING);
-    //     }
-    // }
+    if (currentMode_ == DisplayMode::CwSnrCurve) {
+        if (currentTuningAidType_ != TuningAidType::CW_TUNING || currentTuningAidMinFreqHz_ == 0 || currentTuningAidMaxFreqHz_ == 0) {
+            DEBUG("SpectrumVisualizationComponent::renderSnrCurve - CW tuning aid inicializálása\n");
+            setTuningAidType(TuningAidType::CW_TUNING);
+        }
+    } else if (currentMode_ == DisplayMode::RttySnrCurve) {
+        if (currentTuningAidType_ != TuningAidType::RTTY_TUNING || currentTuningAidMinFreqHz_ == 0 || currentTuningAidMaxFreqHz_ == 0) {
+            DEBUG("SpectrumVisualizationComponent::renderSnrCurve - RTTY tuning aid inicializálása\n");
+            setTuningAidType(TuningAidType::RTTY_TUNING);
+        }
+    }
 
     const float MIN_FREQ_HZ = currentTuningAidMinFreqHz_;
     const float MAX_FREQ_HZ = currentTuningAidMaxFreqHz_;
@@ -1513,6 +1515,13 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
             lastSnrErrorDebugTime = currentTime;
         }
         return;
+    }
+
+    // Debugging: Ellenőrizzük a frekvenciahatárok aktuális értékeit csak egyszer
+    static bool debugOnce = true;
+    if (debugOnce) {
+        DEBUG("SpectrumVisualizationComponent::renderSnrCurve - Aktuális frekvenciahatárok: MIN=%s, MAX=%s\n", Utils::floatToString(MIN_FREQ_HZ).c_str(), Utils::floatToString(MAX_FREQ_HZ).c_str());
+        debugOnce = false;
     }
 
     const int min_bin = std::max(2, static_cast<int>(std::round(MIN_FREQ_HZ / currentBinWidthHz)));
@@ -1596,7 +1605,7 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 // Először a teljes vonal kirajzolása
                 sprite_->drawFastVLine(line_x_cw, 0, graphH, TUNING_AID_CW_TARGET_COLOR);
 
-                // CW frekvencia kiírása a vonal közepére
+                // CW frekvencia kiírása a vonal középre
                 sprite_->setTextSize(1);
                 sprite_->setTextDatum(MC_DATUM); // Middle Center - szöveg közép középre igazítás
 
@@ -1636,7 +1645,7 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 // Először a teljes vonal kirajzolása
                 sprite_->drawFastVLine(line_x_space, 0, graphH, TFT_CYAN);
 
-                // Space frekvencia kiírása a vonaltól jobbra
+                // Space frekvencia kiírása a vonal közepére
                 sprite_->setTextColor(TFT_CYAN);
                 sprite_->setTextSize(1);
                 char spaceStr[16];
@@ -1664,7 +1673,7 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
                 // Először a teljes vonal kirajzolása
                 sprite_->drawFastVLine(line_x_mark, 0, graphH, TFT_YELLOW);
 
-                // Mark frekvencia kiírása a vonaltól jobbra
+                // Mark frekvencia kiírása a vonal közepére
                 sprite_->setTextSize(1);
                 char markStr[16];
                 snprintf(markStr, sizeof(markStr), "%dHz", f_mark);
