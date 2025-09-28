@@ -1132,9 +1132,6 @@ void SpectrumVisualizationComponent::renderWaterfall() {
         return;
     }
 
-    // DEBUG("SpectrumVisualizationComponent::renderWaterfall - maxDisplayFrequencyHz_: %d, actualFftSize: %d, currentBinWidthHz: %s\n", //
-    //       maxDisplayFrequencyHz_, actualFftSize, Utils::floatToString(currentBinWidthHz).c_str());
-
     // 1. Adatok eltolása balra a wabuf-ban (ez továbbra is szükséges a wabuf frissítéséhez)
     for (int r = 0; r < bounds.height; ++r) { // A teljes bounds.height magasságon iterálunk a wabuf miatt
         for (int c = 0; c < bounds.width - 1; ++c) {
@@ -1961,6 +1958,9 @@ void SpectrumVisualizationComponent::renderFrequencyLabels(uint16_t minDisplayFr
     uint16_t indicatorH = 10;
     uint16_t indicatorY = bounds.y + bounds.height; // Közvetlenül a keret alatt kezdődik
 
+    // Felirat terület törlése a teljes szélességben
+    tft.fillRect(bounds.x, indicatorY, bounds.width, indicatorH + 2, TFT_BLACK);
+
     tft.setFreeFont();
     tft.setTextSize(1);
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
@@ -1971,7 +1971,8 @@ void SpectrumVisualizationComponent::renderFrequencyLabels(uint16_t minDisplayFr
         tft.setTextDatum(BC_DATUM); // Bottom center
         tft.drawString(Utils::formatFrequencyString(minDisplayFrequencyHz), bounds.x + bounds.width / 2, indicatorY + indicatorH);
 
-        // Max frekvencia a spektrum felett középen - 2 pixellel magasabbra
+        // Max frekvencia a spektrum felett középen - 2 pixellel magasabbra - ezt is töröljük
+        tft.fillRect(bounds.x, bounds.y - 12, bounds.width, 12, TFT_BLACK);
         tft.setTextDatum(TC_DATUM); // Top center
         tft.drawString(Utils::formatFrequencyString(maxDisplayFrequencyHz), bounds.x + bounds.width / 2, bounds.y - 10);
     } else {

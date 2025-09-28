@@ -117,6 +117,15 @@ class SpectrumVisualizationComponent : public UIComponent {
     }
 
     /**
+     * @brief Kényszeríti a frekvencia feliratok újrarajzolását
+     */
+    inline void refreshFrequencyLabels() {
+        // Töröljük a felirat területet és engedélyezzük az újrarajzolást
+        frequencyLabelsDrawn_ = true;
+        // A területtörlés a renderFrequencyLabels-ben történik
+    }
+
+    /**
      * @brief lekéri a jelenlegi megjelenítési módot
      * @return A jelenlegi megjelenítési mód
      */
@@ -172,7 +181,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     void manageSpriteForMode(DisplayMode modeToPrepareFor);
 
     /**
-     * @brief Renderelő függvények - radio-2 alapján
+     * @brief Renderelő függvények
      */
     void renderOffMode();
     void renderSpectrumLowRes();
