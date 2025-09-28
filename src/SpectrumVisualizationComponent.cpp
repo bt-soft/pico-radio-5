@@ -1299,7 +1299,7 @@ void SpectrumVisualizationComponent::setTuningAidType(TuningAidType type) {
         if (shouldDebug) {
             if (::pSi4735Manager) {
                 const char *bwStr = ::pSi4735Manager->getCurrentBandWidthLabel();
-                DEBUG("SpectrumVisualizationComponent::setTuningAidType: Type=%d, BW='%s', Min=%.0f, Max=%.0f\n", (int)type, bwStr ? bwStr : "NULL", currentTuningAidMinFreqHz_, currentTuningAidMaxFreqHz_);
+                DEBUG("SpectrumVisualizationComponent::setTuningAidType: Type=%d, BW='%s', Min=%u, Max=%u\n", (int)type, bwStr ? bwStr : "NULL", currentTuningAidMinFreqHz_, currentTuningAidMaxFreqHz_);
             }
             lastDebugTime = currentTime;
         }
