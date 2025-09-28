@@ -241,21 +241,27 @@ void UITextBox::draw() {
  * és egy hangjelzés hallható, ha a konfiguráció engedélyezi.
  */
 void UITextBox::loop() {
+
+    // Alap osztály loop-ja (ha van)
+    UIComponent::loop();
+
     // Hosszú érintés ellenőrzése
     if (pressed && !longPressHandled) {
         uint32_t pressDuration = millis() - touchDownTime;
-        if (pressDuration >= LONG_PRESS_DURATION) {
+        if (pressDuration >= 2000) { // 2 másodperc
             // Hosszú érintés történt - szöveg törlése és hangjelzés
             if (!text.isEmpty()) {
                 setText(""); // Szöveg törlése
-
-                // Hangjelzés, ha engedélyezve van
-                if (config.data.beeperEnabled) {
-                    Utils::beepTick();
-                }
             }
+            // Hangjelzés, ha engedélyezve van
+            if (config.data.beeperEnabled) {
+                Utils::beepTick();
+            }
+
             longPressHandled = true; // Csak egyszer hajtjuk végre
         }
+
+        DEBUG("UITextBox: Long press detected, duration: %lu ms\n", pressDuration);
     }
 }
 

@@ -516,134 +516,141 @@ void ScreenAM::handleOwnLoop() {
     // ===================================================================
     updateSMeter(false /* AM mód */);
 
-    // Spektrum és dekóder frissítés
-    if (spectrumComp && cwDecoder && rttyDecoder && decodedTextBox) {
-        SpectrumVisualizationComponent::DisplayMode currentMode = spectrumComp->getCurrentMode();
+    // Spektrum és dekóder frissítés - csak ha van komponens
+    if (!spectrumComp || !cwDecoder || !rttyDecoder || !decodedTextBox) {
+        return;
+    }
 
-        // Ha a mód megváltozott, töröljük a dekódereket
-        if (currentMode != lastSpectrumMode_) {
-            if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
-                cwDecoder->clear();
-                rttyDecoder->clear();
+    SpectrumVisualizationComponent::DisplayMode currentMode = spectrumComp->getCurrentMode();
+
+    // Ha a mód megváltozott, töröljük a dekódereket
+    if (currentMode != lastSpectrumMode_) {
+        if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+            cwDecoder->clear();
+            rttyDecoder->clear();
+            decodedTextBox->setText("");
+        } else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
+            rttyDecoder->clear();
+            cwDecoder->clear();
+            decodedTextBox->setText("");
+            // RTTY konfigurálása
+            rttyDecoder->setMarkFrequency(config.data.rttyMarkFrequencyHz);
+            rttyDecoder->setShiftFrequency(config.data.rttyShiftHz);
+            // RTTY baud rate beállítása (45.45 baud helyett 50 baud - gyakoribb)
+            rttyDecoder->setBaudRate(RttyBaudRate::BAUD_50);
+            // Automatikus baud felismerés bekapcsolása
+            rttyDecoder->enableAutoBaudDetection(true);
+            DEBUG("[RTTY-INIT] RTTY dekóder inicializálva: Mark=%d Hz, Shift=%d Hz, Baud=50\n", config.data.rttyMarkFrequencyHz, config.data.rttyShiftHz);
+        } else {
+            // Ha nem CW/RTTY módban vagyunk és van tartalom a szövegdobozban, töröljük
+            if (decodedTextBox->getText().length() > 0) {
                 decodedTextBox->setText("");
-            } else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
-                rttyDecoder->clear();
-                cwDecoder->clear();
-                decodedTextBox->setText("");
-                // RTTY konfigurálása
-                rttyDecoder->setMarkFrequency(config.data.rttyMarkFrequencyHz);
-                rttyDecoder->setShiftFrequency(config.data.rttyShiftHz);
-                // RTTY baud rate beállítása (45.45 baud helyett 50 baud - gyakoribb)
-                rttyDecoder->setBaudRate(RttyBaudRate::BAUD_50);
-                // Automatikus baud felismerés bekapcsolása
-                rttyDecoder->enableAutoBaudDetection(true);
-                DEBUG("[RTTY-INIT] RTTY dekóder inicializálva: Mark=%d Hz, Shift=%d Hz, Baud=50\n", config.data.rttyMarkFrequencyHz, config.data.rttyShiftHz);
-            } else {
-                // Ha nem CW/RTTY módban vagyunk és van tartalom a szövegdobozban, töröljük
-                if (decodedTextBox->getText().length() > 0) {
-                    decodedTextBox->setText("");
+            }
+        }
+        lastSpectrumMode_ = currentMode;
+    }
+
+    // Ha a CW dekóder mód aktív
+    if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+
+        // A Dekódolt szöveg lekérése és megjelenítése a belső pufferből
+        if (newCwTextBuffer_.length() > 0) {
+            String newText = newCwTextBuffer_;
+            newCwTextBuffer_ = ""; // Puffer ürítése
+
+            // Duplikált szóközök szűrése az új szövegből
+            String filteredNewText = "";
+            for (int i = 0; i < newText.length(); i++) {
+                char currentChar = newText.charAt(i);
+                if (currentChar == ' ' && filteredNewText.length() > 0 && filteredNewText.charAt(filteredNewText.length() - 1) == ' ') {
+                    // Duplikált szóköz, kihagyjuk
+                    continue;
+                }
+                filteredNewText += currentChar;
+            }
+
+            // Hozzáfűzzük a szűrt új szöveget a meglévőhöz
+            String currentText = decodedTextBox->getText();
+
+            // Duplikált szóköz ellenőrzése a csatlakozási pontnál is
+            if (filteredNewText.length() > 0 && currentText.length() > 0 && currentText.charAt(currentText.length() - 1) == ' ' && filteredNewText.charAt(0) == ' ') {
+                filteredNewText = filteredNewText.substring(1); // Első szóköz eltávolítása
+            }
+
+            String updatedText = currentText + filteredNewText;
+
+            // Egyszerű karakterszám alapú scrollozás
+            const int maxChars = 80; // Kisebb limit a teszteléshez (kb. 2 sor x 40 karakter)
+
+            // Debug: kiírjuk a hosszt
+            if (updatedText.length() > 100) { // Már 100 karakternél is kiírjuk
+                DEBUG("[CW-UI] Szöveg hossz: %d/%d karakter\n", updatedText.length(), maxChars);
+            }
+
+            // Ha túl hosszú, akkor elölről vágunk le
+            if (updatedText.length() > maxChars) {
+                // Az első szó végéig keresünk egy szóközt a vágáshoz
+                int cutPos = updatedText.length() - maxChars + 20; // Egy kicsit több helyet hagyunk
+                int spacePos = updatedText.indexOf(' ', cutPos);
+                if (spacePos > 0) {
+                    updatedText = updatedText.substring(spacePos + 1);
+                    DEBUG("[CW-UI] Scroll: szó alapján vágva, új hossz: %d\n", updatedText.length());
+                } else {
+                    // Ha nincs szóköz, akkor durván vágjuk
+                    updatedText = updatedText.substring(cutPos);
+                    DEBUG("[CW-UI] Scroll: durva vágás, új hossz: %d\n", updatedText.length());
                 }
             }
-            lastSpectrumMode_ = currentMode;
+
+            decodedTextBox->setText(updatedText);
         }
+    }
 
-        // Ha a CW dekóder mód aktív
-        if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+    // Ha az RTTY dekóder mód aktív (RTTYWaterfall vagy RttySnrCurve)
+    else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
 
-            // A Dekódolt szöveg lekérése és megjelenítése a belső pufferből
-            if (newCwTextBuffer_.length() > 0) {
-                String newText = newCwTextBuffer_;
-                newCwTextBuffer_ = ""; // Puffer ürítése
-
-                // Duplikált szóközök szűrése az új szövegből
-                String filteredNewText = "";
-                for (int i = 0; i < newText.length(); i++) {
-                    char currentChar = newText.charAt(i);
-                    if (currentChar == ' ' && filteredNewText.length() > 0 && filteredNewText.charAt(filteredNewText.length() - 1) == ' ') {
-                        // Duplikált szóköz, kihagyjuk
-                        continue;
-                    }
-                    filteredNewText += currentChar;
-                }
-
-                // Hozzáfűzzük a szűrt új szöveget a meglévőhöz
+        // A Dekódolt szöveg lekérése és megjelenítése
+        if (rttyDecoder) {
+            String newText = rttyDecoder->getDecodedText();
+            if (newText.length() > 0) {
+                DEBUG("[RTTY-UI] Új szöveg érkezett: '%s' (%d karakter)\n", newText.c_str(), newText.length());
+                // RTTY szöveg feldolgozása (kevesebb szűrés szükséges mint CW-nél)
                 String currentText = decodedTextBox->getText();
+                String updatedText = currentText + newText;
 
-                // Duplikált szóköz ellenőrzése a csatlakozási pontnál is
-                if (filteredNewText.length() > 0 && currentText.length() > 0 && currentText.charAt(currentText.length() - 1) == ' ' && filteredNewText.charAt(0) == ' ') {
-                    filteredNewText = filteredNewText.substring(1); // Első szóköz eltávolítása
-                }
-
-                String updatedText = currentText + filteredNewText;
-
-                // Egyszerű karakterszám alapú scrollozás
-                const int maxChars = 80; // Kisebb limit a teszteléshez (kb. 2 sor x 40 karakter)
-
-                // Debug: kiírjuk a hosszt
-                if (updatedText.length() > 100) { // Már 100 karakternél is kiírjuk
-                    DEBUG("[CW-UI] Szöveg hossz: %d/%d karakter\n", updatedText.length(), maxChars);
-                }
+                // Karakterszám alapú scrollozás
+                const int maxChars = 120; // Hosszabb limit RTTY-hoz, mert folyamatosabb szöveg
 
                 // Ha túl hosszú, akkor elölről vágunk le
                 if (updatedText.length() > maxChars) {
-                    // Az első szó végéig keresünk egy szóközt a vágáshoz
-                    int cutPos = updatedText.length() - maxChars + 20; // Egy kicsit több helyet hagyunk
-                    int spacePos = updatedText.indexOf(' ', cutPos);
-                    if (spacePos > 0) {
-                        updatedText = updatedText.substring(spacePos + 1);
-                        DEBUG("[CW-UI] Scroll: szó alapján vágva, új hossz: %d\n", updatedText.length());
+                    // Sor alapján vágás RTTY-nál (\n vagy \r karakter keresése)
+                    int cutPos = updatedText.length() - maxChars + 30;
+                    int newlinePos = max(updatedText.indexOf('\n', cutPos), updatedText.indexOf('\r', cutPos));
+                    if (newlinePos > 0) {
+                        updatedText = updatedText.substring(newlinePos + 1);
+                        DEBUG("[RTTY-UI] Scroll: sor alapján vágva, új hossz: %d\n", updatedText.length());
                     } else {
-                        // Ha nincs szóköz, akkor durván vágjuk
-                        updatedText = updatedText.substring(cutPos);
-                        DEBUG("[CW-UI] Scroll: durva vágás, új hossz: %d\n", updatedText.length());
+                        // Szóköz alapján vágás ha nincs sortörés
+                        int spacePos = updatedText.indexOf(' ', cutPos);
+                        if (spacePos > 0) {
+                            updatedText = updatedText.substring(spacePos + 1);
+                            DEBUG("[RTTY-UI] Scroll: szó alapján vágva, új hossz: %d\n", updatedText.length());
+                        } else {
+                            // Durva vágás utolsó lehetőségként
+                            updatedText = updatedText.substring(cutPos);
+                            DEBUG("[RTTY-UI] Scroll: durva vágás, új hossz: %d\n", updatedText.length());
+                        }
                     }
                 }
 
                 decodedTextBox->setText(updatedText);
             }
         }
+    }
 
-        // Ha az RTTY dekóder mód aktív (RTTYWaterfall vagy RttySnrCurve)
-        else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
-
-            // A Dekódolt szöveg lekérése és megjelenítése
-            if (rttyDecoder) {
-                String newText = rttyDecoder->getDecodedText();
-                if (newText.length() > 0) {
-                    DEBUG("[RTTY-UI] Új szöveg érkezett: '%s' (%d karakter)\n", newText.c_str(), newText.length());
-                    // RTTY szöveg feldolgozása (kevesebb szűrés szükséges mint CW-nél)
-                    String currentText = decodedTextBox->getText();
-                    String updatedText = currentText + newText;
-
-                    // Karakterszám alapú scrollozás
-                    const int maxChars = 120; // Hosszabb limit RTTY-hoz, mert folyamatosabb szöveg
-
-                    // Ha túl hosszú, akkor elölről vágunk le
-                    if (updatedText.length() > maxChars) {
-                        // Sor alapján vágás RTTY-nál (\n vagy \r karakter keresése)
-                        int cutPos = updatedText.length() - maxChars + 30;
-                        int newlinePos = max(updatedText.indexOf('\n', cutPos), updatedText.indexOf('\r', cutPos));
-                        if (newlinePos > 0) {
-                            updatedText = updatedText.substring(newlinePos + 1);
-                            DEBUG("[RTTY-UI] Scroll: sor alapján vágva, új hossz: %d\n", updatedText.length());
-                        } else {
-                            // Szóköz alapján vágás ha nincs sortörés
-                            int spacePos = updatedText.indexOf(' ', cutPos);
-                            if (spacePos > 0) {
-                                updatedText = updatedText.substring(spacePos + 1);
-                                DEBUG("[RTTY-UI] Scroll: szó alapján vágva, új hossz: %d\n", updatedText.length());
-                            } else {
-                                // Durva vágás utolsó lehetőségként
-                                updatedText = updatedText.substring(cutPos);
-                                DEBUG("[RTTY-UI] Scroll: durva vágás, új hossz: %d\n", updatedText.length());
-                            }
-                        }
-                    }
-
-                    decodedTextBox->setText(updatedText);
-                }
-            }
-        }
+    // Hosszú érintés kezelése a decodedTextBox esetében
+    if (decodedTextBox) {
+        decodedTextBox->loop();
     }
 }
 

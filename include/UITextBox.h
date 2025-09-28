@@ -19,8 +19,7 @@ class UITextBox : public UIComponent {
     int scrollOffset;    // Scrolling offset sorokban
 
     // Hosszú érintés kezelése
-    static constexpr uint32_t LONG_PRESS_DURATION = 2000; // 2 másodperc
-    bool longPressHandled = false;                        // Biztosítja, hogy csak egyszer történjen meg a törlés
+    bool longPressHandled = false; // Biztosítja, hogy csak egyszer történjen meg a törlés
 
   public:
     UITextBox(const Rect &bounds, const String &initialText);
