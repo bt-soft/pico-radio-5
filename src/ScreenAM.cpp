@@ -19,6 +19,12 @@ bool audioDecoderTimerHardwareInterruptHandler(struct repeating_timer *t) {
         ScreenAM::audioDecoderRun = true;
         // Az audio dekóder feldolgozását átrakjuk a main loop-ba a biztonság kedvéért
         // ScreenAM::processAudioDecoder(); // Ezt nem az ISR-ben hívjuk!
+
+        // MEGJEGYZÉS: Időzítés kritikusság:
+        // - ISR: 20ms pontosan (hardware timer)
+        // - Main loop feldolgozás: 20ms + 1-5ms jitter
+        // - CW dekóder tolerancia: ~10ms, így ez elfogadható
+        // - RTTY dekóder tolerancia: ~50ms (lassabb), így még inkább OK
     }
     return true;
 }
@@ -461,7 +467,7 @@ bool ScreenAM::handleRotary(const RotaryEvent &event) {
  * - Specifikus eseményekkor (eseménykezelőkben)
  *
  * **Event-driven előnyök**:
- * - Jelentős teljesítményjavulás a korábbi polling-hoz képest
+ * - Jelentős teljesítményjavulás a polling-hoz képest
  * - CPU terhelés csökkentése
  * - Univerzális gombkezelés (CommonVerticalButtons)
  */
