@@ -260,8 +260,6 @@ void UITextBox::loop() {
 
             longPressHandled = true; // Csak egyszer hajtjuk végre
         }
-
-        DEBUG("UITextBox: Long press detected, duration: %lu ms\n", pressDuration);
     }
 }
 
