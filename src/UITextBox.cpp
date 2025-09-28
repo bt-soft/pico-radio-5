@@ -3,6 +3,8 @@
 #include "defines.h" // For DEBUG
 #include "utils.h"   // For beepTick()
 
+constexpr uint8_t MAX_TEXTBOX_LINES = 10; // Max sorok száma a szövegdobozban
+
 // ==========================================
 // UITextBox::UITextBox
 // ==========================================
@@ -175,7 +177,7 @@ void UITextBox::draw() {
         int maxVisibleLines = (bounds.height - 10) / lineHeight; // Hány sor fér el
 
         // Szöveg sorokra törése
-        String lines[200]; // Max 200 sor tárolása
+        String lines[MAX_TEXTBOX_LINES]; // Max 10 sor tárolása
         int lineCount = 0;
         String currentLine = "";
 
@@ -185,7 +187,7 @@ void UITextBox::draw() {
 
             if (c == '\n') {
                 // Explicit új sor
-                if (lineCount < 200) {
+                if (lineCount < MAX_TEXTBOX_LINES) {
                     lines[lineCount++] = currentLine;
                 }
                 currentLine = "";
@@ -195,7 +197,7 @@ void UITextBox::draw() {
 
                 // Ha elértük a karakterlimitet, új sort kezdünk
                 if (currentLine.length() >= maxCharsPerLine) {
-                    if (lineCount < 200) {
+                    if (lineCount < MAX_TEXTBOX_LINES) {
                         lines[lineCount++] = currentLine;
                     }
                     currentLine = "";
@@ -204,7 +206,7 @@ void UITextBox::draw() {
         }
 
         // Az utolsó sor hozzáadása (ha van)
-        if (!currentLine.isEmpty() && lineCount < 200) {
+        if (!currentLine.isEmpty() && lineCount < MAX_TEXTBOX_LINES) {
             lines[lineCount++] = currentLine;
         }
 
