@@ -21,9 +21,7 @@ class CwDecoder {
   public:
     CwDecoder();
     void clear();
-    void processCwFftData(const float *fftData, uint16_t fftSize, float binWidth);
-    String getDecodedText();
-    void clearDecodedText(); // Manuális szöveg törlés
+    String processCwFftData(const float *fftData, uint16_t fftSize, float binWidth);
 
     // Kalibrálás és konfiguráció
     void calibrateTimingFromWpm(uint8_t wpm);
@@ -33,7 +31,7 @@ class CwDecoder {
     bool detectTone(const float *fftData, uint16_t fftSize, float binWidth);
 
     // CW állapotgép és dekódolás
-    void processCwStateMachine(bool tonePresent);
+    void processCwStateMachine(bool tonePresent, String &newChars);
     void updateAdaptiveThreshold(bool toneDetected, float currentSnr);
     char morseToChar(const String &morseCode);
 
@@ -70,8 +68,6 @@ class CwDecoder {
 
     // === DEKÓDOLT ADATOK ===
     String currentMorseBuffer_; // Aktuális morze betű
-    String decodedText_;        // Dekódolt szöveg (csak új karakterek)
-    bool newCharacterAdded_;    // Jelzi, hogy új karakter lett hozzáadva
     bool wordSpaceAdded_;       // Jelzi, hogy az aktuális szünethez már hozzáadtunk szóközt
 
     // === STATISZTIKÁK ===

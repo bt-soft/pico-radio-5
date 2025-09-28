@@ -85,23 +85,6 @@ void ScreenAM::processAudioDecoder() {
         return; // Gyors kilépés ha nincs dekóder mód aktív
     }
 
-    // FFT adatok lekérése - DUPLEX rendszer használata
-    const float *magnitudeData = nullptr;
-    uint16_t fftSize = 512; // Waterfall FFT méret
-    float binWidth = 0.0f;
-    float autoGain = 1.0f;
-
-    // WATERFALL FFT adatok (mindig 512-es, minden módban)
-    if (!AudioCore1Manager::getLatestSpectrumData(&magnitudeData, &fftSize, &binWidth, &autoGain)) {
-        static unsigned long lastWarning = 0;
-        unsigned long now = millis();
-        if (now - lastWarning > 2000) { // 2 sec helyett 5 sec - gyorsabb figyelmeztetés
-            DEBUG("ScreenAM::processAudioDecoder() - Nincs új waterfall FFT adat 2 sec óta\n");
-            lastWarning = now;
-        }
-        return;
-    }
-
     // CW DEKÓDER FFT adatok (CW módokban: CWWaterfall és CwSnrCurve, külön CW_DECODER_FFT_SIZE-as)
     if (isCwMode) {
         const float *cwMagnitudeData = nullptr;
@@ -110,7 +93,14 @@ void ScreenAM::processAudioDecoder() {
         if (AudioCore1Manager::getFastCwData(&cwMagnitudeData, &cwBinWidth)) {
             // CW dekóder feldolgozás (CW_DECODER_FFT_SIZE-as FFT)
             if (ScreenAM::that && ScreenAM::that->cwDecoder) {
-                ScreenAM::that->cwDecoder->processCwFftData(cwMagnitudeData, CW_DECODER_FFT_SIZE, cwBinWidth);
+                ScreenAM::that->newCwTextBuffer_ += ScreenAM::that->cwDecoder->processCwFftData(cwMagnitudeData, CW_DECODER_FFT_SIZE, cwBinWidth);
+            }
+        } else {
+            static unsigned long lastWarning = 0;
+            unsigned long now = millis();
+            if (now - lastWarning > 2000) {
+                DEBUG("ScreenAM::processAudioDecoder() - Nincs új CW FFT adat a dekóderhez.\n");
+                lastWarning = now;
             }
         }
     }
@@ -142,12 +132,6 @@ void ScreenAM::processAudioDecoder() {
                 lastNoFftDebug = currentTime;
             }
         }
-    }
-
-    // Validálás: FFT adatok érvényessége
-    if (magnitudeData == nullptr || fftSize == 0 || binWidth <= 0.0f) {
-        DEBUG("ScreenAM::processAudioDecoder() - HIBA: Érvénytelen FFT adatok (ptr:%p, size:%u, binWidth:%s)\n", magnitudeData, fftSize, Utils::floatToString(binWidth).c_str());
-        return;
     }
 }
 
@@ -332,6 +316,8 @@ void ScreenAM::activate() {
     cwDecoder->clear();
     rttyDecoder->clear();
     decodedTextBox->setText("");
+    newCwTextBuffer_ = "";
+    newRttyTextBuffer_ = "";
 
     // ===================================================================
     // *** EGYETLEN GOMBÁLLAPOT SZINKRONIZÁLÁSI PONT - Event-driven ***
@@ -564,56 +550,56 @@ void ScreenAM::handleOwnLoop() {
         // Ha a CW dekóder mód aktív
         if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
 
-            // A Dekódolt szöveg lekérése és megjelenítése
-            if (cwDecoder) {
-                String newText = cwDecoder->getDecodedText();
-                if (newText.length() > 0) {
-                    // Duplikált szóközök szűrése az új szövegből
-                    String filteredNewText = "";
-                    for (int i = 0; i < newText.length(); i++) {
-                        char currentChar = newText.charAt(i);
-                        if (currentChar == ' ' && filteredNewText.length() > 0 && filteredNewText.charAt(filteredNewText.length() - 1) == ' ') {
-                            // Duplikált szóköz, kihagyjuk
-                            continue;
-                        }
-                        filteredNewText += currentChar;
+            // A Dekódolt szöveg lekérése és megjelenítése a belső pufferből
+            if (newCwTextBuffer_.length() > 0) {
+                String newText = newCwTextBuffer_;
+                newCwTextBuffer_ = ""; // Puffer ürítése
+
+                // Duplikált szóközök szűrése az új szövegből
+                String filteredNewText = "";
+                for (int i = 0; i < newText.length(); i++) {
+                    char currentChar = newText.charAt(i);
+                    if (currentChar == ' ' && filteredNewText.length() > 0 && filteredNewText.charAt(filteredNewText.length() - 1) == ' ') {
+                        // Duplikált szóköz, kihagyjuk
+                        continue;
                     }
-
-                    // Hozzáfűzzük a szűrt új szöveget a meglévőhöz
-                    String currentText = decodedTextBox->getText();
-
-                    // Duplikált szóköz ellenőrzése a csatlakozási pontnál is
-                    if (filteredNewText.length() > 0 && currentText.length() > 0 && currentText.charAt(currentText.length() - 1) == ' ' && filteredNewText.charAt(0) == ' ') {
-                        filteredNewText = filteredNewText.substring(1); // Első szóköz eltávolítása
-                    }
-
-                    String updatedText = currentText + filteredNewText;
-
-                    // Egyszerű karakterszám alapú scrollozás
-                    const int maxChars = 80; // Kisebb limit a teszteléshez (kb. 2 sor x 40 karakter)
-
-                    // Debug: kiírjuk a hosszt
-                    if (updatedText.length() > 100) { // Már 100 karakternél is kiírjuk
-                        DEBUG("[CW-UI] Szöveg hossz: %d/%d karakter\n", updatedText.length(), maxChars);
-                    }
-
-                    // Ha túl hosszú, akkor elölről vágunk le
-                    if (updatedText.length() > maxChars) {
-                        // Az első szó végéig keresünk egy szóközt a vágáshoz
-                        int cutPos = updatedText.length() - maxChars + 20; // Egy kicsit több helyet hagyunk
-                        int spacePos = updatedText.indexOf(' ', cutPos);
-                        if (spacePos > 0) {
-                            updatedText = updatedText.substring(spacePos + 1);
-                            DEBUG("[CW-UI] Scroll: szó alapján vágva, új hossz: %d\n", updatedText.length());
-                        } else {
-                            // Ha nincs szóköz, akkor durván vágjuk
-                            updatedText = updatedText.substring(cutPos);
-                            DEBUG("[CW-UI] Scroll: durva vágás, új hossz: %d\n", updatedText.length());
-                        }
-                    }
-
-                    decodedTextBox->setText(updatedText);
+                    filteredNewText += currentChar;
                 }
+
+                // Hozzáfűzzük a szűrt új szöveget a meglévőhöz
+                String currentText = decodedTextBox->getText();
+
+                // Duplikált szóköz ellenőrzése a csatlakozási pontnál is
+                if (filteredNewText.length() > 0 && currentText.length() > 0 && currentText.charAt(currentText.length() - 1) == ' ' && filteredNewText.charAt(0) == ' ') {
+                    filteredNewText = filteredNewText.substring(1); // Első szóköz eltávolítása
+                }
+
+                String updatedText = currentText + filteredNewText;
+
+                // Egyszerű karakterszám alapú scrollozás
+                const int maxChars = 80; // Kisebb limit a teszteléshez (kb. 2 sor x 40 karakter)
+
+                // Debug: kiírjuk a hosszt
+                if (updatedText.length() > 100) { // Már 100 karakternél is kiírjuk
+                    DEBUG("[CW-UI] Szöveg hossz: %d/%d karakter\n", updatedText.length(), maxChars);
+                }
+
+                // Ha túl hosszú, akkor elölről vágunk le
+                if (updatedText.length() > maxChars) {
+                    // Az első szó végéig keresünk egy szóközt a vágáshoz
+                    int cutPos = updatedText.length() - maxChars + 20; // Egy kicsit több helyet hagyunk
+                    int spacePos = updatedText.indexOf(' ', cutPos);
+                    if (spacePos > 0) {
+                        updatedText = updatedText.substring(spacePos + 1);
+                        DEBUG("[CW-UI] Scroll: szó alapján vágva, új hossz: %d\n", updatedText.length());
+                    } else {
+                        // Ha nincs szóköz, akkor durván vágjuk
+                        updatedText = updatedText.substring(cutPos);
+                        DEBUG("[CW-UI] Scroll: durva vágás, új hossz: %d\n", updatedText.length());
+                    }
+                }
+
+                decodedTextBox->setText(updatedText);
             }
         }
 

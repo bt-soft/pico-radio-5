@@ -1491,15 +1491,15 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
     sprite_->fillSprite(TFT_BLACK);
 
     // Megfelelő frekvencia határok és hangolási segéd típus használata a módtól függően
-    if (currentMode_ == DisplayMode::CwSnrCurve) {
-        // CW mód esetén - CW waterfall frekvencia határainak használata
-        // Mindig beállítjuk CW módra a frekvencia határok biztosításához
-        setTuningAidType(TuningAidType::CW_TUNING);
-    } else if (currentMode_ == DisplayMode::RttySnrCurve) {
-        // RTTY mód esetén - RTTY waterfall frekvencia határainak használata
-        // Mindig beállítjuk RTTY módra a frekvencia határok biztosításához
-        setTuningAidType(TuningAidType::RTTY_TUNING);
-    }
+    // if (currentMode_ == DisplayMode::CwSnrCurve) {
+    //     if (currentTuningAidType_ != TuningAidType::CW_TUNING) {
+    //         setTuningAidType(TuningAidType::CW_TUNING);
+    //     }
+    // } else if (currentMode_ == DisplayMode::RttySnrCurve) {
+    //     if (currentTuningAidType_ != TuningAidType::RTTY_TUNING) {
+    //         setTuningAidType(TuningAidType::RTTY_TUNING);
+    //     }
+    // }
 
     const float MIN_FREQ_HZ = currentTuningAidMinFreqHz_;
     const float MAX_FREQ_HZ = currentTuningAidMaxFreqHz_;
@@ -1509,7 +1509,7 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
         static unsigned long lastSnrErrorDebugTime = 0;
         unsigned long currentTime = millis();
         if (currentTime - lastSnrErrorDebugTime > 10000) { // 10 másodpercenként
-            DEBUG("SpectrumVisualizationComponent::renderSnrCurve - Érvénytelen frekvencia határok: MIN=%.0f, MAX=%.0f\n", MIN_FREQ_HZ, MAX_FREQ_HZ);
+            DEBUG("SpectrumVisualizationComponent::renderSnrCurve - Érvénytelen frekvencia határok: MIN=%s, MAX=%s\n", Utils::floatToString(MIN_FREQ_HZ).c_str(), Utils::floatToString(MAX_FREQ_HZ).c_str());
             lastSnrErrorDebugTime = currentTime;
         }
         return;

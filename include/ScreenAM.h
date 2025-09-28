@@ -198,4 +198,8 @@ class ScreenAM : public ScreenRadioBase, public CommonVerticalButtons::Mixin<Scr
     std::shared_ptr<RttyDecoder> rttyDecoder; // RTTY dekóder
     std::shared_ptr<UITextBox> decodedTextBox;
     SpectrumVisualizationComponent::DisplayMode lastSpectrumMode_ = SpectrumVisualizationComponent::DisplayMode::Off;
+
+    // Dekóder bufferek
+    String newCwTextBuffer_;
+    String newRttyTextBuffer_;
 };
