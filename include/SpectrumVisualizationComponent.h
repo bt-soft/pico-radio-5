@@ -114,6 +114,7 @@ class SpectrumVisualizationComponent : public UIComponent {
     inline void setMaxDisplayFrequencyHz(uint16_t maxDisplayFrequencyHz) {
         maxDisplayFrequencyHz_ = maxDisplayFrequencyHz;
         frequencyLabelsDrawn_ = true;
+        DEBUG("SpectrumVisualizationComponent::setMaxDisplayFrequencyHz Max display frequency set to %d Hz\n", maxDisplayFrequencyHz_);
     }
 
     /**

@@ -165,13 +165,8 @@ static constexpr uint8_t STEP_BUTTON = 74;   ///< Frequency Step
  * @param si4735Manager Si4735 rádió chip kezelő referencia
  */
 ScreenAM::ScreenAM() : ScreenRadioBase(SCREEN_NAME_AM) {
-    DEBUG("ScreenAM::ScreenAM() - Konstruktor kezdete\n");
-
     // UI komponensek létrehozása és elhelyezése
     layoutComponents();
-    DEBUG("ScreenAM::ScreenAM() - layoutComponents() sikeresen befejezve\n");
-
-    DEBUG("ScreenAM::ScreenAM() - Konstruktor befejezve\n");
 }
 
 /**
@@ -183,33 +178,23 @@ ScreenAM::ScreenAM() : ScreenRadioBase(SCREEN_NAME_AM) {
  * - Parent pointer cleanup (MiniAudioDisplay)
  */
 ScreenAM::~ScreenAM() {
-    DEBUG("ScreenAM::~ScreenAM() - Destruktor hívása - erőforrások felszabadítása\n");
 
     // ===================================================================
     // 0. Statikus pointer és timer cleanup (ELSŐ!)
     // ===================================================================
     if (ScreenAM::that == this) {
-        DEBUG("ScreenAM::~ScreenAM() - Statikus pointer és timer cleanup\n");
         audioDecoderTimer.detachInterrupt(); // Timer leállítása
         ScreenAM::that = nullptr;            // Statikus pointer nullázása
     }
-
-// Debug memória állapot a cleanup előtt
-#ifdef SHOW_MEMORY_INFO
-    PicoMemoryInfo::MemoryStatus_t memBefore = PicoMemoryInfo::getMemoryStatus();
-    DEBUG("ScreenAM::~ScreenAM() - Memória cleanup előtt: %d B heap használatban\n", memBefore.usedHeap);
-#endif
 
     // ===================================================================
     // 1. Dekóderek leállítása és cleanup
     // ===================================================================
     if (cwDecoder) {
-        DEBUG("ScreenAM::~ScreenAM() - CW dekóder cleanup\n");
         cwDecoder.reset(); // shared_ptr explicit reset
     }
 
     if (rttyDecoder) {
-        DEBUG("ScreenAM::~ScreenAM() - RTTY dekóder cleanup\n");
         rttyDecoder.reset(); // shared_ptr explicit reset
     }
 
@@ -217,43 +202,33 @@ ScreenAM::~ScreenAM() {
     // 2. UI komponensek cleanup
     // ===================================================================
     if (decodedTextBox) {
-        DEBUG("ScreenAM::~ScreenAM() - DecodedTextBox cleanup\n");
         // Child komponensből eltávolítás
         removeChild(decodedTextBox);
         decodedTextBox.reset();
     }
 
     if (spectrumComp) {
-        DEBUG("ScreenAM::~ScreenAM() - SpectrumComponent cleanup\n");
         // Child komponensből eltávolítás
         removeChild(spectrumComp);
         spectrumComp.reset();
     }
+}
 
-// Debug memória állapot a cleanup után
-#ifdef SHOW_MEMORY_INFO
-    PicoMemoryInfo::MemoryStatus_t memAfter = PicoMemoryInfo::getMemoryStatus();
-    int32_t memoryReleased = memBefore.usedHeap - memAfter.usedHeap;
-    DEBUG("ScreenAM::~ScreenAM() - Memória cleanup után: %d B heap, felszabadítva: %d B\n", memAfter.usedHeap, memoryReleased);
-#endif
-
-    DEBUG("ScreenAM::~ScreenAM() - Destruktor befejezve - memória felszabadítva\n");
-} /**
-   * @brief Statikus képernyő tartalom kirajzolása - AM képernyő specifikus elemek
-   * @details Csak a statikus UI elemeket rajzolja ki (nem változó tartalom):
-   * - S-Meter skála vonalak és számok (AM módhoz optimalizálva)
-   * - Band információs terület (AM/MW/LW/SW jelzők)
-   * - Statikus címkék és szövegek
-   *
-   * A dinamikus tartalom (pl. S-Meter érték, frekvencia) a loop()-ban frissül.
-   *
-   * **TODO implementációk**:
-   * - S-Meter skála: RSSI alapú AM skála (0-60 dB tartomány)
-   * - Band indikátor: Aktuális band típus megjelenítése
-   * - Frekvencia egység: kHz/MHz megfelelő formátumban
-   */
+/**
+ * @brief Statikus képernyő tartalom kirajzolása - AM képernyő specifikus elemek
+ * @details Csak a statikus UI elemeket rajzolja ki (nem változó tartalom):
+ * - S-Meter skála vonalak és számok (AM módhoz optimalizálva)
+ * - Band információs terület (AM/MW/LW/SW jelzők)
+ * - Statikus címkék és szövegek
+ *
+ * A dinamikus tartalom (pl. S-Meter érték, frekvencia) a loop()-ban frissül.
+ *
+ * **TODO implementációk**:
+ * - S-Meter skála: RSSI alapú AM skála (0-60 dB tartomány)
+ * - Band indikátor: Aktuális band típus megjelenítése
+ * - Frekvencia egység: kHz/MHz megfelelő formátumban
+ */
 void ScreenAM::drawContent() {
-    // DEBUG("ScreenAM::drawContent() - Statikus tartalom kirajzolása\n");
 
     //  Finomhangolás jel (aláhúzás) megjelenítése SSB/CW módokban, elrejtése egyéb módokban
     //  Itt állítjuk be, mert ha vált SW módban SSB-re, akkor is frissíteni kell a frekvencia kijelzőt a dialógus bezárásakor
@@ -287,7 +262,6 @@ void ScreenAM::drawContent() {
  * - ATTENUATOR gomb ↔ Si4735 attenuator állapot (TODO)
  */
 void ScreenAM::activate() {
-    DEBUG("ScreenAM::activate() - Képernyő aktiválása\n");
 
     // Szülő osztály aktiválása (ScreenRadioBase -> ScreenFrequDisplayBase -> UIScreen)
     ScreenRadioBase::activate();
@@ -341,13 +315,7 @@ void ScreenAM::activate() {
         bool isRttyMode = (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve);
         bool isCwOrRttyDecoderMode = isCwMode || isRttyMode;
 
-        if (isCwOrRttyDecoderMode) {
-            AudioCore1Manager::setCwModeEnabled(true);
-            DEBUG("[ACTIVATE-DEBUG] CW/RTTY mód azonnal beállítva az activate()-ban: mód=%d\n", (int)currentMode);
-            // Nem hívunk azonnal renderelést, hanem hagyjuk, hogy a normál ciklusban történjen
-        } else {
-            AudioCore1Manager::setCwModeEnabled(false);
-        }
+        AudioCore1Manager::setCwModeEnabled(isCwOrRttyDecoderMode);
     }
 }
 
@@ -356,7 +324,6 @@ void ScreenAM::activate() {
  * @details Hívja meg a képernyőváltó logika, amikor elhagyjuk az AM képernyőt!
  */
 void ScreenAM::deactivate() {
-    DEBUG("ScreenAM::deactivate() - Képernyő deaktiválása\n");
 
     // --- Stop audioDecoderTimer ha a képernyő deaktiválódik
     audioDecoderTimer.detachInterrupt();
@@ -396,11 +363,11 @@ bool ScreenAM::handleRotary(const RotaryEvent &event) {
     uint16_t newFreq;
 
     BandTable &currentBand = ::pSi4735Manager->getCurrentBand();
+
     // Az SI4735 osztály cache-ból olvassuk az aktuális frekvenciát, nem használunk chip olvasást
     uint16_t currentFrequency = ::pSi4735Manager->getSi4735().getCurrentFrequency();
 
     bool isCurrentDemodSSBorCW = ::pSi4735Manager->isCurrentDemodSSBorCW();
-
     if (isCurrentDemodSSBorCW) {
 
         if (rtv::bfoOn) {
@@ -412,7 +379,6 @@ bool ScreenAM::handleRotary(const RotaryEvent &event) {
         } else {
 
             // Hangolás felfelé
-
             if (event.direction == RotaryEvent::Direction::Up) {
 
                 rtv::freqDec = rtv::freqDec - rtv::freqstep;
@@ -434,7 +400,6 @@ bool ScreenAM::handleRotary(const RotaryEvent &event) {
             } else {
 
                 // Hangolás lefelé
-
                 rtv::freqDec = rtv::freqDec + rtv::freqstep;
                 uint32_t freqTot = (uint32_t)(currentFrequency * 1000) - rtv::freqDec;
                 if (freqTot < (uint32_t)(currentBand.minimumFreq * 1000)) {
@@ -479,7 +444,7 @@ bool ScreenAM::handleRotary(const RotaryEvent &event) {
     }
 
     // Memória státusz ellenőrzése és frissítése
-    checkAndUpdateMemoryStatus();
+    ScreenRadioBase::checkAndUpdateMemoryStatus();
 
     return true; // Esemény sikeresen kezelve
 }
@@ -524,14 +489,16 @@ void ScreenAM::handleOwnLoop() {
 
     // Ha a mód megváltozott, töröljük a dekódereket
     if (currentMode != lastSpectrumMode_) {
-        if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall) {
+
+        if (currentMode == SpectrumVisualizationComponent::DisplayMode::CWWaterfall //
+            || currentMode == SpectrumVisualizationComponent::DisplayMode::CwSnrCurve) {
             cwDecoder->clear();
             rttyDecoder->clear();
-            decodedTextBox->setText("");
-        } else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
+
+        } else if (currentMode == SpectrumVisualizationComponent::DisplayMode::RTTYWaterfall //
+                   || currentMode == SpectrumVisualizationComponent::DisplayMode::RttySnrCurve) {
             rttyDecoder->clear();
             cwDecoder->clear();
-            decodedTextBox->setText("");
             // RTTY konfigurálása
             rttyDecoder->setMarkFrequency(config.data.rttyMarkFrequencyHz);
             rttyDecoder->setShiftFrequency(config.data.rttyShiftHz);
@@ -540,12 +507,9 @@ void ScreenAM::handleOwnLoop() {
             // Automatikus baud felismerés bekapcsolása
             rttyDecoder->enableAutoBaudDetection(true);
             DEBUG("[RTTY-INIT] RTTY dekóder inicializálva: Mark=%d Hz, Shift=%d Hz, Baud=50\n", config.data.rttyMarkFrequencyHz, config.data.rttyShiftHz);
-        } else {
-            // Ha nem CW/RTTY módban vagyunk és van tartalom a szövegdobozban, töröljük
-            if (decodedTextBox->getText().length() > 0) {
-                decodedTextBox->setText("");
-            }
         }
+
+        decodedTextBox->setText("");
         lastSpectrumMode_ = currentMode;
     }
 
@@ -940,6 +904,7 @@ void ScreenAM::handleAfBWButton(const UIButton::ButtonEvent &event) {
             // Beállítjuk a rádió chip-en a kiválasztott HF sávszélességet
             ::pSi4735Manager->setAfBandWidth();
 
+            // Beáéllítjuk a spektrum komponens FFT paramétereit is
             ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency();
         },
         true,              // Automatikusan bezárja-e a dialógust gomb kattintáskor

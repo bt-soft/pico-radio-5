@@ -478,7 +478,8 @@ void ScreenRadioBase::setFftSamplingFrequencyAndSpektrumMaxDisplayFrequency() {
             bwStr = ::pSi4735Manager->getCurrentBandWidthLabelByIndex(Band::bandWidthSSB, config.data.bwIdxSSB);
         }
 
-        spectrumCompMaxFrequency = (uint16_t)(String(bwStr).toFloat() * 1000.0f); // Hangfrekvenciás sávszélesség KHz -> Hz konverzió (float konverzió)
+        // Hangfrekvenciás sávszélesség KHz -> Hz konverzió (float konverzió)
+        spectrumCompMaxFrequency = (uint16_t)(String(bwStr).toFloat() * 1000.0f);
         if (spectrumCompMaxFrequency < 1000) {
             spectrumCompMaxFrequency = 1000; // Minimum 1000 Hz (1 kHz) sávszélesség
         }
