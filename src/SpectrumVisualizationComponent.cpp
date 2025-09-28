@@ -1487,18 +1487,18 @@ void SpectrumVisualizationComponent::renderSnrCurve() {
     // Sprite teljes törlése
     sprite_->fillSprite(TFT_BLACK);
 
-    // Megfelelő frekvencia határok és hangolási segéd típus használata a módtól függően
-    if (currentMode_ == DisplayMode::CwSnrCurve) {
-        if (currentTuningAidType_ != TuningAidType::CW_TUNING || currentTuningAidMinFreqHz_ == 0 || currentTuningAidMaxFreqHz_ == 0) {
-            DEBUG("SpectrumVisualizationComponent::renderSnrCurve - CW tuning aid inicializálása\n");
-            setTuningAidType(TuningAidType::CW_TUNING);
-        }
-    } else if (currentMode_ == DisplayMode::RttySnrCurve) {
-        if (currentTuningAidType_ != TuningAidType::RTTY_TUNING || currentTuningAidMinFreqHz_ == 0 || currentTuningAidMaxFreqHz_ == 0) {
-            DEBUG("SpectrumVisualizationComponent::renderSnrCurve - RTTY tuning aid inicializálása\n");
-            setTuningAidType(TuningAidType::RTTY_TUNING);
-        }
-    }
+    // // Megfelelő frekvencia határok és hangolási segéd típus használata a módtól függően
+    // if (currentMode_ == DisplayMode::CwSnrCurve) {
+    //     if (currentTuningAidType_ != TuningAidType::CW_TUNING || currentTuningAidMinFreqHz_ == 0 || currentTuningAidMaxFreqHz_ == 0) {
+    //         DEBUG("SpectrumVisualizationComponent::renderSnrCurve - CW tuning aid inicializálása\n");
+    //         setTuningAidType(TuningAidType::CW_TUNING);
+    //     }
+    // } else if (currentMode_ == DisplayMode::RttySnrCurve) {
+    //     if (currentTuningAidType_ != TuningAidType::RTTY_TUNING || currentTuningAidMinFreqHz_ == 0 || currentTuningAidMaxFreqHz_ == 0) {
+    //         DEBUG("SpectrumVisualizationComponent::renderSnrCurve - RTTY tuning aid inicializálása\n");
+    //         setTuningAidType(TuningAidType::RTTY_TUNING);
+    //     }
+    // }
 
     const float MIN_FREQ_HZ = currentTuningAidMinFreqHz_;
     const float MAX_FREQ_HZ = currentTuningAidMaxFreqHz_;
