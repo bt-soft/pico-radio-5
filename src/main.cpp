@@ -156,6 +156,7 @@ void setup() {
     if (Utils::isZeroArray(config.data.tftCalibrateData)) {
         Utils::beepError();
         Utils::tftTouchCalibrate(tft, config.data.tftCalibrateData);
+        config.checkSave(); // Kalibrációs adatok mentése
     }
 
     // Beállítjuk a touch scren-t
