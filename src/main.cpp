@@ -147,8 +147,8 @@ void setup() {
     }
 
     // Rotary Encoder beállítása
-    rotaryEncoder.setDoubleClickEnabled(true);                                  // Dupla kattintás engedélyezése
-    rotaryEncoder.setAccelerationEnabled(config.data.rotaryAcceleratonEnabled); // Gyorsítás engedélyezése a rotary enkóderhez
+    rotaryEncoder.setDoubleClickEnabled(true);                                   // Dupla kattintás engedélyezése
+    rotaryEncoder.setAccelerationEnabled(config.data.rotaryAccelerationEnabled); // Gyorsítás engedélyezése a rotary enkóderhez
     // Pico HW Timer1 beállítása a rotaryhoz
     rotaryTimer.attachInterruptInterval(ROTARY_ENCODER_SERVICE_INTERVAL_IN_MSEC * 1000, rotaryTimerHardwareInterruptHandler);
 
@@ -167,7 +167,7 @@ void setup() {
     fmStationStore.load();
     amStationStore.load();
 
-    // Splash screen megjelenítése inicializálás közben
+    // ----------------------- Splash screen megjelenítése inicializálás közben --------------------
     // Most átváltunk a teljes splash screen-re az SI4735 infókkal
     SplashScreen *splash = new SplashScreen(tft);
     splash->show(true, 8);
@@ -205,7 +205,9 @@ void setup() {
         DEBUG("Si4735 not detected");
         while (true) // nem megyünk tovább
             ;
-    } // Lépés 4: SI4735 konfigurálás
+    }
+
+    // Lépés 4: SI4735 konfigurálás
     splash->updateProgress(4, 6, "Configuring SI4735...");
     pSi4735Manager->setDeviceI2CAddress(si4735Addr == 0x11 ? 0 : 1); // Sets the I2C Bus Address, erre is szükség van...    splash->drawSI4735Info(si4735Manager->getSi4735());
 
@@ -272,7 +274,7 @@ void setup() {
     // SplashScreen törlése, már nincs rá szükség
     delete splash;
 
-    // Csippantunk egyet
+    // Csippantunk egyet a végén
     Utils::beepTick();
 }
 

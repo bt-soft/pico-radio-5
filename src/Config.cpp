@@ -35,16 +35,15 @@ const Config_t DEFAULT_CONFIG = {
     .currentAGCgain = static_cast<uint8_t>(Si4735Runtime::AgcGainMode::Automatic), // -> 1
 
     //--- TFT
-    //.tftCalibrateData = {0, 0, 0, 0, 0}, // TFT touch kalibrációs adatok
-    .tftCalibrateData = {214, 3721, 239, 3606, 7},
+    .tftCalibrateData = {0, 0, 0, 0, 0}, // TFT touch kalibrációs adatok
+    //.tftCalibrateData = {214, 3721, 239, 3606, 7},
     .tftBackgroundBrightness = TFT_BACKGROUND_LED_MAX_BRIGHTNESS, // TFT Háttérvilágítás
-    .tftDigitLigth = true,                                        // Inaktív szegmens látszódjon?
+    .tftDigitLight = true,                                        // Inaktív szegmens látszódjon?
 
     //--- System
     .screenSaverTimeoutMinutes = SCREEN_SAVER_TIMEOUT, // Képernyővédő alapértelmezetten 5 perc
-    .beeperEnabled = true,                             // Hangjelzés engedélyezése    // MiniAudioFft módok
-                                                       // (kezdetben SpectrumLowRes - 0 érték)
-    .rotaryAcceleratonEnabled = true,                  // Rotary gyorsítás engedélyezése
+    .beeperEnabled = true,                             // Hangjelzés engedélyezése
+    .rotaryAccelerationEnabled = true,                 // Rotary gyorsítás engedélyezése
 
     // AudioFft módok
     .audioFftConfigAm = 0.0f,           // Auto Gain

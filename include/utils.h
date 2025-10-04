@@ -50,8 +50,7 @@ String formatFrequencyString(float freqHz);
  */
 template <typename T, size_t N> void safeStrCpy(T (&dest)[N], const T *src) {
     // A strncpy használata a karakterlánc másolásához
-    strncpy(dest, src,
-            N - 1);     // Csak N-1 karaktert másolunk, hogy ne lépjük túl a cél tömböt
+    strncpy(dest, src, N - 1);     // Csak N-1 karaktert másolunk, hogy ne lépjük túl a cél tömböt
     dest[N - 1] = '\0'; // Biztosítjuk, hogy a cél tömb nullával legyen lezárva
 }
 

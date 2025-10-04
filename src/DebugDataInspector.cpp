@@ -56,10 +56,10 @@ void DebugDataInspector::printConfigData(const Config_t &configData) {
     DEBUG("  currentAGCgain: %u\n", configData.currentAGCgain);
     DEBUG("  tftCalibrateData: [%u, %u, %u, %u, %u]\n", configData.tftCalibrateData[0], configData.tftCalibrateData[1], configData.tftCalibrateData[2], configData.tftCalibrateData[3], configData.tftCalibrateData[4]);
     DEBUG("  tftBackgroundBrightness: %u\n", configData.tftBackgroundBrightness);
-    DEBUG("  tftDigitLigth: %s\n", configData.tftDigitLigth ? "true" : "false");
+    DEBUG("  tftDigitLight: %s\n", configData.tftDigitLight ? "true" : "false");
     DEBUG("  screenSaverTimeoutMinutes: %u\n", configData.screenSaverTimeoutMinutes);
     DEBUG("  beeperEnabled: %s\n", configData.beeperEnabled ? "true" : "false");
-    DEBUG("  rotaryAcceleratonEnabled: %s\n", configData.rotaryAcceleratonEnabled ? "true" : "false");
+    DEBUG("  rotaryAccelerationEnabled: %s\n", configData.rotaryAccelerationEnabled ? "true" : "false");
     if (configData.audioFftConfigAm == -1.0f) {
         DEBUG("  audioFftConfigAm: Disabled\n");
     } else if (configData.audioFftConfigAm == 0.0f) {

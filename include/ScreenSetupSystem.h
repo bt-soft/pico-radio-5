@@ -23,7 +23,7 @@ class ScreenSetupSystem : public ScreenSetupBase {
         SAVER_TIMEOUT,
         INACTIVE_DIGIT_LIGHT,
         BEEPER_ENABLED,
-        ROTARY_ACCDELERATION, // Rotary gyorsítás beállítása
+        ROTARY_ACCELERATION, // Rotary gyorsítás beállítása
     };
 
     // Rendszer specifikus dialógus kezelő függvények

@@ -247,7 +247,7 @@ void FreqDisplay::drawFmAmLwStyle(const FrequencyDisplayData &data) {
     spr.setFreeFont(&DSEG7_Classic_Mini_Regular_34);
 
     // Inaktív számjegyek rajzolása (ha engedélyezve van) - JOBBRA igazítva a maszkhoz
-    if (config.data.tftDigitLigth) {
+    if (config.data.tftDigitLight) {
         spr.setTextColor(colors.inactive);
         spr.setTextDatum(BR_DATUM);                                       // Jobb alsó sarokhoz igazítás
         spr.drawString(data.mask, freqSpriteWidth, FREQ_7SEGMENT_HEIGHT); // Jobb szélre igazítva
@@ -391,7 +391,7 @@ void FreqDisplay::drawFrequencySpriteWithSpaces(const FrequencyDisplayData &data
     spr.setFreeFont(&DSEG7_Classic_Mini_Regular_34);
 
     // Inaktív számjegyek rajzolása (ha engedélyezve van) - JOBBRA igazítva a maszkhoz
-    if (config.data.tftDigitLigth) {
+    if (config.data.tftDigitLight) {
         spr.setTextColor(colors.inactive);
         spr.setTextDatum(BR_DATUM);                             // Jobb alsó sarokhoz igazítás
         spr.drawString(data.mask, width, FREQ_7SEGMENT_HEIGHT); // Jobb szélre igazítva
@@ -625,7 +625,7 @@ void FreqDisplay::drawBfoStyle(const FrequencyDisplayData &data) {
     spr.setTextDatum(BR_DATUM);
 
     // Inaktív számjegyek rajzolása (ha engedélyezve van)
-    if (config.data.tftDigitLigth) {
+    if (config.data.tftDigitLight) {
         spr.setTextColor(colors.inactive);
         spr.drawString(data.mask, bfoSpriteWidth, FREQ_7SEGMENT_HEIGHT);
     }

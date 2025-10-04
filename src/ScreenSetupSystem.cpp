@@ -29,9 +29,9 @@ void ScreenSetupSystem::populateMenuItems() {
 
     settingItems.push_back(SettingItem("Brightness", String(config.data.tftBackgroundBrightness), static_cast<int>(SystemItemAction::BRIGHTNESS)));
     settingItems.push_back(SettingItem("Screen Saver", String(config.data.screenSaverTimeoutMinutes) + " min", static_cast<int>(SystemItemAction::SAVER_TIMEOUT)));
-    settingItems.push_back(SettingItem("Inactive Digit Light", String(config.data.tftDigitLigth ? "ON" : "OFF"), static_cast<int>(SystemItemAction::INACTIVE_DIGIT_LIGHT)));
+    settingItems.push_back(SettingItem("Inactive Digit Light", String(config.data.tftDigitLight ? "ON" : "OFF"), static_cast<int>(SystemItemAction::INACTIVE_DIGIT_LIGHT)));
     settingItems.push_back(SettingItem("Beeper", String(config.data.beeperEnabled ? "ON" : "OFF"), static_cast<int>(SystemItemAction::BEEPER_ENABLED)));
-    settingItems.push_back(SettingItem("Rotary Acceleration", String(config.data.rotaryAcceleratonEnabled ? "ON" : "OFF"), static_cast<int>(SystemItemAction::ROTARY_ACCDELERATION)));
+    settingItems.push_back(SettingItem("Rotary Acceleration", String(config.data.rotaryAccelerationEnabled ? "ON" : "OFF"), static_cast<int>(SystemItemAction::ROTARY_ACCELERATION)));
 
     // Lista komponens újrarajzolásának kérése, ha létezik
     if (menuList) {
@@ -58,13 +58,13 @@ void ScreenSetupSystem::handleItemAction(int index, int action) {
             handleSaverTimeoutDialog(index);
             break;
         case SystemItemAction::INACTIVE_DIGIT_LIGHT:
-            handleToggleItem(index, config.data.tftDigitLigth);
+            handleToggleItem(index, config.data.tftDigitLight);
             break;
         case SystemItemAction::BEEPER_ENABLED:
             handleToggleItem(index, config.data.beeperEnabled);
             break;
-        case SystemItemAction::ROTARY_ACCDELERATION:
-            handleToggleItem(index, config.data.rotaryAcceleratonEnabled);
+        case SystemItemAction::ROTARY_ACCELERATION:
+            handleToggleItem(index, config.data.rotaryAccelerationEnabled);
             break;
         case SystemItemAction::NONE:
         default:
