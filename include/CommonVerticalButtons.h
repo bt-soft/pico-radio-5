@@ -86,7 +86,7 @@ class CommonVerticalButtons {
         }
         rtv::muteStat = event.state == UIButton::EventButtonState::On;
         ::pSi4735Manager->getSi4735().setAudioMute(rtv::muteStat);
-#if defined NOT_PROCESS_MUTED_STATE
+#if defined TEST_NOT_PROCESS_MUTED_STATE
         ::pSi4735Manager->getSi4735().setHardwareAudioMute(rtv::muteStat);
 #endif
     }

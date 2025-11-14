@@ -5,7 +5,7 @@
 #include "pins.h"
 
 // Ezt tesztre használjuk, hogy a némított állapotot figyelmen kívül hagyjuk (Az AD + FFT hangolásához)
-#define NOT_PROCESS_MUTED_STATE
+#define TEST_NOT_PROCESS_MUTED_STATE
 
 //---- Program Information ------------------------------------------
 

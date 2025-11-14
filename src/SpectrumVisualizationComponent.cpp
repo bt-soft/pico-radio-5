@@ -266,7 +266,7 @@ void SpectrumVisualizationComponent::draw() {
     lastFrameTime_ = currentTime;
 
     // Ha Mute állapotban vagyunk
-#if not defined NOT_PROCESS_MUTED_STATE // tesztre kikapcsoljuk a mute funkciót
+#if not defined TEST_NOT_PROCESS_MUTED_STATE // tesztre kikapcsoljuk a mute funkciót
     if (rtv::muteStat) {
         if (!isMutedDrawn) {
             drawFrame();
@@ -291,7 +291,7 @@ void SpectrumVisualizationComponent::draw() {
         needBorderDrawn = false; // Reset the flag after drawing
     }
 
-#if not defined NOT_PROCESS_MUTED_STATE
+#if not defined TEST_NOT_PROCESS_MUTED_STATE
     // Ha némítva van, ne rajzoljunk semmit
     if (rtv::muteStat) {
         return;
