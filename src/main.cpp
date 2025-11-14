@@ -307,7 +307,7 @@ void loop() {
     bool touchedRaw = tft.getTouch(&touchX, &touchY);
     bool validCoordinates = true;
     if (touchedRaw) {
-        if (touchX > tft.width() || touchY > tft.height()) {
+        if (touchX > SCREEN_W || touchY > SCREEN_H) {
             validCoordinates = false;
         }
     }

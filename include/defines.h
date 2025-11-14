@@ -4,6 +4,9 @@
 
 #include "pins.h"
 
+// Ezt tesztre használjuk, hogy a némított állapotot figyelmen kívül hagyjuk (Az AD + FFT hangolásához)
+#define NOT_PROCESS_MUTED_STATE
+
 //---- Program Information ------------------------------------------
 
 #define PROGRAM_NAME "Pico Radio v5"
@@ -35,7 +38,7 @@
 #define MEMORY_INFO_INTERVAL 20 * 1000 // 20mp
 
 // Soros portra várakozás a debug üzenetek előtt
-//#define DEBUG_WAIT_FOR_SERIAL
+// #define DEBUG_WAIT_FOR_SERIAL
 
 // Debug keretek rajzolása a UI komponensek köré
 // #define DRAW_DEBUG_GUI_FRAMES

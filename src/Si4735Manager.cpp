@@ -40,8 +40,10 @@ void Si4735Manager::loop() {
     // Squelch kezelése
     manageSquelch();
 
+#if not defined NOT_PROCESS_MUTED_STATE
     // Hardver némítás kezelése
     manageHardwareAudioMute();
+#endif
 
     // Signal quality cache frissítése, ha szükséges
     updateSignalCacheIfNeeded();

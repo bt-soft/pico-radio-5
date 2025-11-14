@@ -266,6 +266,7 @@ void SpectrumVisualizationComponent::draw() {
     lastFrameTime_ = currentTime;
 
     // Ha Mute állapotban vagyunk
+#if not defined NOT_PROCESS_MUTED_STATE // tesztre kikapcsoljuk a mute funkciót
     if (rtv::muteStat) {
         if (!isMutedDrawn) {
             drawFrame();
@@ -277,6 +278,7 @@ void SpectrumVisualizationComponent::draw() {
         isMutedDrawn = false;
         needBorderDrawn = true; // Muted állapot megszűnt, rajzoljuk újra a keretet
     }
+#endif
 
     // Ha nincs processzor vagy a dialog aktív, ne rajzoljunk újra (kivéve ha force redraw van)
     // Ellenőrizzük, hogy a core1 audio manager fut-e és van-e aktív dialógus
@@ -289,9 +291,12 @@ void SpectrumVisualizationComponent::draw() {
         needBorderDrawn = false; // Reset the flag after drawing
     }
 
+#if not defined NOT_PROCESS_MUTED_STATE
+    // Ha némítva van, ne rajzoljunk semmit
     if (rtv::muteStat) {
         return;
     }
+#endif
 
     // Biztonsági ellenőrzés: FM módban CW/RTTY/SNR módok nem engedélyezettek
     if (radioMode_ == RadioMode::FM && (currentMode_ == DisplayMode::CWWaterfall || currentMode_ == DisplayMode::RTTYWaterfall || currentMode_ == DisplayMode::CwSnrCurve || currentMode_ == DisplayMode::RttySnrCurve)) {
